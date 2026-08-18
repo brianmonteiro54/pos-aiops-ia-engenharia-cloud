@@ -1,0 +1,7 @@
+# Artefatos locais do Terraform: nunca versionar.
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+*.tfvars
+crash.log
