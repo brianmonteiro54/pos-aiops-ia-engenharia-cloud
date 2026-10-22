@@ -1,0 +1,14 @@
+# Sonda do experimento da regra 3.3 do Ticket 01 do Desafio 3.
+#
+# Ela e GERADA por `gerar-sonda-de-segredos.py` e nunca versionada. Os seis valores sao
+# sinteticos, mas precisam ter a forma exata de credencial real para o
+# `trivy fs --scanners secret` disparar — e essa forma faz o push protection do GitHub
+# recusar o push. Aconteceu: tres violacoes (AWS Access Key ID, AWS Secret Access Key,
+# Slack API Token).
+#
+# O resultado da medicao esta registrado em evidencias/relatorios/06-trivy-saida-crua.txt.
+trivy-segredos-seis-formatos.yaml
+
+# Python
+__pycache__/
+*.pyc

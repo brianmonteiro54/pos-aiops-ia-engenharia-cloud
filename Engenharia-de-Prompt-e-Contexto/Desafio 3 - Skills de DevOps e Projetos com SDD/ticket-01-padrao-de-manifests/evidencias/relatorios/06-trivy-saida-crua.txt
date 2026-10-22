@@ -1,0 +1,69 @@
+# trivy config / trivy fs, saida crua — a evidencia do mapa de cobertura
+# Trivy 0.52.2 | 2026-10-22T21:08:37Z
+# Reproduzir: rodar os mesmos comandos a partir desta pasta.
+
+### trivy config manifests/nyx-api-barrado.yaml
+  14 regra(s) FAIL:
+    KSV001           MEDIUM
+    KSV003           LOW
+    KSV011           LOW
+    KSV012           MEDIUM
+    KSV013           MEDIUM
+    KSV014           HIGH
+    KSV015           LOW
+    KSV016           LOW
+    KSV018           LOW
+    KSV020           LOW
+    KSV021           LOW
+    KSV030           LOW
+    KSV104           MEDIUM
+    KSV106           LOW
+
+### trivy config evidencias/sondas/trivy-viola-tudo.yaml
+  20 regra(s) FAIL:
+    KSV001           MEDIUM
+    KSV003           LOW
+    KSV008           HIGH
+    KSV009           HIGH
+    KSV010           HIGH
+    KSV011           LOW
+    KSV012           MEDIUM
+    KSV013           MEDIUM
+    KSV014           HIGH
+    KSV015           LOW
+    KSV016           LOW
+    KSV017           HIGH
+    KSV018           LOW
+    KSV020           LOW
+    KSV021           LOW
+    KSV030           LOW
+    KSV104           MEDIUM
+    KSV105           LOW
+    KSV106           LOW
+    KSV117           HIGH
+
+### trivy config evidencias/sondas/trivy-uid-a-nivel-pod.yaml
+  2 regra(s) FAIL:
+    KSV020           LOW
+    KSV021           LOW
+
+### trivy config evidencias/sondas/trivy-uid-b-nivel-container.yaml
+  0 regra(s) FAIL:
+
+### trivy fs --scanners secret evidencias/sondas/trivy-segredos-seis-formatos.yaml
+#   (valores sinteticos; 6 formatos de segredo, um deles senha dentro de URI)
+    CRITICAL  aws-access-key-id
+    CRITICAL  aws-secret-access-key
+    CRITICAL  github-pat
+    HIGH      private-key
+    HIGH      slack-access-token
+  5 de 6 detectados. O que passou: a senha dentro da string de conexao.
+
+### trivy config evidencias/sondas/trivy-senha-em-tres-lugares.yaml
+#   (a MESMA senha em ConfigMap.data, Secret.stringData e env.value)
+    AVD-KSV-01010  MEDIUM
+    ConfigMap 'lugar-um' in 'sonda-prod' namespace stores sensitive contents in key(s) or value(s) '{"postgres"}'
+    ^ alcanca 1 lugar de 3, e casou com o esquema da URI, nao com a senha
+
+### trivy fs --scanners secret evidencias/sondas/trivy-senha-em-tres-lugares.yaml
+    0 achado(s) — zero dos 3 lugares

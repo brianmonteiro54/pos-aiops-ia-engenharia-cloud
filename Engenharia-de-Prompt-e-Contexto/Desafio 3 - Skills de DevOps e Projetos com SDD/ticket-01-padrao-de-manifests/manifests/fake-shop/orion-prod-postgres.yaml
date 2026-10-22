@@ -1,0 +1,149 @@
+# PostgreSQL do fake-shop (cliente orion) — namespace orion-prod
+#
+# O padrão vale para todo objeto que entra no cluster, e o banco não é exceção.
+# Diferenças deliberadas em relação ao manifesto da aplicação estão comentadas.
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: orion-postgres
+  namespace: orion-prod
+  labels:
+    app.kubernetes.io/name: orion-postgres
+    app.kubernetes.io/instance: orion-prod
+    app.kubernetes.io/part-of: orion
+    app.kubernetes.io/managed-by: platform
+  annotations:
+    metacortex.io/owner: time-orion
+automountServiceAccountToken: false
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: orion-postgres
+  namespace: orion-prod
+  labels:
+    app.kubernetes.io/name: orion-postgres
+    app.kubernetes.io/instance: orion-prod
+    app.kubernetes.io/part-of: orion
+    app.kubernetes.io/managed-by: platform
+  annotations:
+    metacortex.io/owner: time-orion
+    metacortex.io/runbook: https://wiki.metacortex.io/runbooks/orion-postgres
+spec:
+  # 2.3 EXCEÇÃO A REGRA OBRIGATORIA — replicas: 1 em prod.
+  # Postgres com `emptyDir` e sem replicação não ganha nada com duas réplicas: as duas
+  # subiriam com bancos independentes e a aplicação alternaria entre dois estados. Subir
+  # para 2 aqui seria pior que a réplica única, não melhor.
+  # O padrão manda a exceção a regra obrigatória vir com aprovação escrita de Segurança
+  # & Compliance no PR e com prazo de validade. Este manifesto é de laboratório, então a
+  # aprovação não existe — e é por isso que o relatório da skill marca este ponto como
+  # pendência e não como conforme. O caminho correto em produção é StatefulSet com
+  # volume persistente, fora do escopo deste ticket.
+  replicas: 1
+  strategy:
+    # Recreate, e não RollingUpdate: com volume único, duas instâncias do mesmo
+    # Postgres não podem coexistir nem por um instante.
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: orion-postgres
+      app.kubernetes.io/instance: orion-prod
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: orion-postgres
+        app.kubernetes.io/instance: orion-prod
+        app.kubernetes.io/part-of: orion
+        app.kubernetes.io/managed-by: platform
+    spec:
+      serviceAccountName: orion-postgres
+      automountServiceAccountToken: false
+      # 2.6 — Postgres precisa de tempo para checkpoint no shutdown. 30s é pouco.
+      terminationGracePeriodSeconds: 60
+      securityContext:
+        fsGroup: 70
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: postgres
+          image: registry.metacortex.io/base/postgres:16-alpine
+          ports:
+            - {name: postgres, containerPort: 5432}
+          env:
+            - {name: POSTGRES_DB,   value: ecommerce}
+            - {name: POSTGRES_USER, value: ecommerce}
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef: {name: orion-db, key: password}
+            # A imagem precisa escrever em PGDATA; aponta para o volume.
+            - {name: PGDATA, value: /var/lib/postgresql/data/pgdata}
+          # 2.2 — `pg_isready` é o teste nativo. Readiness responde "aceita conexão";
+          # liveness usa o mesmo comando com janela mais larga, porque aqui o banco É
+          # a dependência: não há como checar vida sem falar com ele.
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "ecommerce", "-d", "ecommerce"]
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "ecommerce", "-d", "ecommerce"]
+            initialDelaySeconds: 40
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 5
+          resources:
+            requests: {cpu: 100m, memory: 192Mi}
+            limits:   {cpu: 1,    memory: 384Mi}
+          securityContext:
+            runAsNonRoot: true
+            # DESVIO DOCUMENTADO: UID 70 é o `postgres` da imagem alpine e o processo
+            # precisa ser dono do PGDATA. O padrão pede > 10000; forçar 10001 aqui
+            # quebra a inicialização. Vai para o PR como desvio consciente, e o Trivy
+            # continua apontando KSV020/KSV021 de propósito — o apontamento é correto.
+            runAsUser: 70
+            runAsGroup: 70
+            allowPrivilegeEscalation: false
+            # EXCEÇÃO DOCUMENTADA: a imagem oficial do Postgres escreve em
+            # /var/run/postgresql e em arquivos de configuração dentro do PGDATA na
+            # inicialização. Com os volumes abaixo cobrindo os dois caminhos, o root
+            # filesystem pode ser somente leitura.
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - {name: dados,   mountPath: /var/lib/postgresql/data}
+            - {name: runtime, mountPath: /var/run/postgresql}
+            - {name: tmp,     mountPath: /tmp}
+      volumes:
+        # Laboratório: emptyDir. Em produção isto é PersistentVolumeClaim e o objeto
+        # vira StatefulSet.
+        - name: dados
+          emptyDir: {}
+        - name: runtime
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: orion-postgres
+  namespace: orion-prod
+  labels:
+    app.kubernetes.io/name: orion-postgres
+    app.kubernetes.io/instance: orion-prod
+    app.kubernetes.io/part-of: orion
+    app.kubernetes.io/managed-by: platform
+  annotations:
+    metacortex.io/owner: time-orion
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: orion-postgres
+    app.kubernetes.io/instance: orion-prod
+  ports:
+    - {name: postgres, port: 5432, targetPort: postgres, protocol: TCP}

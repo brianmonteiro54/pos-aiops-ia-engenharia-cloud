@@ -1,0 +1,38 @@
+# A MESMA string de conexão com senha, em três lugares diferentes.
+# Objetivo: descobrir onde o AVD-KSV-01010 alcança e onde não alcança.
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: lugar-um
+  namespace: sonda-prod
+data:
+  CONEXAO: "postgres://usuario:S3nh4Secreta@pg.sonda.svc:5432/base"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: lugar-dois
+  namespace: sonda-prod
+type: Opaque
+stringData:
+  CONEXAO: "postgres://usuario:S3nh4Secreta@pg.sonda.svc:5432/base"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lugar-tres
+  namespace: sonda-prod
+spec:
+  selector:
+    matchLabels: {app: lugar-tres}
+  template:
+    metadata:
+      labels: {app: lugar-tres}
+    spec:
+      containers:
+        - name: unico
+          image: registry.metacortex.io/sonda/app:1.0.0
+          env:
+            - name: CONEXAO
+              value: "postgres://usuario:S3nh4Secreta@pg.sonda.svc:5432/base"

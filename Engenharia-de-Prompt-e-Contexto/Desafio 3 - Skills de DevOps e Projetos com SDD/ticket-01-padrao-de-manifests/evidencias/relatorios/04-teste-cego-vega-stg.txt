@@ -1,0 +1,58 @@
+# Gerado por: python3 conferir_manifesto.py validacao/teste-cego-01-vega-stg.yaml
+# Trivy 0.52.2 | 2026-10-22T21:05:01Z
+
+
+Conferência contra o Padrão de Manifests da Metacortex (rev. 2026-07-29)
+4 objeto(s) em 1 arquivo(s): teste-cego-01-vega-stg.yaml
+
+BARRA A REVISÃO — 4 violação(ões) de regra obrigatória ou proibida
+  [1.3] ConfigMap/vega-cache-config em vega-stg
+        campo: metadata.labels
+        faltam 4 de 4 rótulos: app.kubernetes.io/name, app.kubernetes.io/instance, app.kubernetes.io/part-of, app.kubernetes.io/managed-by
+  [1.4] Service/vega-cache em vega-stg
+        campo: spec.selector
+        nenhum pod casa com o seletor; o Service sobe e fica SEM ENDPOINT. Mais próximo é Deployment/vega-cache em vega-stg (app.kubernetes.io/instance: Service 'vega-staging' x pod 'vega-stg')
+  [3.3] ConfigMap/vega-cache-config em vega-stg
+        campo: data.CACHE_BACKEND_URL
+        string de conexão com senha embutida em 'CACHE_BACKEND_URL' (senha de 11 caracteres); use valueFrom.secretKeyRef
+  [3.7] Deployment/vega-cache em vega-stg
+        campo: container 'cache'.image
+        imagem 'docker.io/redis:7-alpine' não vem de registry.metacortex.io; imagem pública entra pelo Loom, que espelha, escaneia e republica
+
+EXIGE JUSTIFICATIVA NO PR — 1 regra(s) recomendada(s)
+  [1.5] ConfigMap/vega-cache-config em vega-stg
+        campo: metadata.annotations
+        sem metacortex.io/owner; o plantão não sabe quem é o dono às 3 da manhã
+
+APONTADO PELO TRIVY, FORA DO PADRÃO DA CASA — 1 item(ns)
+  (não barra a revisão; o padrão da Metacortex não adota estas regras)
+  - KSV021 em teste-cego-01-vega-stg.yaml: GID <= 10000 — a 3.2 não tem requisito de runAsGroup; e a regra ignora o nível do pod
+
+O TRIVY OPINOU SOBRE REGRAS QUE ESTE SCRIPT JULGA — 2 item(ns)
+  (A CASA ADOTA estas regras. O que não serve de veredito é a implementação
+   do Trivy: KSV020/KSV021 acusam manifesto correto quando runAsUser está no
+   pod, e AVD-KSV-01010 casa por palavra-chave sem achar a senha. O veredito
+   das regras 3.2 e 3.3 é o dos blocos acima, não o desta lista.)
+  - [3.2] KSV020 em teste-cego-01-vega-stg.yaml: UID <= 10000 — cego para o nível do pod
+  - [3.3] AVD-KSV-01010 em teste-cego-01-vega-stg.yaml: conteúdo sensível em ConfigMap — casa por palavra-chave, não detecta a senha, e ignora Secret e env.value
+
+NÃO CONFERIDO POR ESTE SCRIPT — exige abrir o projeto:
+  [2.2] obrigatório — a PRESENÇA das duas probes já foi conferida acima, e
+        também se as duas testam a mesma coisa. Falta o que o YAML não diz: o
+        endpoint existe na aplicação, e a liveness NÃO toca dependência externa?
+  [2.6] recomendado — terminationGracePeriodSeconds foi deliberado? O valor não
+        precisa ser diferente do default de 30s, precisa ser justificado. Sem
+        registro no PR a regra fica PENDENTE, não conforme.
+        Este script não vê o corpo do PR: leve a 2.6 para o bloco 2 do seu
+        relatório, porque o rc acima NÃO reflete pendência de justificativa.
+  [3.2] obrigatório — os cinco campos foram conferidos acima. Falta só o que não
+        está no YAML: se os emptyDir cobrem TODOS os caminhos em que a aplicação
+        escreve. readOnlyRootFilesystem: true com caminho faltando não sobe.
+  [3.3] proibido — o script pega senha em URI e nome de variável sensível. Falta
+        conferir se alguma variável de nome inocente carrega segredo.
+
+  Quando o workload é imagem de terceiro (Postgres, Redis, nginx) não há projeto
+  para abrir: a fonte são a documentação da imagem e o entrypoint dela. Registre
+  isso no DECISOES.md em lugar de arquivo e linha.
+
+# codigo de saida: 1

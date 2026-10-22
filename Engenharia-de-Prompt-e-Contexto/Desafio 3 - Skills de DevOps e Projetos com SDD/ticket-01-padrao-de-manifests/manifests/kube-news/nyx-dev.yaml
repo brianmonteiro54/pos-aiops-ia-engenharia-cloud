@@ -1,0 +1,220 @@
+# kube-news (cliente nyx) — namespace nyx-dev
+#
+# Gerado contra o Padrão de Manifests da Metacortex, revisão 2026-07-29.
+# As decisões que não saem do YAML estão em DECISOES.md, ao lado deste arquivo.
+#
+# Fonte do que não está no padrão, lida em https://github.com/KubeDev/kube-news:
+#   src/server.js:81          app.listen(8080)
+#   src/server.js:22          healthMid registrado ANTES das rotas
+#   src/server.js:80          models.initDatabase() roda no start de todo pod
+#   src/system-life.js:11     GET /ready  — relógio interno, NÃO toca o banco
+#   src/system-life.js:22     GET /health — {state, machine}, NÃO toca o banco
+#   src/models/post.js:6-11   DB_DATABASE, DB_USERNAME, DB_PASSWORD, DB_HOST, DB_PORT, DB_SSL_REQUIRE
+#   src/models/post.js:8      senha default 'Pg#123' embutida no código (ver DECISOES.md)
+#   src/package.json          express-prom-bundle expõe /metrics; "start": node server.js
+#
+# ATENÇÃO — este namespace é `dev`, e por isso DUAS regras obrigatórias do padrão não se
+# aplicam aqui: 2.3 (replicas >= 2) e 2.4 (estratégia de atualização) são condicionadas a
+# `prod`. O manifesto do fake-shop, em orion-prod, mostra as duas cumpridas.
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: nyx-dev
+  labels:
+    app.kubernetes.io/name: nyx-dev
+    app.kubernetes.io/instance: nyx-dev
+    app.kubernetes.io/part-of: nyx
+    app.kubernetes.io/managed-by: platform
+  annotations:
+    metacortex.io/owner: time-nyx
+---
+# 3.3 — a senha não entra em manifesto. `stringData` vazio de propósito: o placeholder
+# documenta a chave esperada sem carregar segredo nenhum para o Git. O valor real é
+# injetado pelo cofre no momento do apply.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: nyx-db
+  namespace: nyx-dev
+  labels:
+    app.kubernetes.io/name: nyx-db
+    app.kubernetes.io/instance: nyx-dev
+    app.kubernetes.io/part-of: nyx
+    app.kubernetes.io/managed-by: platform
+  annotations:
+    metacortex.io/owner: time-nyx
+type: Opaque
+stringData:
+  password: ""   # preenchido no apply; nunca commitado
+---
+# 3.5 — ServiceAccount dedicada, sem RBAC: a aplicação não fala com o apiserver.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: nyx-api
+  namespace: nyx-dev
+  labels:
+    app.kubernetes.io/name: nyx-api
+    app.kubernetes.io/instance: nyx-dev
+    app.kubernetes.io/part-of: nyx
+    app.kubernetes.io/managed-by: platform
+  annotations:
+    metacortex.io/owner: time-nyx
+# 3.4 — o token não é montado nem pelo default da SA nem no pod.
+automountServiceAccountToken: false
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nyx-api
+  namespace: nyx-dev
+  labels:
+    app.kubernetes.io/name: nyx-api
+    app.kubernetes.io/instance: nyx-dev
+    app.kubernetes.io/part-of: nyx
+    app.kubernetes.io/managed-by: platform
+  annotations:
+    metacortex.io/owner: time-nyx
+data:
+  # Configuração que não é segredo fica aqui e não em `env` solto, para o Deployment não
+  # precisar de novo rollout quando só o endereço do banco muda.
+  DB_HOST: nyx-postgres
+  DB_PORT: "5432"
+  DB_DATABASE: kubedevnews
+  DB_USERNAME: kubedevnews
+  # O código converte string em boolean com `value === 'true'`, então precisa ser string.
+  DB_SSL_REQUIRE: "false"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nyx-api
+  namespace: nyx-dev
+  labels:
+    app.kubernetes.io/name: nyx-api
+    app.kubernetes.io/instance: nyx-dev
+    app.kubernetes.io/part-of: nyx
+    app.kubernetes.io/managed-by: platform
+  annotations:
+    metacortex.io/owner: time-nyx
+    metacortex.io/runbook: https://wiki.metacortex.io/runbooks/nyx-api
+spec:
+  # 2.3 não se aplica: a regra condiciona `>= 2` a prod, e este namespace é dev.
+  # Aqui 1 réplica é a escolha CERTA e não uma concessão, porque
+  # `models.initDatabase()` roda `sequelize.sync({alter: true})` no start de todo pod
+  # (src/server.js:80). Duas réplicas = dois ALTER TABLE concorrentes. Ver DECISOES.md.
+  replicas: 1
+  # 2.4 não se aplica fora de prod. Declarado mesmo assim, com `maxUnavailable: 1`, que
+  # é o oposto do que prod exige: em dev vale derrubar a réplica única para garantir que
+  # o `sync({alter: true})` da nova versão não concorra com a antiga.
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 0
+  selector:
+    matchLabels:
+      # 1.4 — idêntico, caractere por caractere, aos rótulos do template abaixo.
+      app.kubernetes.io/name: nyx-api
+      app.kubernetes.io/instance: nyx-dev
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: nyx-api
+        app.kubernetes.io/instance: nyx-dev
+        app.kubernetes.io/part-of: nyx
+        app.kubernetes.io/managed-by: platform
+    spec:
+      serviceAccountName: nyx-api
+      automountServiceAccountToken: false
+      # 2.6 — express não drena conexão em SIGTERM (não há `server.close()` em
+      # server.js), então o processo morre junto com as requisições em curso. 15s é
+      # tempo para o endpoint sair do Endpoints do Service antes do SIGKILL; aumentar
+      # mais não ajuda, porque a aplicação não usa o tempo extra.
+      terminationGracePeriodSeconds: 15
+      securityContext:
+        # fsGroup e seccompProfile são campos de POD. Os cinco campos que a regra 3.2
+        # exige ficam no container, porque três deles (allowPrivilegeEscalation,
+        # readOnlyRootFilesystem, capabilities) não existem no nível do pod.
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        # 1.6 — `api` é o nome do componente. Não `app`, não `main`.
+        - name: api
+          # 3.1 e 3.7 — tag fixa, registry interno. A versão vem de src/package.json.
+          image: registry.metacortex.io/nyx/kube-news:1.0.0
+          ports:
+            - {name: http, containerPort: 8080}
+          envFrom:
+            - configMapRef: {name: nyx-api}
+          env:
+            # 3.3 — a única variável que é segredo vem do Secret. O código tem
+            # 'Pg#123' como default embutido (src/models/post.js:8); se esta variável
+            # faltar, a aplicação sobe com a senha de exemplo em vez de falhar.
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef: {name: nyx-db, key: password}
+          # 2.2 — esta aplicação TEM os dois endpoints, e nenhum dos dois toca o banco.
+          # Isso satisfaz a regra sem o risco que ela descreve: banco lento não derruba
+          # pod. O custo é o inverso — o pod se declara pronto antes de o banco
+          # responder. Aceitável em dev; ver DECISOES.md para o que prod exigiria.
+          readinessProbe:
+            httpGet: {path: /ready, port: http}
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            httpGet: {path: /health, port: http}
+            initialDelaySeconds: 20
+            periodSeconds: 20
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            # 2.1 — dev, carga de uma pessoa. Node com sequelize carregado fica na casa
+            # dos 90Mi em repouso; 128Mi de request com limite em 2x cobre o pico de GC.
+            requests: {cpu: 50m,  memory: 128Mi}
+            limits:   {cpu: 500m, memory: 256Mi}
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10001
+            runAsGroup: 10001
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          # 3.2 — com root filesystem somente leitura, o que a aplicação escreve precisa
+          # de volume. Diferente do fake-shop, aqui NÃO há diretório de métricas:
+          # express-prom-bundle agrega em memória no processo único do node, sem
+          # PROMETHEUS_MULTIPROC_DIR. Só /tmp, que o node usa para si.
+          volumeMounts:
+            - {name: tmp, mountPath: /tmp}
+      volumes:
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nyx-api
+  namespace: nyx-dev
+  labels:
+    app.kubernetes.io/name: nyx-api
+    app.kubernetes.io/instance: nyx-dev
+    app.kubernetes.io/part-of: nyx
+    app.kubernetes.io/managed-by: platform
+  annotations:
+    metacortex.io/owner: time-nyx
+spec:
+  type: ClusterIP
+  # 1.4 — este bloco é o que o manifesto barrado errou por um hífen. Copiado dos
+  # rótulos do pod, não digitado de novo.
+  selector:
+    app.kubernetes.io/name: nyx-api
+    app.kubernetes.io/instance: nyx-dev
+  ports:
+    # `targetPort` aponta para o NOME da porta e não para o número: se a porta do
+    # container mudar, o Service acompanha sem edição.
+    - {name: http, port: 80, targetPort: http, protocol: TCP}

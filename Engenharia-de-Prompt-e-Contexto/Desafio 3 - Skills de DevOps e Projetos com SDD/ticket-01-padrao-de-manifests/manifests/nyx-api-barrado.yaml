@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: NyxAPI
+  namespace: nyx-prod
+  labels:
+    app: nyxapi
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nyxapi
+  template:
+    metadata:
+      labels:
+        app: nyxapi
+    spec:
+      containers:
+        - name: api
+          image: registry.metacortex.io/nyx/api:latest
+          ports:
+            - containerPort: 8080
+          env:
+            - name: DATABASE_URL
+              value: "postgres://nyx:s3nh4-do-banco@pg.nyx-prod.svc:5432/nyx"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nyx-api
+  namespace: nyx-prod
+spec:
+  selector:
+    app: nyx-api
+  ports:
+    - port: 80
+      targetPort: 8080

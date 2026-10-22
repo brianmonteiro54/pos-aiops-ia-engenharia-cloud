@@ -1,0 +1,34 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: SondaViolaTudo
+  namespace: ambiente-errado
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: sonda}
+  template:
+    metadata:
+      labels: {app: sonda-diferente}
+    spec:
+      hostNetwork: true
+      hostPID: true
+      hostIPC: true
+      automountServiceAccountToken: true
+      serviceAccountName: default
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: app
+          image: docker.io/library/nginx:latest
+          securityContext:
+            privileged: true
+            runAsUser: 0
+            allowPrivilegeEscalation: true
+            readOnlyRootFilesystem: false
+          env:
+            - name: DATABASE_URL
+              value: "postgres://nyx:s3nh4-do-banco@pg.nyx-prod.svc:5432/nyx"
+            - name: AWS_SECRET_ACCESS_KEY
+              value: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+          ports:
+            - containerPort: 80

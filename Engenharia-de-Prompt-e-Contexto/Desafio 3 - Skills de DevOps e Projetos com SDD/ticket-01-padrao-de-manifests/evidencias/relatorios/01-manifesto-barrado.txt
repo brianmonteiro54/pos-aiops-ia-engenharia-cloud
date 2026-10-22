@@ -1,0 +1,118 @@
+# Gerado por: python3 conferir_manifesto.py manifests/nyx-api-barrado.yaml
+# Trivy 0.52.2 | 2026-10-22T21:04:46Z
+
+
+Conferência contra o Padrão de Manifests da Metacortex (rev. 2026-07-29)
+2 objeto(s) em 1 arquivo(s): nyx-api-barrado.yaml
+
+BARRA A REVISÃO — 20 violação(ões) de regra obrigatória ou proibida
+  [1.1] Deployment/NyxAPI em nyx-prod
+        campo: metadata.name
+        nome 'NyxAPI' não é kebab-case (tem maiúscula); use 'nyx-api'
+  [1.3] Deployment/NyxAPI em nyx-prod
+        campo: metadata.labels
+        faltam 4 de 4 rótulos: app.kubernetes.io/name, app.kubernetes.io/instance, app.kubernetes.io/part-of, app.kubernetes.io/managed-by; o rótulo curto 'app:' existe mas não substitui os quatro
+  [1.3] Deployment/NyxAPI em nyx-prod
+        campo: spec.template.metadata.labels
+        template do pod sem 4 de 4 rótulos: app.kubernetes.io/name, app.kubernetes.io/instance, app.kubernetes.io/part-of, app.kubernetes.io/managed-by
+  [1.3] Service/nyx-api em nyx-prod
+        campo: metadata.labels
+        faltam 4 de 4 rótulos: app.kubernetes.io/name, app.kubernetes.io/instance, app.kubernetes.io/part-of, app.kubernetes.io/managed-by
+  [1.4] Service/nyx-api em nyx-prod
+        campo: spec.selector
+        nenhum pod casa com o seletor; o Service sobe e fica SEM ENDPOINT. Mais próximo é Deployment/NyxAPI em nyx-prod (app: Service 'nyx-api' x pod 'nyxapi')
+  [2.1] nyx-api-barrado.yaml
+        campo: — (via trivy)
+        limite de CPU ausente [KSV011]
+  [2.1] nyx-api-barrado.yaml
+        campo: — (via trivy)
+        requests de CPU ausente [KSV015]
+  [2.1] nyx-api-barrado.yaml
+        campo: — (via trivy)
+        requests de memória ausente [KSV016]
+  [2.1] nyx-api-barrado.yaml
+        campo: — (via trivy)
+        limite de memória ausente [KSV018]
+  [2.2] Deployment/NyxAPI em nyx-prod
+        campo: container 'api'
+        faltam readinessProbe e livenessProbe; as duas são obrigatórias. Sem readiness o pod entra no Service antes de estar pronto; sem liveness ele nunca é reiniciado quando trava
+  [2.3] Deployment/NyxAPI em nyx-prod
+        campo: spec.replicas
+        replicas: 1 em prod; indisponibilidade a cada deploy, drain e evicção
+  [2.4] Deployment/NyxAPI em nyx-prod
+        campo: spec.strategy
+        estratégia não declarada em prod; exigido RollingUpdate com maxUnavailable: 0 e maxSurge: 1
+  [3.1] nyx-api-barrado.yaml
+        campo: — (via trivy)
+        tag :latest [KSV013]
+  [3.2] Deployment/NyxAPI em nyx-prod
+        campo: container 'api'.securityContext
+        runAsNonRoot ausente no pod e no container; exigido true, aceito no pod ou no container
+  [3.2] Deployment/NyxAPI em nyx-prod
+        campo: container 'api'.securityContext
+        runAsUser ausente no pod e no container; exigido acima de 10000, aceito em qualquer um dos dois níveis
+  [3.2] Deployment/NyxAPI em nyx-prod
+        campo: container 'api'.securityContext
+        allowPrivilegeEscalation ausente; exigido false no container
+  [3.2] Deployment/NyxAPI em nyx-prod
+        campo: container 'api'.securityContext
+        readOnlyRootFilesystem ausente; exigido true no container. Ligar a flag exige emptyDir nos caminhos em que a aplicação escreve
+  [3.2] Deployment/NyxAPI em nyx-prod
+        campo: container 'api'.securityContext
+        capabilities ausente; exigido drop: ["ALL"] no container
+  [3.3] Deployment/NyxAPI em nyx-prod
+        campo: container 'api'.env[DATABASE_URL].value
+        string de conexão com senha embutida em 'DATABASE_URL' (senha de 14 caracteres); use valueFrom.secretKeyRef
+  [3.4] Deployment/NyxAPI em nyx-prod
+        campo: spec.template.spec.automountServiceAccountToken
+        token da ServiceAccount montado; declare false quando a aplicação não fala com o apiserver (obrigatório desde 2026-07-29)
+
+EXIGE JUSTIFICATIVA NO PR — 3 regra(s) recomendada(s)
+  [1.5] Deployment/NyxAPI em nyx-prod
+        campo: metadata.annotations
+        sem metacortex.io/owner; o plantão não sabe quem é o dono às 3 da manhã
+  [1.5] Service/nyx-api em nyx-prod
+        campo: metadata.annotations
+        sem metacortex.io/owner; o plantão não sabe quem é o dono às 3 da manhã
+  [3.5] Deployment/NyxAPI em nyx-prod
+        campo: spec.template.spec.serviceAccountName
+        sem ServiceAccount dedicada; usa a 'default' do namespace
+
+APONTADO PELO TRIVY, FORA DO PADRÃO DA CASA — 3 item(ns)
+  (não barra a revisão; o padrão da Metacortex não adota estas regras)
+  - KSV021 em nyx-api-barrado.yaml: GID <= 10000 — a 3.2 não tem requisito de runAsGroup; e a regra ignora o nível do pod
+  - KSV030 em nyx-api-barrado.yaml: seccompProfile RuntimeDefault
+  - KSV104 em nyx-api-barrado.yaml: seccompProfile ausente
+
+O TRIVY OPINOU SOBRE REGRAS QUE ESTE SCRIPT JULGA — 6 item(ns)
+  (A CASA ADOTA estas regras. O que não serve de veredito é a implementação
+   do Trivy: KSV020/KSV021 acusam manifesto correto quando runAsUser está no
+   pod, e AVD-KSV-01010 casa por palavra-chave sem achar a senha. O veredito
+   das regras 3.2 e 3.3 é o dos blocos acima, não o desta lista.)
+  - [3.2] KSV001 em nyx-api-barrado.yaml: allowPrivilegeEscalation
+  - [3.2] KSV003 em nyx-api-barrado.yaml: capabilities.drop
+  - [3.2] KSV012 em nyx-api-barrado.yaml: runAsNonRoot
+  - [3.2] KSV014 em nyx-api-barrado.yaml: readOnlyRootFilesystem
+  - [3.2] KSV020 em nyx-api-barrado.yaml: UID <= 10000 — cego para o nível do pod
+  - [3.2] KSV106 em nyx-api-barrado.yaml: capabilities.add
+
+NÃO CONFERIDO POR ESTE SCRIPT — exige abrir o projeto:
+  [2.2] obrigatório — a PRESENÇA das duas probes já foi conferida acima, e
+        também se as duas testam a mesma coisa. Falta o que o YAML não diz: o
+        endpoint existe na aplicação, e a liveness NÃO toca dependência externa?
+  [2.6] recomendado — terminationGracePeriodSeconds foi deliberado? O valor não
+        precisa ser diferente do default de 30s, precisa ser justificado. Sem
+        registro no PR a regra fica PENDENTE, não conforme.
+        Este script não vê o corpo do PR: leve a 2.6 para o bloco 2 do seu
+        relatório, porque o rc acima NÃO reflete pendência de justificativa.
+  [3.2] obrigatório — os cinco campos foram conferidos acima. Falta só o que não
+        está no YAML: se os emptyDir cobrem TODOS os caminhos em que a aplicação
+        escreve. readOnlyRootFilesystem: true com caminho faltando não sobe.
+  [3.3] proibido — o script pega senha em URI e nome de variável sensível. Falta
+        conferir se alguma variável de nome inocente carrega segredo.
+
+  Quando o workload é imagem de terceiro (Postgres, Redis, nginx) não há projeto
+  para abrir: a fonte são a documentação da imagem e o entrypoint dela. Registre
+  isso no DECISOES.md em lugar de arquivo e linha.
+
+# codigo de saida: 1

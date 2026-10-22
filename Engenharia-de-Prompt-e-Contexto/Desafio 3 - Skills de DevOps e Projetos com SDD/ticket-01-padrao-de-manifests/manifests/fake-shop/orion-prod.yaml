@@ -1,0 +1,271 @@
+# fake-shop (cliente orion) — namespace orion-prod
+#
+# Gerado contra o Padrão de Manifests da Metacortex, revisão 2026-07-29.
+# As decisões que não saem do YAML estão em DECISOES.md, ao lado deste arquivo.
+#
+# Fonte do que não está no padrão, lida em https://github.com/KubeDev/fake-shop:
+#   src/index.py:19-20   GunicornPrometheusMetrics exige PROMETHEUS_MULTIPROC_DIR gravável
+#   src/index.py:22-26   variáveis DB_HOST, DB_USER, DB_PASSWORD, DB_NAME, DB_PORT
+#   src/index.py:49-51   GET /contact só renderiza template, não toca o banco
+#   src/index.py:252-254 GET / executa Product.query.all(), toca o banco
+#   src/entrypoint.sh    roda `flask db upgrade` e só depois sobe o gunicorn na 5000
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: orion-prod
+  labels:
+    app.kubernetes.io/name: orion-prod
+    app.kubernetes.io/instance: orion-prod
+    app.kubernetes.io/part-of: orion
+    app.kubernetes.io/managed-by: platform
+---
+# 3.3 — a senha não entra em manifesto. Este objeto existe para o Deployment ter o que
+# referenciar; o valor real é injetado pelo cofre no momento do apply e NÃO é versionado.
+# `stringData` vazio de propósito: o placeholder documenta a chave esperada sem carregar
+# segredo nenhum para o Git.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: orion-db
+  namespace: orion-prod
+  labels:
+    app.kubernetes.io/name: orion-db
+    app.kubernetes.io/instance: orion-prod
+    app.kubernetes.io/part-of: orion
+    app.kubernetes.io/managed-by: platform
+  annotations:
+    metacortex.io/owner: time-orion
+type: Opaque
+stringData:
+  password: ""   # preenchido no apply; nunca commitado
+---
+# 3.5 — ServiceAccount dedicada, sem RBAC, porque a aplicação não fala com o apiserver.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: orion-web
+  namespace: orion-prod
+  labels:
+    app.kubernetes.io/name: orion-web
+    app.kubernetes.io/instance: orion-prod
+    app.kubernetes.io/part-of: orion
+    app.kubernetes.io/managed-by: platform
+  annotations:
+    metacortex.io/owner: time-orion
+# 3.4 — o token não é montado nem por padrão da SA nem no pod.
+automountServiceAccountToken: false
+---
+# A migração sai do start do container e vira Job próprio.
+# Motivo em DECISOES.md: o entrypoint da imagem roda `flask db upgrade` antes do gunicorn,
+# e com 2 réplicas isso são duas migrações concorrentes no mesmo banco a cada rollout.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: orion-web-migracao
+  namespace: orion-prod
+  labels:
+    app.kubernetes.io/name: orion-web-migracao
+    app.kubernetes.io/instance: orion-prod
+    app.kubernetes.io/part-of: orion
+    app.kubernetes.io/managed-by: platform
+  annotations:
+    metacortex.io/owner: time-orion
+spec:
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: orion-web-migracao
+        app.kubernetes.io/instance: orion-prod
+        app.kubernetes.io/part-of: orion
+        app.kubernetes.io/managed-by: platform
+    spec:
+      restartPolicy: Never
+      serviceAccountName: orion-web
+      automountServiceAccountToken: false
+      securityContext:
+        # fsGroup e seccompProfile sao de pod. Os campos de identidade e de privilegio
+        # ficam no container, que e onde o bloco do padrao de fato vive: tres dos cinco
+        # campos dele (allowPrivilegeEscalation, readOnlyRootFilesystem, capabilities)
+        # nao existem no nivel do pod.
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        # 1.6 — nome do container descreve o que é, não `app` nem `main`.
+        - name: migracao
+          image: registry.metacortex.io/orion/fake-shop:1.14.2
+          # Sobrescreve o entrypoint da imagem para rodar SÓ a migração.
+          command: ["python", "-m", "flask", "db", "upgrade"]
+          env:
+            - {name: FLASK_APP, value: index.py}
+            - {name: DB_HOST,   value: orion-postgres}
+            - {name: DB_NAME,   value: ecommerce}
+            - {name: DB_USER,   value: ecommerce}
+            - {name: DB_PORT,   value: "5432"}
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef: {name: orion-db, key: password}
+          resources:
+            requests: {cpu: 50m,  memory: 128Mi}
+            limits:   {cpu: 500m, memory: 256Mi}
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10001
+            runAsGroup: 10001
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - {name: tmp, mountPath: /tmp}
+      volumes:
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: orion-web
+  namespace: orion-prod
+  labels:
+    app.kubernetes.io/name: orion-web
+    app.kubernetes.io/instance: orion-prod
+    app.kubernetes.io/part-of: orion
+    app.kubernetes.io/managed-by: platform
+  annotations:
+    metacortex.io/owner: time-orion
+    metacortex.io/runbook: https://wiki.metacortex.io/runbooks/orion-web
+spec:
+  # 2.3 — prod exige no mínimo 2.
+  replicas: 2
+  # 2.4 — capacidade não cai durante o rollout.
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      # 1.4 — este bloco é idêntico, caractere por caractere, aos rótulos do template.
+      app.kubernetes.io/name: orion-web
+      app.kubernetes.io/instance: orion-prod
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: orion-web
+        app.kubernetes.io/instance: orion-prod
+        app.kubernetes.io/part-of: orion
+        app.kubernetes.io/managed-by: platform
+    spec:
+      serviceAccountName: orion-web
+      automountServiceAccountToken: false
+      # 2.6 — gunicorn encerra worker em SIGTERM; 30s cobre a requisição mais longa
+      # desta aplicação, que é o checkout. Mantido no padrão por ser suficiente.
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        # fsGroup e seccompProfile sao de pod. Os campos de identidade e de privilegio
+        # ficam no container, que e onde o bloco do padrao de fato vive: tres dos cinco
+        # campos dele (allowPrivilegeEscalation, readOnlyRootFilesystem, capabilities)
+        # nao existem no nivel do pod.
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: web
+          image: registry.metacortex.io/orion/fake-shop:1.14.2
+          # Só o servidor. A migração é do Job.
+          command: ["python", "-m", "gunicorn", "--bind", "0.0.0.0:5000", "index:app"]
+          ports:
+            - {name: http, containerPort: 5000}
+          env:
+            - {name: FLASK_APP, value: index.py}
+            - {name: DB_HOST,   value: orion-postgres}
+            - {name: DB_NAME,   value: ecommerce}
+            - {name: DB_USER,   value: ecommerce}
+            - {name: DB_PORT,   value: "5432"}
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef: {name: orion-db, key: password}
+            # Exigido por GunicornPrometheusMetrics; aponta para volume gravável.
+            - {name: PROMETHEUS_MULTIPROC_DIR, value: /tmp/metrics}
+          # 2.2 — a aplicação não tem endpoint de saúde. As duas probes apontam para
+          # rotas diferentes de propósito: readiness em rota que toca o banco, liveness
+          # em rota que não toca. Justificativa em DECISOES.md.
+          readinessProbe:
+            httpGet: {path: /, port: http}
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            httpGet: {path: /contact, port: http}
+            initialDelaySeconds: 30
+            periodSeconds: 20
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            requests: {cpu: 100m, memory: 192Mi}
+            # 2.1 — limite de memória em ~1,8x o request, dentro da regra de bolso da casa.
+            limits:   {cpu: 500m, memory: 384Mi}
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10001
+            runAsGroup: 10001
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          # 3.2 — readOnlyRootFilesystem exige volume para o que precisa escrever.
+          volumeMounts:
+            - {name: tmp,     mountPath: /tmp}
+            - {name: metrics, mountPath: /tmp/metrics}
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: metrics
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: orion-web
+  namespace: orion-prod
+  labels:
+    app.kubernetes.io/name: orion-web
+    app.kubernetes.io/instance: orion-prod
+    app.kubernetes.io/part-of: orion
+    app.kubernetes.io/managed-by: platform
+  annotations:
+    metacortex.io/owner: time-orion
+spec:
+  type: ClusterIP
+  # 1.4 — idêntico aos rótulos do pod.
+  selector:
+    app.kubernetes.io/name: orion-web
+    app.kubernetes.io/instance: orion-prod
+  ports:
+    # O Service publica 80 e o container escuta 5000. `targetPort` aponta para o NOME da
+    # porta, não para o número: se a porta do container mudar, o Service acompanha.
+    - {name: http, port: 80, targetPort: http, protocol: TCP}
+---
+# 2.5 — prod com mais de uma réplica declara PDB.
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: orion-web
+  namespace: orion-prod
+  labels:
+    app.kubernetes.io/name: orion-web
+    app.kubernetes.io/instance: orion-prod
+    app.kubernetes.io/part-of: orion
+    app.kubernetes.io/managed-by: platform
+  annotations:
+    metacortex.io/owner: time-orion
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: orion-web
+      app.kubernetes.io/instance: orion-prod

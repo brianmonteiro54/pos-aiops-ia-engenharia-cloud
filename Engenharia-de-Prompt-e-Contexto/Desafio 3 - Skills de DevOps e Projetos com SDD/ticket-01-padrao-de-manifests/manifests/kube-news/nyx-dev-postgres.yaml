@@ -1,0 +1,139 @@
+# PostgreSQL do kube-news (cliente nyx) — namespace nyx-dev
+#
+# O padrão vale para todo objeto que entra no cluster, e o banco não é exceção.
+# Diferença relevante em relação ao Postgres do orion-prod: aqui o namespace é `dev`,
+# então `replicas: 1` é o default esperado e NÃO precisa de exceção aprovada.
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: nyx-postgres
+  namespace: nyx-dev
+  labels:
+    app.kubernetes.io/name: nyx-postgres
+    app.kubernetes.io/instance: nyx-dev
+    app.kubernetes.io/part-of: nyx
+    app.kubernetes.io/managed-by: platform
+  annotations:
+    metacortex.io/owner: time-nyx
+automountServiceAccountToken: false
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nyx-postgres
+  namespace: nyx-dev
+  labels:
+    app.kubernetes.io/name: nyx-postgres
+    app.kubernetes.io/instance: nyx-dev
+    app.kubernetes.io/part-of: nyx
+    app.kubernetes.io/managed-by: platform
+  annotations:
+    metacortex.io/owner: time-nyx
+    metacortex.io/runbook: https://wiki.metacortex.io/runbooks/nyx-postgres
+spec:
+  # Em dev a regra 2.3 não exige 2, e com volume único 1 é o certo de qualquer forma.
+  replicas: 1
+  strategy:
+    # Recreate: duas instâncias do mesmo Postgres sobre o mesmo volume não podem
+    # coexistir nem por um instante.
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: nyx-postgres
+      app.kubernetes.io/instance: nyx-dev
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: nyx-postgres
+        app.kubernetes.io/instance: nyx-dev
+        app.kubernetes.io/part-of: nyx
+        app.kubernetes.io/managed-by: platform
+    spec:
+      serviceAccountName: nyx-postgres
+      automountServiceAccountToken: false
+      # 2.6 — Postgres faz checkpoint no shutdown; 60s evita recuperação no próximo start.
+      terminationGracePeriodSeconds: 60
+      securityContext:
+        fsGroup: 70
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: postgres
+          image: registry.metacortex.io/base/postgres:16-alpine
+          ports:
+            - {name: postgres, containerPort: 5432}
+          env:
+            # Os nomes vêm do que src/models/post.js espera por default.
+            - {name: POSTGRES_DB,   value: kubedevnews}
+            - {name: POSTGRES_USER, value: kubedevnews}
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef: {name: nyx-db, key: password}
+            - {name: PGDATA, value: /var/lib/postgresql/data/pgdata}
+          # 2.2 — `pg_isready` é o teste nativo. Aqui o banco É a dependência: não há
+          # como checar vida sem falar com ele, então as duas probes usam o mesmo
+          # comando com janelas diferentes (liveness mais larga, para não reiniciar
+          # durante uma recuperação legítima).
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "kubedevnews", "-d", "kubedevnews"]
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            exec:
+              command: ["pg_isready", "-U", "kubedevnews", "-d", "kubedevnews"]
+            initialDelaySeconds: 40
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 5
+          resources:
+            requests: {cpu: 100m, memory: 192Mi}
+            limits:   {cpu: 1,    memory: 384Mi}
+          securityContext:
+            runAsNonRoot: true
+            # DESVIO DOCUMENTADO, idêntico ao do orion-prod: UID 70 é o `postgres` da
+            # imagem alpine e precisa ser dono do PGDATA. Forçar > 10000 quebra o
+            # initdb. O Trivy segue apontando KSV020/KSV021, e o apontamento é correto.
+            runAsUser: 70
+            runAsGroup: 70
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - {name: dados,   mountPath: /var/lib/postgresql/data}
+            - {name: runtime, mountPath: /var/run/postgresql}
+            - {name: tmp,     mountPath: /tmp}
+      volumes:
+        # Laboratório e dev: emptyDir. Perder o banco a cada rollout é aceitável aqui, e
+        # é justamente por isso que este manifesto NÃO serve para prod sem virar
+        # StatefulSet com PersistentVolumeClaim.
+        - name: dados
+          emptyDir: {}
+        - name: runtime
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nyx-postgres
+  namespace: nyx-dev
+  labels:
+    app.kubernetes.io/name: nyx-postgres
+    app.kubernetes.io/instance: nyx-dev
+    app.kubernetes.io/part-of: nyx
+    app.kubernetes.io/managed-by: platform
+  annotations:
+    metacortex.io/owner: time-nyx
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: nyx-postgres
+    app.kubernetes.io/instance: nyx-dev
+  ports:
+    - {name: postgres, port: 5432, targetPort: postgres, protocol: TCP}

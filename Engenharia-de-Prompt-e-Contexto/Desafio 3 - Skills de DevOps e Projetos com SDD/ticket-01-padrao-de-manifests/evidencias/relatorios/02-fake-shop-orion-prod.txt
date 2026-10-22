@@ -1,0 +1,54 @@
+# Gerado por: python3 conferir_manifesto.py manifests/fake-shop/
+# Trivy 0.52.2 | 2026-10-22T21:04:50Z
+
+
+Conferência contra o Padrão de Manifests da Metacortex (rev. 2026-07-29)
+10 objeto(s) em 2 arquivo(s): orion-prod-postgres.yaml, orion-prod.yaml
+
+BARRA A REVISÃO — 2 violação(ões) de regra obrigatória ou proibida
+  [2.3] Deployment/orion-postgres em orion-prod
+        campo: spec.replicas
+        replicas: 1 em prod; indisponibilidade a cada deploy, drain e evicção
+  [3.2] Deployment/orion-postgres em orion-prod
+        campo: container 'postgres'.securityContext
+        runAsUser: 70 (nível container) não está acima de 10000; se a imagem exige este UID, é desvio e precisa de exceção aprovada no PR
+
+EXIGE JUSTIFICATIVA NO PR — 2 regra(s) recomendada(s)
+  [2.2] Deployment/orion-postgres em orion-prod
+        campo: container 'postgres'
+        readiness e liveness testam exatamente a mesma coisa (exec: pg_isready -U ecommerce -d ecommerce). SE esse teste tocar dependência externa, a regra 2.2 é VIOLADA e barra: dependência lenta reinicia o container em vez de só tirá-lo do Service. Confirme o que o teste toca e justifique no PR
+  [2.4] Deployment/orion-postgres em orion-prod
+        campo: spec.strategy.type
+        Recreate em prod derruba a capacidade inteira; justifique no PR (é aceitável para carga que não tolera duas instâncias)
+
+APONTADO PELO TRIVY, FORA DO PADRÃO DA CASA — 1 item(ns)
+  (não barra a revisão; o padrão da Metacortex não adota estas regras)
+  - KSV021 em orion-prod-postgres.yaml: GID <= 10000 — a 3.2 não tem requisito de runAsGroup; e a regra ignora o nível do pod
+
+O TRIVY OPINOU SOBRE REGRAS QUE ESTE SCRIPT JULGA — 1 item(ns)
+  (A CASA ADOTA estas regras. O que não serve de veredito é a implementação
+   do Trivy: KSV020/KSV021 acusam manifesto correto quando runAsUser está no
+   pod, e AVD-KSV-01010 casa por palavra-chave sem achar a senha. O veredito
+   das regras 3.2 e 3.3 é o dos blocos acima, não o desta lista.)
+  - [3.2] KSV020 em orion-prod-postgres.yaml: UID <= 10000 — cego para o nível do pod
+
+NÃO CONFERIDO POR ESTE SCRIPT — exige abrir o projeto:
+  [2.2] obrigatório — a PRESENÇA das duas probes já foi conferida acima, e
+        também se as duas testam a mesma coisa. Falta o que o YAML não diz: o
+        endpoint existe na aplicação, e a liveness NÃO toca dependência externa?
+  [2.6] recomendado — terminationGracePeriodSeconds foi deliberado? O valor não
+        precisa ser diferente do default de 30s, precisa ser justificado. Sem
+        registro no PR a regra fica PENDENTE, não conforme.
+        Este script não vê o corpo do PR: leve a 2.6 para o bloco 2 do seu
+        relatório, porque o rc acima NÃO reflete pendência de justificativa.
+  [3.2] obrigatório — os cinco campos foram conferidos acima. Falta só o que não
+        está no YAML: se os emptyDir cobrem TODOS os caminhos em que a aplicação
+        escreve. readOnlyRootFilesystem: true com caminho faltando não sobe.
+  [3.3] proibido — o script pega senha em URI e nome de variável sensível. Falta
+        conferir se alguma variável de nome inocente carrega segredo.
+
+  Quando o workload é imagem de terceiro (Postgres, Redis, nginx) não há projeto
+  para abrir: a fonte são a documentação da imagem e o entrypoint dela. Registre
+  isso no DECISOES.md em lugar de arquivo e linha.
+
+# codigo de saida: 1
