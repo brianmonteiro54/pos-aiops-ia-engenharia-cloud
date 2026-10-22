@@ -82,7 +82,6 @@ TRIVY_PARA_REGRA = {
     "KSV016": ("2.1", OBRIGATORIO, "requests de memória ausente"),
     "KSV018": ("2.1", OBRIGATORIO, "limite de memória ausente"),
     "KSV013": ("3.1", PROIBIDO, "tag :latest"),
-    "KSV008": ("3.6", PROIBIDO, "hostIPC"),
     "KSV009": ("3.6", PROIBIDO, "hostNetwork"),
     "KSV010": ("3.6", PROIBIDO, "hostPID"),
     "KSV017": ("3.6", PROIBIDO, "privileged"),
@@ -93,11 +92,15 @@ TRIVY_FORA_DO_PADRAO = {
     "KSV030": "seccompProfile RuntimeDefault",
     "KSV104": "seccompProfile ausente",
     "KSV117": "bind em porta privilegiada",
-    # GID. A regra 3.2 exige UID acima de 10000 e NÃO diz nada sobre runAsGroup, então
-    # este KSV não corrobora requisito nenhum da casa. Fica como informativo — e, de
-    # quebra, tem a mesma cegueira de herança do KSV020.
-    "KSV021": "GID <= 10000 — a 3.2 não tem requisito de runAsGroup; "
-              "e a regra ignora o nível do pod",
+    # hostIPC. A regra 3.6 do padrão proíbe TRÊS campos — hostNetwork, hostPID e
+    # privileged — e não menciona hostIPC. Informativo, não violação.
+    "KSV008": "hostIPC — a regra 3.6 proíbe hostNetwork, hostPID e privileged, não este",
+    # UID/GID <= 10000. O padrão mostra `runAsUser: 10001` como EXEMPLO e não estabelece
+    # piso de UID. Uma versão anterior desta skill tratou isso como regra da casa, o que
+    # fazia o UID 70 da imagem alpine do Postgres barrar indevidamente. Não é regra da
+    # casa: a 3.2 exige runAsUser declarado e não-root, o que runAsNonRoot já garante.
+    "KSV020": "UID <= 10000 — a 3.2 não estabelece piso de UID",
+    "KSV021": "GID <= 10000 — a 3.2 não tem requisito de runAsGroup",
 }
 # KSVs que têm a mesma INTENÇÃO de uma regra da casa e implementação que não serve de
 # veredito. Não cabem em TRIVY_FORA_DO_PADRAO: a casa adota a regra, e dizer "fora do
@@ -114,7 +117,6 @@ TRIVY_CORROBORA = {
     "KSV003": ("3.2", "capabilities.drop"),
     "KSV106": ("3.2", "capabilities.add"),
     "KSV105": ("3.2", "runAsUser = 0"),
-    "KSV020": ("3.2", "UID <= 10000 — cego para o nível do pod"),
 }
 # Regra 3.2: ONDE cada campo pode ser declarado. É o que nenhuma ferramenta modela.
 #   "pod-ou-container" -> vale no securityContext do pod, e o container herda
@@ -126,8 +128,9 @@ CAMPO_3_2_NIVEL = {
     "readOnlyRootFilesystem": "container",
     "capabilities": "container",
 }
-UID_MINIMO = 10000
-CAPABILITY_TOLERADA = "NET_BIND_SERVICE"
+# O padrão NÃO estabelece piso de UID — `runAsUser: 10001` no wiki é exemplo. A exigência
+# é runAsUser declarado e não-root, e root é o UID 0.
+UID_PROIBIDO = 0
 
 # Senha embutida em string de conexão. É a lacuna do Trivy, verificada por experimento:
 #   - `trivy fs --scanners secret` reconhece formato de credencial de terceiro
@@ -369,10 +372,18 @@ def regra_2_4_estrategia(doc, achados):
         return
     st = (doc.get("spec") or {}).get("strategy") or {}
     tipo = st.get("type")
-    if tipo == "Recreate":
-        achados.append(Achado("2.4", RECOMENDADO, ident(doc), "spec.strategy.type",
-                              "Recreate em prod derruba a capacidade inteira; justifique no PR "
-                              "(é aceitável para carga que não tolera duas instâncias)"))
+    # O padrão exige RollingUpdate com maxUnavailable: 0 em prod e NÃO prevê alternativa.
+    # Uma versão anterior desta skill tratava Recreate como `recomendado`/justificável —
+    # era invenção minha, e tinha um efeito perverso: `maxUnavailable: 1` barrava enquanto
+    # Recreate, que derruba a capacidade inteira, só pedia justificativa. O caminho certo
+    # para banco com volume único é a exceção formal, não a leitura flexível da regra.
+    if tipo and tipo != "RollingUpdate":
+        achados.append(Achado("2.4", OBRIGATORIO, ident(doc), "spec.strategy.type",
+                              f"strategy.type: {tipo} em prod; o padrão exige RollingUpdate "
+                              f"com maxUnavailable: 0 e maxSurge: 1. Recreate derruba a "
+                              f"capacidade inteira durante o rollout. Caso legítimo (banco "
+                              f"com volume único) exige exceção aprovada por Segurança & "
+                              f"Compliance no PR, com prazo de validade"))
         return
     ru = st.get("rollingUpdate") or {}
     if not st:
@@ -404,8 +415,7 @@ def regra_2_4_estrategia(doc, achados):
     elif not e_zero(mu):
         achados.append(Achado("2.4", OBRIGATORIO, ident(doc), "spec.strategy.rollingUpdate.maxUnavailable",
                               f"maxUnavailable: {mu!r} em prod; exigido 0 para a capacidade não "
-                              f"cair durante o rollout. Trocar a estratégia para Recreate NÃO é o "
-                              f"conserto: Recreate derruba a capacidade inteira, que é pior"))
+                              f"cair durante o rollout"))
 
     # maxSurge também é parte da regra, e não era conferido.
     ms = ru.get("maxSurge")
@@ -527,15 +537,14 @@ def regra_3_2_security_context(doc, achados):
             onde = "ausente no pod e no container" if valor is None else f"está {valor!r} (nível {nivel})"
             anotar(f"runAsNonRoot {onde}; exigido true, aceito no pod ou no container")
 
+        # O padrão exige runAsUser declarado e não-root. NÃO existe piso de UID: o
+        # `runAsUser: 10001` do wiki é exemplo. Ver references/padrao-completo.md, 3.2.
         valor, nivel = efetivo("runAsUser")
         if valor is None:
-            anotar(f"runAsUser ausente no pod e no container; exigido acima de {UID_MINIMO}, "
-                   f"aceito em qualquer um dos dois níveis")
-        elif valor == 0:
-            anotar("runAsUser: 0 é root; exigido acima de %d" % UID_MINIMO)
-        elif isinstance(valor, int) and valor <= UID_MINIMO:
-            anotar(f"runAsUser: {valor} (nível {nivel}) não está acima de {UID_MINIMO}; "
-                   f"se a imagem exige este UID, é desvio e precisa de exceção aprovada no PR")
+            anotar("runAsUser ausente no pod e no container; o padrão exige o campo "
+                   "declarado, aceito em qualquer um dos dois níveis")
+        elif valor == UID_PROIBIDO:
+            anotar("runAsUser: 0 é root, e a regra exige runAsNonRoot")
 
         # --- os três que só existem no container ---
         if sc_c.get("allowPrivilegeEscalation") is not False:

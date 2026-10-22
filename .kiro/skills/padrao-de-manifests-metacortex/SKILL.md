@@ -60,12 +60,14 @@ Três armadilhas na saída crua, e as três já estão tratadas pelo script do p
 - **A severidade do Trivy não é a obrigatoriedade da casa.** Ele reporta "requests de CPU
   não especificado" como LOW; na Metacortex requests e limits são `obrigatório` e barram o
   deploy. Quem lê o Trivy direto conclui que é opcional.
-- **O Trivy não julga a regra 3.2 de forma confiável.** `KSV020`/`KSV021` (UID/GID <=
-  10000) olham só o `securityContext` de **container** e ignoram `runAsUser` declarado no
-  **pod**, que o Kubernetes herda — falso positivo em manifesto correto. Por isso a 3.2 é
-  julgada pelo script, não pelo Trivy.
-- **O Trivy tem regras que o padrão não adota** (`KSV030`, `KSV104`, `KSV117`), e tem o
-  `AVD-KSV-01010`, cujo nome sugere que cobre a regra 3.3 e que **não cobre**.
+- **O Trivy não julga a regra 3.2 de forma confiável.** Ele confere os cinco requisitos por
+  regras separadas, com severidades de LOW a HIGH, e não tem o conceito do bloco inteiro
+  que a casa exige. Por isso a 3.2 é julgada pelo script.
+- **O Trivy tem regras que o padrão não adota**, e elas saem no bloco informativo:
+  `KSV020`/`KSV021` (UID/GID <= 10000 — **o padrão não estabelece piso de UID**),
+  `KSV008` (hostIPC — a regra 3.6 proíbe três campos e não inclui este), `KSV030`,
+  `KSV104`, `KSV117`. E tem o `AVD-KSV-01010`, cujo nome sugere que cobre a regra 3.3 e
+  que **não cobre**.
 
 ### Passo 2 — o script, que julga 15 das 19 regras
 
@@ -109,7 +111,11 @@ Cinco comportamentos do script que vale conhecer antes de confiar no relatório:
   pod. Selecionar por `name` e `instance` com o pod tendo os quatro rótulos é correto.
 - **Na regra 3.2, entende a herança pod → container.** `runAsNonRoot` e `runAsUser`
   declarados no pod satisfazem a regra. Os outros três requisitos não existem no nível do
-  pod, e o relatório avisa quando alguém os declarou ali por engano.
+  pod, e o relatório avisa quando alguém os declarou ali por engano. **Não há piso de
+  UID** — o padrão exige `runAsUser` declarado e não-root, nada além disso.
+- **Na regra 2.4, qualquer `strategy.type` diferente de `RollingUpdate` barra em prod.**
+  O padrão não prevê `Recreate`. Banco com volume único é caso legítimo, e o caminho é a
+  exceção formal.
 - **Na regra 2.2, não exige probe de `Job`, `CronJob` nem `initContainer`.** Container que
   roda e termina não tem o que sondar. Probe ausente ali não é achado.
 
@@ -258,7 +264,15 @@ o comentário é insumo para a aprovação, não a aprovação. Marcar como conf
 justificado transforma a skill em carimbo.
 
 O mesmo vale ao gerar: se você escreveu um desvio consciente, o relatório da sua própria
-skill deve continuar apontando. Foi assim que o `UID 70` do Postgres ficou visível.
+skill deve continuar apontando. Foi assim que o `replicas: 1` e o `Recreate` do Postgres
+em `orion-prod` continuaram visíveis — os dois são casos legítimos de banco com volume
+único, e os dois seguem barrando até existir aprovação escrita.
+
+**E não invente regra para fechar o raciocínio.** Três exigências desta skill não existiam
+no padrão e foram removidas quando confrontadas com o wiki: piso de UID na 3.2, `Recreate`
+como alternativa aceitável na 2.4, e `hostIPC` na 3.6. Quando a regra parecer incompleta,
+abra `references/padrao-completo.md` em vez de completar de cabeça — o que está marcado
+`INTERPRETAÇÃO DA SKILL` é interpretação, o resto é texto da casa.
 
 ## Referências
 

@@ -1,5 +1,5 @@
 # Gerado por: python3 conferir_manifesto.py manifests/nyx-api-barrado.yaml
-# Trivy 0.52.2 | 2026-10-22T21:04:46Z
+# Trivy 0.52.2 | 2026-10-22T22:17:40Z
 
 
 Conferência contra o Padrão de Manifests da Metacortex (rev. 2026-07-29)
@@ -50,7 +50,7 @@ BARRA A REVISÃO — 20 violação(ões) de regra obrigatória ou proibida
         runAsNonRoot ausente no pod e no container; exigido true, aceito no pod ou no container
   [3.2] Deployment/NyxAPI em nyx-prod
         campo: container 'api'.securityContext
-        runAsUser ausente no pod e no container; exigido acima de 10000, aceito em qualquer um dos dois níveis
+        runAsUser ausente no pod e no container; o padrão exige o campo declarado, aceito em qualquer um dos dois níveis
   [3.2] Deployment/NyxAPI em nyx-prod
         campo: container 'api'.securityContext
         allowPrivilegeEscalation ausente; exigido false no container
@@ -78,13 +78,14 @@ EXIGE JUSTIFICATIVA NO PR — 3 regra(s) recomendada(s)
         campo: spec.template.spec.serviceAccountName
         sem ServiceAccount dedicada; usa a 'default' do namespace
 
-APONTADO PELO TRIVY, FORA DO PADRÃO DA CASA — 3 item(ns)
+APONTADO PELO TRIVY, FORA DO PADRÃO DA CASA — 4 item(ns)
   (não barra a revisão; o padrão da Metacortex não adota estas regras)
-  - KSV021 em nyx-api-barrado.yaml: GID <= 10000 — a 3.2 não tem requisito de runAsGroup; e a regra ignora o nível do pod
+  - KSV020 em nyx-api-barrado.yaml: UID <= 10000 — a 3.2 não estabelece piso de UID
+  - KSV021 em nyx-api-barrado.yaml: GID <= 10000 — a 3.2 não tem requisito de runAsGroup
   - KSV030 em nyx-api-barrado.yaml: seccompProfile RuntimeDefault
   - KSV104 em nyx-api-barrado.yaml: seccompProfile ausente
 
-O TRIVY OPINOU SOBRE REGRAS QUE ESTE SCRIPT JULGA — 6 item(ns)
+O TRIVY OPINOU SOBRE REGRAS QUE ESTE SCRIPT JULGA — 5 item(ns)
   (A CASA ADOTA estas regras. O que não serve de veredito é a implementação
    do Trivy: KSV020/KSV021 acusam manifesto correto quando runAsUser está no
    pod, e AVD-KSV-01010 casa por palavra-chave sem achar a senha. O veredito
@@ -93,7 +94,6 @@ O TRIVY OPINOU SOBRE REGRAS QUE ESTE SCRIPT JULGA — 6 item(ns)
   - [3.2] KSV003 em nyx-api-barrado.yaml: capabilities.drop
   - [3.2] KSV012 em nyx-api-barrado.yaml: runAsNonRoot
   - [3.2] KSV014 em nyx-api-barrado.yaml: readOnlyRootFilesystem
-  - [3.2] KSV020 em nyx-api-barrado.yaml: UID <= 10000 — cego para o nível do pod
   - [3.2] KSV106 em nyx-api-barrado.yaml: capabilities.add
 
 NÃO CONFERIDO POR ESTE SCRIPT — exige abrir o projeto:

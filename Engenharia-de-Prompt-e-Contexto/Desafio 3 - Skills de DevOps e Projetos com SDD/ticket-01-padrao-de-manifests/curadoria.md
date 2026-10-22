@@ -1,9 +1,36 @@
 # Curadoria da skill `padrao-de-manifests-metacortex`
 
 O que entrou na skill, o que ficou fora, e por quê. Cada decisão está amarrada a uma
-medição ou a um erro que eu cometi nos dois fluxos manuais, não a preferência.
+medição ou a um erro que eu cometi, não a preferência.
 
 Skill em `.kiro/skills/padrao-de-manifests-metacortex/`.
+
+---
+
+## 0. Como a skill foi produzida, e com qual ferramenta
+
+| | |
+|---|---|
+| **Agente** | Kiro (IDE), sessão em modo Autopilot |
+| **Modelo** | Claude Opus 5 |
+| **Sub-agentes** | `introspect` para o formato de skill do Kiro; `general-task-execution` para os três testes cegos de validação |
+| **Ferramentas determinísticas** | `trivy` 0.52.2, `kubectl` v1.33.13 contra k3d/k3s v1.31.5, `python3` 3.10 com PyYAML |
+
+**O fluxo veio antes da skill, nesta ordem:**
+
+1. Rodei o Trivy no manifesto barrado e numa sonda que viola as 19 regras de propósito,
+   para medir a cobertura **antes** de escrever qualquer linha de script.
+2. Conferi o manifesto barrado à mão, regra por regra, abrindo o repositório do kube-news
+   para decidir as probes — está em `fluxos/fluxo-01-conferencia-manual.md`.
+3. Gerei os manifests de dois projetos à mão, lendo o código de cada um — está em
+   `fluxos/fluxo-02-geracao-de-manifests.md`.
+4. **Só então** empacotei: o que nos dois fluxos foi comparação de string virou script, o
+   que exigiu abrir o projeto virou instrução.
+5. Validei com três sub-agentes que só podiam usar a skill, contra manifestos novos.
+
+Os dois fluxos registram onde eu travei e onde eu errei, e é de lá que vêm as decisões de
+corte. A skill não foi escrita de cabeça e depois ilustrada — ela é a destilação de dois
+fluxos que produziram artefato real.
 
 ---
 
@@ -244,11 +271,11 @@ que eles não tinham visto. Detalhe em `validacao/testes-cegos.md`.
 | Teste | Manifesto | Atritos reportados | Defeitos reais |
 |---|---|---|---|
 | 1 | `vega-stg` (stg, Redis de terceiro) | 5 | 5 |
-| 2 | `vega-stg`, depois das correções | 6 | 4 |
-| 3 | `atlas-prod` (prod, 3.2 no nível errado) | 5 | 4 |
+| 2 | `vega-stg`, depois das correções | 6 | 5 |
+| 3 | `atlas-prod` (prod, 3.2 no nível errado) | 5 | 5 |
 
 Os três reproduziram os vereditos corretos. O valor não estava nisso — estava nos
-**treze defeitos** que eles acharam na skill. Os cinco que mais custaram:
+**quinze defeitos** que eles acharam na skill. Os cinco que mais custaram:
 
 1. **A 3.2 não tinha juiz** e meus dois references se contradiziam sobre o nível dos
    campos. Virou `regra_3_2_security_context` + a tabela campo por campo.
@@ -263,19 +290,85 @@ Os três reproduziram os vereditos corretos. O valor não estava nisso — estav
 5. **`maxUnavailable: "0%"` era marcado como violação.** A comparação era com `(0, "0")`
    e o campo aceita percentual. Bug real, e `maxSurge` não era conferido de forma alguma.
 
-Um atrito que **não** era defeito da skill e virou nota na reference: a regra 2.4 barra
-`maxUnavailable: 1` e só pede justificativa para `Recreate`, que é estritamente pior para
-disponibilidade. O caminho mais fácil para o autor sair do bloqueio piora o sistema. Não
-está no meu alcance mudar o padrão, então documentei a tensão e instruí o revisor a tratar
-a justificativa de `Recreate` com rigor.
+Um sexto atrito eu diagnostiquei errado, e vale registrar: o teste 3 apontou que a regra
+2.4 premiava a opção pior, porque `maxUnavailable: 1` barrava e `Recreate` — que derruba a
+capacidade inteira — só pedia justificativa. Classifiquei como tensão do padrão da casa,
+fora do meu alcance. Não era: o padrão **não menciona `Recreate`**, e a flexibilização era
+minha. Detalhe na seção 7.
 
 ---
 
 ## 7. O que NÃO foi empacotado, e por quê
 
+### O Bloco 4 inteiro — vocabulário e conceitos
+
+A decisão de corte mais volumosa: **oito itens, nenhum empacotado.** São 4.1 Pod,
+4.2 ReplicaSet, 4.3 Deployment, 4.4 Service, 4.5 `port` x `targetPort`, 4.6 Endpoints,
+4.7 ConfigMap e Secret, 4.8 Probes.
+
+Três motivos, em ordem de peso:
+
+1. **Nenhum item produz veredito.** A skill existe para dizer "isto barra" ou "isto passa".
+   A definição de ReplicaSet não muda uma linha de relatório. O próprio padrão diz que o
+   bloco existe "para quem está chegando na plataforma" e que "quem já opera os clusters
+   pode pular direto para os blocos anteriores" — é material de onboarding, e a skill não é
+   onboarding.
+2. **Custo de contexto sem retorno.** O corpo do `SKILL.md` carrega inteiro a cada
+   ativação. Oito definições de objeto do Kubernetes gastariam orçamento em toda conferência
+   para informar o que o agente já sabe.
+3. **Público errado.** O bloco responde "o que é um Service"; a skill responde "este
+   Service está conforme". Quem precisa do primeiro não está fazendo revisão de manifesto.
+
+**Duas exceções, e elas entraram como conhecimento aplicado, não como texto:**
+
+- **4.5** (`port` x `targetPort`) virou prática nos manifests gerados: o `targetPort`
+  aponta para o **nome** da porta e não para o número, para o Service acompanhar se a porta
+  do container mudar. A definição não está no corpo da skill; o comportamento está.
+- **4.8** (probes) reforça a regra 2.2, e a parte operacional — liveness reinicia, readiness
+  tira do Service — está no corpo porque é o critério de decisão das probes. A `startupProbe`,
+  que o bloco menciona e nenhuma regra exige, ficou fora.
+
+O bloco está transcrito no fim de `references/padrao-completo.md` com esta justificativa ao
+lado, para que a decisão seja auditável sem precisar voltar ao wiki.
+
+### Três exigências que eu inventei, e que o anexo desmentiu
+
+Não é curadoria, é erro — mas pertence aqui porque mudou veredito e porque o mecanismo é o
+mesmo que faz uma skill apodrecer.
+
+| O que a skill exigia | O que o padrão diz | Efeito do erro |
+|---|---|---|
+| 3.2 com `runAsUser` **acima de 10000** | o wiki mostra `runAsUser: 10001` como **exemplo**; não há piso de UID | o `runAsUser: 70` da imagem alpine do Postgres **barrava** indevidamente |
+| 2.4 aceitando `Recreate` em prod como justificável | o padrão exige `RollingUpdate` com `maxUnavailable: 0` e **não prevê alternativa** | `Recreate` passava como `recomendado` quando deveria barrar |
+| 3.6 incluindo `hostIPC` | o padrão proíbe **três** campos: `hostNetwork`, `hostPID`, `privileged` | `KSV008` entrava como violação da casa |
+
+As três nasceram do mesmo movimento: a regra parecia incompleta e eu completei de cabeça. O
+limiar de 10000 veio do `KSV020` do Trivy; a flexibilização do `Recreate` veio de eu querer
+acomodar o Postgres com volume único; o `hostIPC` veio de o `KSV008` estar ao lado dos
+outros três no catálogo.
+
+A segunda e a terceira são plausíveis o suficiente para passar numa leitura rápida. A
+primeira foi pior: eu a usei para **reverter uma classificação que estava certa** —
+`KSV020`/`KSV021` saíram de "fora do padrão" para "corrobora a 3.2", e eu escrevi uma seção
+explicando a troca. Está registrada em `cobertura-do-trivy.md`, junto com o desmentido.
+
+O que mudou na skill por causa disso: `references/padrao-completo.md` passou a marcar cada
+desvio do texto com `INTERPRETAÇÃO DA SKILL` e o motivo. Hoje restam três interpretações
+declaradas — subconjunto na 1.4, isenção de probe para `Job`/`CronJob`/`initContainer` na
+2.2, e o nível de cada campo na 3.2 — e nenhuma delas se confunde com texto da casa.
+
+Efeito colateral útil: a correção da 2.4 **resolveu** uma tensão que o terceiro teste cego
+tinha apontado. O sub-agente observou que a regra premiava a opção pior, porque
+`maxUnavailable: 1` barrava e `Recreate` só pedia justificativa. A tensão era minha
+invenção, não do padrão.
+
+### O resto do que ficou fora
+
 | Deixado fora | Motivo |
 |---|---|
 | **Reimplementar 2.1, 3.1, 3.6** | o enunciado proíbe, e o Trivy acerta nessas três. O script invoca e traduz |
+| **Varrer segredo em comentário** | a regra 3.3 proíbe segredo "nem em comentário", e o parser de YAML descarta comentário antes de o script ver. Virou instrução de leitura no passo 3 em vez de um segundo parser só para comentários |
+| **Aceitar digest como alternativa à tag** | a regra 3.1 aceita `@sha256:...`, e o script só reprova `:latest`, então digest passa sem código extra. Não há verificação de que o digest existe no registry — isso exigiria rede e é trabalho do Loom |
 | **Conferir 2.6 por script** | o valor correto depende de a aplicação tratar SIGTERM. Não há como inferir do YAML. É a única regra 100% manual |
 | **Decidir o que cada endpoint toca** | exige ler o código. Script que chutasse isso daria veredito confiante e errado na regra mais perigosa de operar |
 | **Qualquer acesso ao cluster** | é o limite da skill e o contrato com a de triagem do Ticket 02. `kubectl apply --dry-run=server` aparece como instrução do modo escrita, não como verificação do script |

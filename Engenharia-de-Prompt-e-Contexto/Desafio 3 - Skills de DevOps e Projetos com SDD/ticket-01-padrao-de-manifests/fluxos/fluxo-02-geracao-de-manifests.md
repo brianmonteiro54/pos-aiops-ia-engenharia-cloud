@@ -163,15 +163,21 @@ o que deixaria passar o erro 1.
 
 Resultado final da conferência dos próprios manifests gerados:
 
-| Conjunto | Barra | Recomendado |
-|---|---|---|
-| fake-shop em `orion-prod` | 2 | 2 |
-| kube-news em `nyx-dev` | 1 | 1 |
+| Conjunto | rc | Barra | Recomendado |
+|---|---|---|---|
+| fake-shop em `orion-prod` | 1 | 2 (regras 2.3 e 2.4, as duas do Postgres) | 1 |
+| kube-news em `nyx-dev` | **0** | 0 | 1 |
 
-**Os achados que sobraram são de propósito e estão documentados:** `replicas: 1` do
-Postgres em prod e `runAsUser: 70` da imagem alpine do Postgres, que precisa ser dono do
-`PGDATA`. Os dois continuam barrando, porque desvio documentado **não é** exceção
-aprovada — e foi isto que virou a seção "Exceção e desvio não são a mesma coisa" da skill.
+**Os dois achados do fake-shop são de propósito e estão documentados**, e os dois saem do
+mesmo fato: o Postgres de `orion-prod` tem volume único. `replicas: 1` viola a 2.3 e
+`strategy.type: Recreate` viola a 2.4. Subir para duas réplicas daria dois bancos
+independentes; usar `RollingUpdate` com `maxSurge: 1` faria duas instâncias disputarem o
+mesmo volume. Os dois casos são legítimos e os dois **continuam barrando**, porque desvio
+documentado **não é** exceção aprovada — e foi isto que virou a seção "Exceção e desvio não
+são a mesma coisa" da skill.
+
+O kube-news em `nyx-dev` sai com `rc=0`: as regras 2.3, 2.4 e 2.5 são condicionadas a
+`prod`, e o `runAsUser: 70` da imagem alpine cumpre a 3.2, que não estabelece piso de UID.
 
 ## O que este fluxo ensinou sobre a skill
 

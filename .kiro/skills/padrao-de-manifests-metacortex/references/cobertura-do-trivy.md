@@ -53,11 +53,12 @@ propósito; o que ela **não** fez disparar, o Trivy não tem.
 | 2.5 PodDisruptionBudget | recomendado | **não** | — |
 | 2.6 período de graça | recomendado | **não** | — |
 | **3.1 tag `:latest`** | proibido | **sim** | KSV013 |
-| 3.2 securityContext | obrigatório | **parcial, e não serve de veredito** | KSV012, KSV001, KSV014, KSV003, KSV106, KSV105, KSV020, KSV021 — ver seção dedicada |
+| 3.2 securityContext | obrigatório | **parcial, e não serve de veredito** | KSV012, KSV001, KSV014, KSV003, KSV106, KSV105 — ver seção dedicada |
+| 3.6 hostIPC | **não é regra da casa** | sim, KSV008 | o padrão proíbe três campos e não inclui hostIPC |
 | 3.3 segredo em texto puro | proibido | **não** | ver seção dedicada abaixo |
 | 3.4 `automountServiceAccountToken` | obrigatório | **não** | sonda com `true` explícito não disparou |
 | 3.5 ServiceAccount dedicada | recomendado | **não** | sonda com `serviceAccountName: default` não disparou |
-| **3.6 hostNetwork/hostPID/privileged** | proibido | **sim** | KSV008, KSV009, KSV010, KSV017 |
+| **3.6 hostNetwork/hostPID/privileged** | proibido | **sim** | KSV009, KSV010, KSV017 |
 | 3.7 registry interno | obrigatório | **não** | sonda com `docker.io/library/nginx` não disparou |
 
 ## Armadilha 1 — a severidade do Trivy não é a obrigatoriedade da casa
@@ -102,7 +103,7 @@ consequências:
   nem que faltar qualquer um deles barra o deploy.
 - Quem filtra por `--severity HIGH,CRITICAL` vê só `KSV014` e **perde quatro dos cinco**.
 
-### Falso positivo: `KSV020` e `KSV021` são cegos para a herança
+### Cegueira de herança: `KSV020` e `KSV021`
 
 As duas (UID <= 10000, GID <= 10000) olham **apenas** `containers[].securityContext`.
 `runAsUser` declarado no nível do **pod** não é considerado, embora o Kubernetes o herde.
@@ -118,25 +119,35 @@ Um deles o Trivy acusa. E a cegueira é **inconsistente dentro do próprio Trivy
 execução, `KSV012` (`runAsNonRoot`) lê corretamente o nível do pod e não dispara. Ou seja,
 ele entende herança em uma regra e não entende em outras duas.
 
-### Correção de duas classificações erradas minhas
+Este experimento continua valendo como demonstração de que a implementação do Trivy para
+`securityContext` não modela herança. Mas ele **não** é o motivo pelo qual o script julga a
+3.2 — o motivo é o falso negativo do bloco, acima.
 
-**Primeiro erro: `KSV020` estava no balde errado.** A primeira versão deste arquivo o
-colocava como "regra que o padrão da casa não adota", ao lado de `KSV030`, `KSV104` e
-`KSV117`. A regra 3.2 exige `runAsUser` acima de 10000 — é exatamente o que `KSV020`
-cobra. Ele não é irrelevante; é a intenção certa com implementação que não serve de
-veredito.
+### Registro de um erro meu, e da correção errada que eu fiz dele
 
-O efeito do erro era concreto: o `runAsUser: 70` do Postgres aparecia como informativo e
-**não barrava a revisão**, quando o padrão manda barrar até existir exceção aprovada. Hoje
-o script julga a 3.2 por conta própria, com herança, e `KSV020` aparece como corroboração.
+Esta seção fica porque o erro mudou veredito e porque a tentativa de corrigi-lo piorou.
 
-**Segundo erro: `KSV021` foi arrastado junto, e não deveria.** `KSV021` cobra **GID**, e a
-tabela dos cinco requisitos da 3.2 não menciona `runAsGroup` em lugar nenhum. Ele não
-corrobora requisito algum da casa, então voltou para `TRIVY_FORA_DO_PADRAO`. A correção do
-`KSV020` estava certa; estendê-la ao par inteiro foi inferência preguiçosa, e dois KSVs com
-números vizinhos não são a mesma regra.
+**O erro.** Eu tratei "`runAsUser` acima de 10000" como requisito da regra 3.2. Não é. O
+wiki mostra `runAsUser: 10001` dentro do bloco de exemplo e nunca estabelece piso de UID. A
+exigência real é `runAsUser` declarado e não-root, o que `runAsNonRoot: true` já garante.
 
-`KSV021`, `KSV030`, `KSV104` e `KSV117` estão fora do padrão de verdade.
+**A correção errada.** Partindo do requisito inventado, concluí que `KSV020` e `KSV021`
+estavam no balde errado — que cobravam exatamente o que a casa pedia — e os movi de "fora
+do padrão" para "corrobora a 3.2". Escrevi uma seção inteira explicando por que a
+classificação anterior estava errada. **A classificação anterior estava certa.**
+
+O efeito concreto: o `runAsUser: 70` da imagem alpine do Postgres barrava a revisão como
+violação da 3.2. Está conforme. A imagem precisa daquele UID para ser dona do `PGDATA`, e
+o padrão não dá motivo para recusar.
+
+**O que isso ensina sobre a skill.** Regra que parece incompleta convida a completar de
+cabeça, e o resultado passa por regra da casa. Daí a convenção de marcar
+`INTERPRETAÇÃO DA SKILL` em `padrao-completo.md`: o que é texto do wiki e o que é decisão
+minha ficam visualmente separados, e qualquer um confere sem me perguntar.
+
+`KSV008` (hostIPC), `KSV020`, `KSV021`, `KSV030`, `KSV104` e `KSV117` estão fora do padrão.
+A regra 3.6 proíbe três campos — `hostNetwork`, `hostPID`, `privileged` — e `hostIPC` não é
+um deles; essa também foi minha, e também saiu.
 
 ## O achado que mais pesa — a regra 3.3
 

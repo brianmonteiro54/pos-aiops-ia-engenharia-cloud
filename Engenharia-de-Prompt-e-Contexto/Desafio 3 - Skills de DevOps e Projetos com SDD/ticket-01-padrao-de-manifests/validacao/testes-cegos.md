@@ -46,21 +46,34 @@ Cliente `atlas`, ambiente **prod**. Testa o oposto do primeiro:
 | readiness **e** liveness em `httpGet /healthz` | a 2.2, exatamente o cenário que o padrão adverte |
 | `replicas: 3` com `maxUnavailable: 1` | 2.3 passa, 2.4 barra |
 | `terminationGracePeriodSeconds: 45` sem corpo de PR | a 2.6 e o veredito "pendente" |
-| `runAsUser: 10002` no pod, acima de 10000 | KSV020 dispara, e é falso positivo |
+| `runAsUser: 10002` declarado no pod | KSV020 dispara, e não é regra da casa |
 
 ## Resultados
 
 | Teste | Manifesto | Vereditos | Atritos | Defeitos reais |
 |---|---|---|---|---|
 | 1 | `vega-stg` | corretos | 5 | 5 |
-| 2 | `vega-stg`, após as correções do teste 1 | corretos | 6 | 4 |
-| 3 | `atlas-prod` | corretos | 5 | 4 |
+| 2 | `vega-stg`, após as correções do teste 1 | corretos | 6 | 5 |
+| 3 | `atlas-prod` | corretos | 5 | 5 |
+
+**15 defeitos no total.** Os três atritos que não eram defeito da skill: um era limitação
+real do YAML como fonte, e dois eu diagnostiquei errado na hora — ver a seção sobre a 2.4.
+
+Nota de escopo: estes três testes validaram a skill **contra si mesma**. O que eles não
+pegaram foram as três regras que eu havia inventado, porque os sub-agentes também só tinham
+a minha reconstrução do padrão como fonte. Essas só apareceram no confronto com o anexo
+original, e estão em `../curadoria.md` seção 7. Teste cego valida consistência interna, não
+fidelidade à fonte.
 
 Os três chegaram aos vereditos certos, inclusive nos casos em que o certo é **não**
 reportar: nenhum dos três cobrou `replicas >= 2` em `stg`, e os três identificaram
 `KSV020` como falso positivo em vez de pedir correção do UID.
 
-## Os treze defeitos encontrados, e o que mudou
+## Os quinze defeitos encontrados, e o que mudou
+
+Treze numerados abaixo, mais dois registrados fora da lista: o script **engolia em
+silêncio** KSV desconhecido (teste 1) e a skill não dizia se `tcpSocket` serve para liveness
+de componente de prateleira (teste 2).
 
 ### Teste 1
 
@@ -95,7 +108,7 @@ prateleira. Passou a dizer, com a troca explícita.
 | 10 | **"Declarados no pod são silenciosamente ignorados" estava factualmente errado** | medido contra o apiserver; ver abaixo |
 | 11 | **`maxUnavailable: "0%"` era marcado como violação.** A comparação era com `(0, "0")` e o campo aceita percentual | função `e_zero`, que normaliza inteiro e percentual |
 | 12 | **`maxSurge` não era conferido de forma alguma**, embora a regra 2.4 o inclua | conferido, com o caso `maxSurge: 0` + `maxUnavailable: 0` que **trava o rollout** |
-| 13 | **`KSV021` cobra GID, e a 3.2 não tem requisito de `runAsGroup`.** Eu havia movido `KSV020` e `KSV021` juntos | `KSV021` voltou para `TRIVY_FORA_DO_PADRAO` |
+| 13 | **`KSV021` cobra GID, e a 3.2 não tem requisito de `runAsGroup`.** Eu havia movido `KSV020` e `KSV021` juntos | `KSV021` voltou para `TRIVY_FORA_DO_PADRAO` — e depois `KSV020` também, quando o anexo mostrou que não há piso de UID |
 
 ### O defeito 10 em detalhe
 
@@ -120,32 +133,47 @@ As duas metades são verdadeiras, dependendo do caminho. O veredito não muda �
 três — mas a consequência que o relatório descreve muda de "sobe inseguro em silêncio"
 para "nem passa do apply", e são conversas diferentes com o autor do PR.
 
-## O atrito que não era defeito
+## O atrito que eu diagnostiquei errado, e que era defeito meu
 
-O teste 3 observou que a regra 2.4 **premia a opção pior**: `maxUnavailable: 1` com 3
-réplicas mantém 2 pods servindo e **barra**, enquanto `Recreate` — que derruba a
-capacidade inteira — só exige justificativa. Pelo motivo declarado da própria regra,
+O teste 3 observou que a regra 2.4 **premiava a opção pior**: `maxUnavailable: 1` com 3
+réplicas mantém 2 pods servindo e **barrava**, enquanto `Recreate` — que derruba a
+capacidade inteira — só exigia justificativa. Pelo motivo declarado da própria regra,
 `Recreate` é estritamente pior, e o caminho mais fácil para o autor sair do bloqueio
-piora a disponibilidade real.
+pioraria a disponibilidade real.
 
-Isso é tensão no padrão da casa, não na skill, e não está no meu alcance mudar. Ficou
-documentado em `padrao-completo.md` como nota ao revisor, com a instrução de tratar a
-justificativa de `Recreate` com rigor.
+Na hora eu classifiquei como tensão no padrão da casa, fora do meu alcance, e documentei
+como nota ao revisor. **Estava errado.** Ao confrontar a skill com o anexo depois, descobri
+que o padrão **não menciona `Recreate`** — ele exige `RollingUpdate` com
+`maxUnavailable: 0` e não prevê alternativa. A flexibilização era invenção minha, criada
+para acomodar o Postgres com volume único.
+
+Corrigido: qualquer `strategy.type` diferente de `RollingUpdate` barra em prod, e banco com
+volume único segue pelo caminho da exceção formal. **A tensão desapareceu junto com a
+invenção.**
+
+Vale como lição sobre o método: o sub-agente achou a inconsistência certa e eu atribuí a
+causa ao lugar errado. Atrito reportado vem com o sintoma, não com o diagnóstico.
 
 ## Regressão depois de todas as correções
 
-| Alvo | rc | Barra | Recomendado |
-|---|---|---|---|
-| `manifests/nyx-api-barrado.yaml` | 1 | **20** | 3 |
-| `manifests/fake-shop/` (orion-prod) | 1 | 2 | 2 |
-| `manifests/kube-news/` (nyx-dev) | 1 | 1 | 1 |
-| `validacao/teste-cego-01-vega-stg.yaml` | 1 | 4 | 1 |
-| `validacao/teste-cego-02-atlas-prod.yaml` | 1 | 4 | 2 |
+| Alvo | rc | Barra | Recomendado | Quais regras barram |
+|---|---|---|---|---|
+| `manifests/nyx-api-barrado.yaml` | 1 | **20** | 3 | 1.1, 1.3×3, 1.4, 2.1×4, 2.2, 2.3, 2.4, 3.1, 3.2×5, 3.3, 3.4 |
+| `manifests/fake-shop/` (orion-prod) | 1 | 2 | 1 | 2.3 e 2.4 do Postgres |
+| `manifests/kube-news/` (nyx-dev) | **0** | 0 | 1 | — |
+| `validacao/teste-cego-01-vega-stg.yaml` | 1 | 4 | 1 | 1.3, 1.4, 3.3, 3.7 |
+| `validacao/teste-cego-02-atlas-prod.yaml` | 1 | 4 | 2 | 2.4 e 3.2×3 |
 
-O manifesto barrado foi de 19 para 20 porque a 2.2 passou a ser conferida. Os achados que
-sobram nos manifests gerados são os dois desvios documentados do Postgres — `replicas: 1`
-em prod e `runAsUser: 70` — que continuam barrando porque desvio documentado não é exceção
-aprovada.
+O manifesto barrado foi de 19 para 20 porque a 2.2 passou a ser conferida pelo script.
+
+Os dois achados que sobram no fake-shop são do Postgres em `orion-prod`: `replicas: 1`
+(regra 2.3) e `strategy.type: Recreate` (regra 2.4). Os dois são consequência de o mesmo
+banco ter volume único, os dois são casos legítimos, e os dois **continuam barrando** porque
+desvio documentado não é exceção aprovada. O kube-news sai com `rc=0` porque está em
+`nyx-dev`, e as regras 2.3, 2.4 e 2.5 são condicionadas a `prod`.
+
+O `runAsUser: 70` do Postgres **não** aparece mais como violação: ele cumpre a 3.2. O
+padrão não estabelece piso de UID, e exigir isso era invenção minha — ver a seção acima.
 
 Saídas completas em `../evidencias/relatorios/`.
 

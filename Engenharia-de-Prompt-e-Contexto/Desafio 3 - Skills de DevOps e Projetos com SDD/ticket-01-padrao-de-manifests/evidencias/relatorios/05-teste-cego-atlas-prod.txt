@@ -1,5 +1,5 @@
 # Gerado por: python3 conferir_manifesto.py validacao/teste-cego-02-atlas-prod.yaml
-# Trivy 0.52.2 | 2026-10-22T21:05:06Z
+# Trivy 0.52.2 | 2026-10-22T22:18:01Z
 
 
 Conferência contra o Padrão de Manifests da Metacortex (rev. 2026-07-29)
@@ -8,7 +8,7 @@ Conferência contra o Padrão de Manifests da Metacortex (rev. 2026-07-29)
 BARRA A REVISÃO — 4 violação(ões) de regra obrigatória ou proibida
   [2.4] Deployment/atlas-api em atlas-prod
         campo: spec.strategy.rollingUpdate.maxUnavailable
-        maxUnavailable: 1 em prod; exigido 0 para a capacidade não cair durante o rollout. Trocar a estratégia para Recreate NÃO é o conserto: Recreate derruba a capacidade inteira, que é pior
+        maxUnavailable: 1 em prod; exigido 0 para a capacidade não cair durante o rollout
   [3.2] Deployment/atlas-api em atlas-prod
         campo: container 'api'.securityContext
         allowPrivilegeEscalation ausente; exigido false no container (está declarado no pod, onde o campo NÃO EXISTE e é ignorado)
@@ -27,11 +27,12 @@ EXIGE JUSTIFICATIVA NO PR — 2 regra(s) recomendada(s)
         campo: PodDisruptionBudget
         prod com 3 réplicas e sem PDB que cubra estes rótulos; uma manutenção de nó pode derrubar todas as réplicas de uma vez
 
-APONTADO PELO TRIVY, FORA DO PADRÃO DA CASA — 1 item(ns)
+APONTADO PELO TRIVY, FORA DO PADRÃO DA CASA — 2 item(ns)
   (não barra a revisão; o padrão da Metacortex não adota estas regras)
-  - KSV021 em teste-cego-02-atlas-prod.yaml: GID <= 10000 — a 3.2 não tem requisito de runAsGroup; e a regra ignora o nível do pod
+  - KSV020 em teste-cego-02-atlas-prod.yaml: UID <= 10000 — a 3.2 não estabelece piso de UID
+  - KSV021 em teste-cego-02-atlas-prod.yaml: GID <= 10000 — a 3.2 não tem requisito de runAsGroup
 
-O TRIVY OPINOU SOBRE REGRAS QUE ESTE SCRIPT JULGA — 5 item(ns)
+O TRIVY OPINOU SOBRE REGRAS QUE ESTE SCRIPT JULGA — 4 item(ns)
   (A CASA ADOTA estas regras. O que não serve de veredito é a implementação
    do Trivy: KSV020/KSV021 acusam manifesto correto quando runAsUser está no
    pod, e AVD-KSV-01010 casa por palavra-chave sem achar a senha. O veredito
@@ -39,7 +40,6 @@ O TRIVY OPINOU SOBRE REGRAS QUE ESTE SCRIPT JULGA — 5 item(ns)
   - [3.2] KSV001 em teste-cego-02-atlas-prod.yaml: allowPrivilegeEscalation
   - [3.2] KSV003 em teste-cego-02-atlas-prod.yaml: capabilities.drop
   - [3.2] KSV014 em teste-cego-02-atlas-prod.yaml: readOnlyRootFilesystem
-  - [3.2] KSV020 em teste-cego-02-atlas-prod.yaml: UID <= 10000 — cego para o nível do pod
   - [3.2] KSV106 em teste-cego-02-atlas-prod.yaml: capabilities.add
 
 NÃO CONFERIDO POR ESTE SCRIPT — exige abrir o projeto:

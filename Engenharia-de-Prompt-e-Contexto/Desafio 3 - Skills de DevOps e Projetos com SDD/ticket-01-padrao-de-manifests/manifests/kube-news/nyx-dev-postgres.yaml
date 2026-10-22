@@ -94,9 +94,9 @@ spec:
             limits:   {cpu: 1,    memory: 384Mi}
           securityContext:
             runAsNonRoot: true
-            # DESVIO DOCUMENTADO, idêntico ao do orion-prod: UID 70 é o `postgres` da
-            # imagem alpine e precisa ser dono do PGDATA. Forçar > 10000 quebra o
-            # initdb. O Trivy segue apontando KSV020/KSV021, e o apontamento é correto.
+            # UID 70 é o `postgres` da imagem alpine e precisa ser dono do PGDATA.
+            # Cumpre a 3.2: o padrão exige runAsUser declarado e não-root, sem piso de
+            # UID. KSV020/KSV021 do Trivy são do catálogo dele, não da casa.
             runAsUser: 70
             runAsGroup: 70
             allowPrivilegeEscalation: false

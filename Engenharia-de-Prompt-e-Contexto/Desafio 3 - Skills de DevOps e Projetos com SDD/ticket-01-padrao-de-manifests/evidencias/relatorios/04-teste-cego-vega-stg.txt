@@ -1,5 +1,5 @@
 # Gerado por: python3 conferir_manifesto.py validacao/teste-cego-01-vega-stg.yaml
-# Trivy 0.52.2 | 2026-10-22T21:05:01Z
+# Trivy 0.52.2 | 2026-10-22T22:17:56Z
 
 
 Conferência contra o Padrão de Manifests da Metacortex (rev. 2026-07-29)
@@ -24,16 +24,16 @@ EXIGE JUSTIFICATIVA NO PR — 1 regra(s) recomendada(s)
         campo: metadata.annotations
         sem metacortex.io/owner; o plantão não sabe quem é o dono às 3 da manhã
 
-APONTADO PELO TRIVY, FORA DO PADRÃO DA CASA — 1 item(ns)
+APONTADO PELO TRIVY, FORA DO PADRÃO DA CASA — 2 item(ns)
   (não barra a revisão; o padrão da Metacortex não adota estas regras)
-  - KSV021 em teste-cego-01-vega-stg.yaml: GID <= 10000 — a 3.2 não tem requisito de runAsGroup; e a regra ignora o nível do pod
+  - KSV020 em teste-cego-01-vega-stg.yaml: UID <= 10000 — a 3.2 não estabelece piso de UID
+  - KSV021 em teste-cego-01-vega-stg.yaml: GID <= 10000 — a 3.2 não tem requisito de runAsGroup
 
-O TRIVY OPINOU SOBRE REGRAS QUE ESTE SCRIPT JULGA — 2 item(ns)
+O TRIVY OPINOU SOBRE REGRAS QUE ESTE SCRIPT JULGA — 1 item(ns)
   (A CASA ADOTA estas regras. O que não serve de veredito é a implementação
    do Trivy: KSV020/KSV021 acusam manifesto correto quando runAsUser está no
    pod, e AVD-KSV-01010 casa por palavra-chave sem achar a senha. O veredito
    das regras 3.2 e 3.3 é o dos blocos acima, não o desta lista.)
-  - [3.2] KSV020 em teste-cego-01-vega-stg.yaml: UID <= 10000 — cego para o nível do pod
   - [3.3] AVD-KSV-01010 em teste-cego-01-vega-stg.yaml: conteúdo sensível em ConfigMap — casa por palavra-chave, não detecta a senha, e ignora Secret e env.value
 
 NÃO CONFERIDO POR ESTE SCRIPT — exige abrir o projeto:

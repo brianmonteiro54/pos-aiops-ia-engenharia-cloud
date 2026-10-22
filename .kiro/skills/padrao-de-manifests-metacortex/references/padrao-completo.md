@@ -1,262 +1,367 @@
-# Padrão de Manifests da Metacortex — as 19 regras
+# Padrão de Manifests da Metacortex
 
-Revisão **2026-07-29**.
+Transcrição do wiki interno de Plataforma, mantido por Segurança & Compliance.
+**Última revisão: 2026-07-29.** Aplica-se a todo manifesto que sobe para qualquer cluster
+do parque, em qualquer ambiente.
 
-> **Sobre este arquivo.** Ele é a transcrição operacional do padrão: cada regra com o
-> número, a obrigatoriedade e o critério objetivo de aprovação. É esta a forma usada pelo
-> `scripts/conferir_manifesto.py` e pelo relatório. Para o texto normativo com a redação
-> original, consulte o documento da casa — em caso de divergência de redação, o documento
-> original prevalece; em caso de divergência de **obrigatoriedade**, pare e pergunte,
-> porque é a obrigatoriedade que decide se o deploy barra.
+> **Como ler este arquivo.** As regras abaixo são o texto da casa. Onde esta skill precisou
+> **interpretar** algo que o padrão não diz explicitamente, há um bloco marcado
+> `INTERPRETAÇÃO DA SKILL` com o motivo. Isso existe para que ninguém confunda o que a casa
+> exige com o que eu decidi. Em divergência, o wiki prevalece.
 
-## Vocabulário
+## Vocabulário de obrigatoriedade
 
-| Nível | Efeito na revisão |
+| Nível | Efeito |
 |---|---|
-| `obrigatório` | **barra o deploy.** Sem discussão |
-| `proibido` | **barra o deploy.** Sem discussão |
-| `recomendado` | passa, mas **exige justificativa escrita no PR** |
+| `obrigatório` | **a revisão barra sem discussão** |
+| `recomendado` | a exceção precisa estar **escrita no PR** |
+| `proibido` | **existe um caso registrado de estrago** |
 
-Regra `obrigatório` ou `proibido` só é dispensada por **exceção formal**: aprovação
-escrita de Segurança & Compliance no PR, com prazo de validade. Ver o fim deste arquivo.
+Cada regra nasceu de um incidente, de uma auditoria ou de uma discussão que ninguém quer
+ter de novo.
 
-## Seção 1 — Nomenclatura e rótulos
+---
 
-### 1.1 — Nome em kebab-case · `obrigatório`
-`metadata.name` só com minúsculas, dígitos e hífen, começando e terminando em
-alfanumérico. Regex: `[a-z0-9]([a-z0-9-]*[a-z0-9])?`.
-Reprova `NyxAPI`, `nyx_api`, `nyx.api`. Aprova `nyx-api`.
+# Bloco 1 — Identidade e nomenclatura
 
-### 1.2 — Namespace `<cliente>-<ambiente>` · `obrigatório`
-Ambiente restrito a `dev`, `stg` ou `prod`. Regex: `[a-z0-9-]+-(dev|stg|prod)`.
-Namespace fora do formato o Construct não cria, e o manifesto não tem onde aterrissar.
-**Esta regra é a que define o ambiente para as regras 2.3, 2.4 e 2.5.**
+## 1.1 Nome de recurso em kebab-case · `obrigatório`
 
-### 1.3 — Os quatro rótulos · `obrigatório`
-Todo objeto carrega os quatro:
+Nome de objeto é minúsculo, palavras separadas por hífen, sem camelCase, sem underscore,
+sem ponto. A API aceita menos do que as pessoas imaginam, e nome fora do padrão quebra
+ferramenta de listagem e seletor escrito à mão.
 
 ```yaml
-app.kubernetes.io/name:        # o componente
-app.kubernetes.io/instance:    # a instância (normalmente o namespace)
-app.kubernetes.io/part-of:     # o sistema/cliente
-app.kubernetes.io/managed-by:  # quem gerencia
+# errado
+metadata:
+  name: NyxAPI
+# certo
+metadata:
+  name: nyx-api
 ```
 
-Valem para `metadata.labels` do objeto **e** para `spec.template.metadata.labels` do pod.
-O rótulo curto `app:` não substitui nenhum dos quatro.
+## 1.2 Namespace no formato `<cliente>-<ambiente>` · `obrigatório`
 
-### 1.4 — Seletor casa com os rótulos do pod · `obrigatório`
-Em dois lugares distintos:
+Um cliente nunca compartilha namespace com outro, e ambiente nunca compartilha namespace
+com ambiente. Ambientes válidos: `dev`, `stg`, `prod`. Exemplos: `nyx-prod`, `orion-stg`,
+`helio-dev`.
 
-- `spec.selector.matchLabels` do Deployment/StatefulSet/DaemonSet x rótulos do template
-- `spec.selector` do Service x rótulos do pod que ele deve atingir
+Namespace fora desse formato **não é criado pelo Construct** e o manifesto não tem onde
+aterrissar.
 
-**O critério é subconjunto, não igualdade de conjuntos**, igual ao que o Kubernetes faz:
-toda chave presente no seletor precisa existir no pod **com o mesmo valor**,
-caractere por caractere. O seletor **pode** usar menos chaves que o pod — selecionar por
-`name` e `instance` enquanto o pod tem os quatro rótulos é correto e é o uso recomendado,
-porque `part-of` e `managed-by` não distinguem workloads.
+> **Esta regra é o que define o ambiente** para as regras 2.3, 2.4 e 2.5.
 
-O que a regra proíbe é chave do seletor com valor divergente, ou ausente no pod.
+## 1.3 Rótulos obrigatórios em todo objeto · `obrigatório`
 
-São dois erros diferentes com sintomas diferentes. Seletor do controlador quebrado: o
-controlador não governa os próprios pods. Seletor do Service quebrado: **o Service sobe
-saudável e fica sem endpoint**, e o sintoma relatado é "subiu mas não responde".
-
-### 1.5 — Anotação de dono · `recomendado`
-`metadata.annotations` com `metacortex.io/owner`, em **todo objeto da lista da regra 1.3**
-— inclusive ConfigMap, Secret e ServiceAccount, não só o Deployment. O escopo é o mesmo da
-1.3 de propósito: objeto sem dono é objeto que ninguém remove quando o workload morre, e o
-ConfigMap é justamente onde segredo e configuração errada sobrevivem ao resto.
-
-`metacortex.io/runbook` tem escopo diferente e **não é exigido pela regra**. Runbook é
-procedimento de plantão, e só existe para o que alguém é chamado a consertar de madrugada
-— tipicamente o Deployment. Ausência de runbook em Service, ConfigMap ou ServiceAccount
-não é achado. Dono e runbook respondem perguntas diferentes: "de quem é isto" e "o que eu
-faço às 3 da manhã".
-
-### 1.6 — Nome do container é o componente · `recomendado`
-Reprova `app`, `main`, `container`. Use `api`, `worker`, `scheduler`, `migracao`.
-
-## Seção 2 — Disponibilidade e recursos
-
-### 2.1 — `requests` e `limits` · `obrigatório`
-Os quatro valores, em **todo** container: `requests.cpu`, `requests.memory`,
-`limits.cpu`, `limits.memory`. Container sem requests é escalonado às cegas.
-Coberto pelo Trivy (`KSV011`, `KSV015`, `KSV016`, `KSV018`), **mas como LOW** — ver
-`cobertura-do-trivy.md`.
-
-### 2.2 — `readinessProbe` e `livenessProbe` · `obrigatório`
-As duas declaradas, apontando para endpoints que a aplicação **de fato expõe**.
-
-O padrão adverte explicitamente: apontar as duas para o mesmo endpoint que checa banco
-derruba a aplicação quando o banco fica lento. O critério:
-
-- readiness **pode** tocar a dependência — falhar tira o pod do Service, o que é correto
-- liveness **não deve** tocar a dependência — falhar reinicia o container, e reiniciar não
-  traz o banco de volta
-
-Não se aplica a `Job`, `CronJob` nem `initContainer`: container que roda e termina não tem
-o que sondar.
-
-**O Trivy não verifica nada desta regra.** O script verifica a parte mecânica — que as
-duas probes existem (faltar uma **barra**), e se as duas testam exatamente a mesma coisa
-(aí vira `recomendado`, porque depende do que o teste toca). O que sobra para leitura é
-se o endpoint existe na aplicação e o que cada um acessa.
-
-### 2.3 — `replicas >= 2` · `obrigatório em prod`
-Vale só quando o ambiente derivado da regra 1.2 é `prod`. `replicas` ausente conta como 1,
-porque o default do Kubernetes é 1. Com 1 réplica há indisponibilidade a cada deploy,
-drain de nó e evicção.
-
-### 2.4 — Estratégia de atualização · `obrigatório em prod`
-Em `prod`: `RollingUpdate` com `maxUnavailable: 0` e `maxSurge: 1`, para a capacidade não
-cair durante o rollout. `Recreate` em prod é `recomendado`/justificável — aceitável para
-carga que não tolera duas instâncias simultâneas, como banco com volume único.
-
-Os dois campos aceitam inteiro ou percentual: `maxUnavailable: 0` e `maxUnavailable: "0%"`
-são equivalentes e os dois passam. `maxSurge: 0` junto com `maxUnavailable: 0` **trava o
-rollout para sempre** — o controlador não pode criar pod novo nem derrubar o antigo.
-
-> **Tensão conhecida no padrão, que o revisor precisa saber.** `maxUnavailable: 1` com 3
-> réplicas barra, e `Recreate` — que derruba a capacidade inteira — só exige justificativa.
-> Pelo motivo declarado da regra, `Recreate` é estritamente pior. O caminho mais fácil para
-> um autor sair do bloqueio é trocar para `Recreate` e escrever um parágrafo, **e isso
-> piora a disponibilidade real.** Quando vier um PR com essa troca, trate a justificativa
-> com rigor: `Recreate` só se sustenta quando duas instâncias não podem coexistir.
-
-### 2.5 — `PodDisruptionBudget` · `recomendado`
-Esperado em `prod` com `replicas >= 2`, e o PDB precisa **cobrir os rótulos daquele pod**.
-Sem PDB, uma manutenção de nó pode derrubar todas as réplicas de uma vez.
-
-### 2.6 — `terminationGracePeriodSeconds` · `recomendado`
-O valor precisa ser **deliberado**, não necessariamente diferente do default de 30s.
-Depende de a aplicação tratar SIGTERM e de quanto tempo leva para drenar.
-Exige ler o código.
-
-## Seção 3 — Segurança
-
-### 3.1 — Tag `:latest` · `proibido`
-Toda imagem com tag fixa. `:latest` torna o rollback impossível e o deploy não
-reproduzível. Coberto pelo Trivy (`KSV013`).
-
-### 3.2 — `securityContext` · `obrigatório`
-Cinco requisitos. **O nível em que cada um pode ser declarado não é o mesmo**, e é a
-dúvida que mais aparece na revisão:
-
-| Requisito | Valor exigido | Nível aceito |
-|---|---|---|
-| `runAsNonRoot` | `true` | **pod ou container** — o container herda do pod |
-| `runAsUser` | acima de 10000, nunca 0 | **pod ou container** — o container herda do pod |
-| `allowPrivilegeEscalation` | `false` | **só container** |
-| `readOnlyRootFilesystem` | `true` | **só container** |
-| `capabilities.drop` | contém `ALL` (no máximo `NET_BIND_SERVICE` em `add`) | **só container** |
-
-Os três últimos **não existem** na API no nível do pod. O que acontece quando alguém os
-declara ali depende do caminho do apply — medido contra apiserver v1.31.5, kubectl v1.33:
-
-| Caminho do apply | Resultado |
-|---|---|
-| `kubectl apply` (strict, é o default) | **recusa**: `strict decoding error: unknown field "spec.template.spec.securityContext.allowPrivilegeEscalation"` |
-| `kubectl apply --server-side` | **recusa**: `field not declared in schema` |
-| `kubectl apply --validate=false` ou `--validate=ignore` | **aceita e descarta em silêncio** |
-
-O terceiro caso é o perigoso, e é o que justifica a regra: o objeto armazenado fica sem os
-três campos, **o container fica sem `securityContext` nenhum**, e o YAML no Git continua
-dizendo que o workload está endurecido. Verificado — depois do apply permissivo, o
-`securityContext` do pod guardou só `fsGroup`, `runAsGroup`, `runAsNonRoot`, `runAsUser` e
-`seccompProfile`.
-
-Na revisão isso muda a conversa com o autor do PR, não o veredito: **barra nos dois
-cenários.** Se a esteira usa apply strict, o deploy falha e alguém investiga. Se usa
-`--validate=false` ou uma ferramenta de GitOps sem strict decoding, sobe inseguro e
-ninguém percebe.
-
-No pod ficam `fsGroup` e `seccompProfile`, que não fazem parte dos cinco requisitos.
-
-Forma que satisfaz a regra com os dois herdáveis no pod:
+Todo objeto — Deployment, Service, ConfigMap, Secret, Job, CronJob — carrega os quatro
+rótulos. São eles que sustentam o inventário, o rateio de custo por cliente e a resposta à
+pergunta "quem é o dono disso?" às três da manhã.
 
 ```yaml
+metadata:
+  labels:
+    app.kubernetes.io/name: nyx-api        # o componente
+    app.kubernetes.io/instance: nyx-prod   # a instalação
+    app.kubernetes.io/part-of: nyx         # o produto do cliente
+    app.kubernetes.io/managed-by: platform # quem aplica: platform | argocd | helm
+```
+
+O rótulo curto `app:` sozinho **não atende**. Pode continuar existindo por compatibilidade
+com seletores antigos, mas não substitui os quatro.
+
+## 1.4 O seletor tem que casar com os rótulos do pod · `obrigatório`
+
+É o erro mais comum do parque, e o mais silencioso: o objeto sobe, a revisão passa, e o
+serviço simplesmente não tem para onde mandar tráfego. O `selector` do Service e o
+`matchLabels` do Deployment precisam ser **idênticos aos rótulos do template do pod,
+caractere por caractere**.
+
+```yaml
+# errado — um hífen de diferença e o Service fica sem endpoint
 spec:
-  template:
-    spec:
-      securityContext:            # nível de POD
-        runAsNonRoot: true
-        runAsUser: 10001
-        fsGroup: 10001            # não é requisito da 3.2, mas é de pod
-        seccompProfile:
-          type: RuntimeDefault
-      containers:
-        - name: api
-          securityContext:        # nível de CONTAINER
-            allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
-            capabilities:
-              drop: ["ALL"]
+  selector:
+    app: nyx-api
+template:
+  metadata:
+    labels:
+      app: nyxapi
 ```
 
-Repetir `runAsNonRoot` e `runAsUser` no container também é válido e tem precedência.
+> **INTERPRETAÇÃO DA SKILL.** O script compara por **subconjunto**: toda chave presente no
+> seletor precisa existir no pod com o mesmo valor, mas o seletor pode usar menos chaves
+> que o pod. É o que o Kubernetes de fato faz, e é o uso recomendado — selecionar por
+> `name` e `instance` enquanto o pod tem os quatro rótulos da regra 1.3, porque `part-of` e
+> `managed-by` não distinguem workloads.
+>
+> Leitura literal de "idênticos" exigiria o conjunto inteiro, o que tornaria a 1.3 e a 1.4
+> incompatíveis na prática. Se a casa quiser a leitura estrita, o script muda numa linha —
+> mas aí todo manifesto que seleciona por subconjunto passa a barrar.
 
-`readOnlyRootFilesystem: true` costuma exigir `emptyDir` montado nos caminhos em que a
-aplicação escreve — e **qual caminho** é informação que só sai do código. Esta é a única
-parte da 3.2 que o script não decide.
+## 1.5 Anotação de dono · `recomendado`
 
-**Quem julga esta regra é `scripts/conferir_manifesto.py`, não o Trivy.** O Trivy a cobre
-de um jeito que não serve de veredito: campos espalhados por regras de severidade
-diferente, e `KSV020`/`KSV021` cegos para a herança do pod. Ver `cobertura-do-trivy.md`.
+`metacortex.io/owner` com o time responsável, e `metacortex.io/runbook` com a URL do
+procedimento de plantão **quando existir**. O plantão agradece.
 
-### 3.3 — Segredo em texto puro · `proibido`
-Senha, token ou chave nunca em `env.value`, `ConfigMap.data` ou `Secret.stringData`
-versionado. Use `valueFrom.secretKeyRef`.
+## 1.6 Nome de container igual ao componente · `recomendado`
 
-Inclui **senha embutida em string de conexão**, que é a forma mais comum e a que passa
-despercebida:
+Container chamado `app`, `main` ou `container` obriga quem está lendo log a abrir o
+manifesto para descobrir o que é. Use o nome do componente: `api`, `worker`, `scheduler`.
+
+---
+
+# Bloco 2 — Resiliência
+
+## 2.1 `requests` e `limits` obrigatórios · `obrigatório`
+
+Todo container declara `requests` e `limits` de CPU e memória. Container sem `requests` é
+escalonado às cegas; container sem `limits` de memória derruba o nó do vizinho.
 
 ```yaml
-# PROIBIDO
-- name: DATABASE_URL
-  value: "postgres://nyx:s3nh4-do-banco@pg.nyx-prod.svc:5432/nyx"
+resources:
+  requests: {cpu: 100m, memory: 128Mi}
+  limits:   {cpu: 500m, memory: 512Mi}
 ```
 
-**O Trivy não detecta este caso.** `trivy fs --scanners secret` acha credencial de formato
-conhecido (`AKIA…`, `ghp_…`) e não acha senha dentro de URI. `trivy config` tem o
-`AVD-KSV-01010`, que **parece** cobrir — só olha ConfigMap, casa por palavra-chave e não
-aponta a senha. Demonstração com os três lugares em `cobertura-do-trivy.md`.
+**Regra de bolso da casa:** `limits` de memória entre **1,5x e 2x** o consumo observado em
+regime. Apertar demais gera reinício por OOM; folgar demais desperdiça reserva do cliente.
 
-### 3.4 — `automountServiceAccountToken: false` · `obrigatório`
-Obrigatório desde esta revisão (2026-07-29) quando a aplicação não fala com o apiserver.
-Declare nos dois lugares: na ServiceAccount e no `spec.template.spec` do pod.
+## 2.2 `readinessProbe` e `livenessProbe` obrigatórias · `obrigatório`
 
-### 3.5 — ServiceAccount dedicada · `recomendado`
-Uma por workload. Usar a `default` do namespace, ou omitir `serviceAccountName`, reprova.
+Sem probe, o Kubernetes considera o container pronto assim que o processo sobe — e manda
+tráfego para aplicação que ainda está carregando. As duas probes são obrigatórias **em
+qualquer ambiente**, e precisam apontar para endpoints que a aplicação **de fato expõe**.
 
-### 3.6 — `hostNetwork`, `hostPID`, `privileged` · `proibido`
-Também `hostIPC`. Coberto pelo Trivy (`KSV008`, `KSV009`, `KSV010`, `KSV017`).
+A distinção importa: readiness responde "posso receber tráfego agora?" e liveness responde
+"ainda estou vivo?". Apontar as duas para o mesmo endpoint que checa banco é um jeito
+conhecido de derrubar a aplicação inteira quando o banco fica lento — a liveness falha, o
+container reinicia, e **o reinício não conserta banco**.
 
-### 3.7 — Imagem só do registry interno · `obrigatório`
-Prefixo `registry.metacortex.io/`. Imagem pública entra pelo **Loom**, que espelha,
-escaneia e republica. Reprova `docker.io/library/nginx`, `postgres:16-alpine`.
+> **INTERPRETAÇÃO DA SKILL.** O padrão não isenta `Job`, `CronJob` nem `initContainer`. O
+> script isenta, porque container que roda e termina não tem o que sondar e o Kubernetes
+> não aceita probe em `initContainer` comum. Se a casa discordar, é uma linha no script.
 
-## Resumo por obrigatoriedade
+## 2.3 `replicas >= 2` em prod · `obrigatório`
+
+Réplica única em produção significa indisponibilidade a cada deploy, a cada drain de nó e a
+cada evicção. **Em dev e stg, uma réplica é aceitável.**
+
+## 2.4 Estratégia de atualização · `obrigatório em prod`
+
+```yaml
+strategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxUnavailable: 0
+    maxSurge: 1
+```
+
+`maxUnavailable: 0` garante que a capacidade não cai durante o rollout. O custo é precisar
+de espaço para uma réplica a mais durante a troca.
+
+> **O padrão não prevê `Recreate` em prod.** Qualquer estratégia diferente da acima é
+> violação de regra obrigatória e exige exceção aprovada por Segurança & Compliance. Isso
+> inclui banco com volume único: o caso é real e legítimo, mas o caminho é a exceção
+> formal, não a leitura flexível da regra.
+
+## 2.5 `PodDisruptionBudget` em prod · `recomendado`
+
+Todo workload de prod **com mais de uma réplica** declara um PDB com `minAvailable: 1` no
+mínimo. Sem PDB, uma manutenção de nó pode derrubar todas as réplicas ao mesmo tempo.
+
+## 2.6 `terminationGracePeriodSeconds` compatível com a aplicação · `recomendado`
+
+O padrão de 30s não serve para worker que processa mensagem longa. Se a aplicação precisa
+de mais tempo para drenar, declare — e garanta que ela **trata SIGTERM**.
+
+---
+
+# Bloco 3 — Segurança
+
+> Segurança & Compliance mantém uma varredura de configuração no pipeline, com **Trivy**,
+> rodando sobre o diretório de manifests. **Ela não substitui esta página**: o que a
+> varredura não conhece continua sendo conferido na revisão, e **é onde a maior parte dos
+> barramentos acontece.**
+
+Esse parágrafo é a justificativa da skill inteira. O mapa medido está em
+`cobertura-do-trivy.md`: de 19 regras, o Trivy é juiz de 3.
+
+## 3.1 Tag `:latest` proibida · `proibido`
+
+Imagem sempre em **tag imutável ou digest**. `:latest` torna impossível saber o que está
+rodando, quebra rollback e faz dois pods do mesmo Deployment rodarem versões diferentes.
+
+```yaml
+# errado
+image: registry.metacortex.io/nyx/api:latest
+# certo
+image: registry.metacortex.io/nyx/api:2.9.1
+# melhor ainda
+image: registry.metacortex.io/nyx/api@sha256:9f2c...
+```
+
+## 3.2 `securityContext` obrigatório · `obrigatório`
+
+```yaml
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: ["ALL"]
+```
+
+`readOnlyRootFilesystem` exige que o que precisa escrever use `emptyDir` montado no caminho
+certo. Dá trabalho uma vez e fecha uma classe inteira de escalonamento de privilégio.
+
+> **INTERPRETAÇÃO DA SKILL — o nível de cada campo.** O padrão mostra um bloco único e não
+> diz se ele é de pod ou de container. Fato da API do Kubernetes, verificado contra
+> apiserver v1.31.5:
+>
+> | Campo | Nível aceito |
+> |---|---|
+> | `runAsNonRoot` | pod ou container — o container **herda** do pod |
+> | `runAsUser` | pod ou container — o container **herda** do pod |
+> | `allowPrivilegeEscalation` | **só container** |
+> | `readOnlyRootFilesystem` | **só container** |
+> | `capabilities` | **só container** |
+>
+> Os três últimos **não existem** em `PodSecurityContext`. O que acontece ao declará-los no
+> pod depende do caminho do apply:
+>
+> | Caminho | Resultado |
+> |---|---|
+> | `kubectl apply` (strict, é o default) | **recusa**: `strict decoding error: unknown field` |
+> | `kubectl apply --server-side` | **recusa**: `field not declared in schema` |
+> | `kubectl apply --validate=false` | **aceita e descarta em silêncio** |
+>
+> O terceiro é o perigoso: o container fica sem `securityContext` nenhum e o YAML no Git
+> continua dizendo que o workload está endurecido.
+
+> **O QUE A SKILL NÃO EXIGE, E JÁ EXIGIU POR ERRO MEU.** O `runAsUser: 10001` acima é
+> **exemplo**, não limiar. O padrão não estabelece piso de UID. Uma versão anterior desta
+> skill cobrava "acima de 10000" como se fosse regra da casa — era invenção minha, e fazia
+> o `runAsUser: 70` da imagem alpine do Postgres barrar indevidamente. Hoje a regra exige
+> `runAsUser` **declarado e não-root**, o que `runAsNonRoot: true` já garante.
+>
+> Consequência: `KSV020`/`KSV021` do Trivy (UID/GID <= 10000) **não** correspondem a regra
+> da casa e ficam no bloco informativo.
+
+## 3.3 Segredo em texto puro proibido · `proibido`
+
+Nenhum valor sensível entra no manifesto — **nem em `env.value`, nem em ConfigMap, nem em
+comentário**. Sempre por referência a um Secret.
+
+```yaml
+# errado
+env:
+  - name: DATABASE_URL
+    value: "postgres://nyx:s3nh4-do-banco@pg.nyx-prod.svc:5432/nyx"
+# certo
+env:
+  - name: DATABASE_URL
+    valueFrom:
+      secretKeyRef: {name: nyx-db, key: url}
+```
+
+Lembre que Secret do Kubernetes é **base64, não criptografia**. O padrão vale para não
+versionar o segredo no Git; a proteção em repouso é assunto do cluster.
+
+> **COBERTURA DA SKILL.** O script varre `env.value`, `ConfigMap.data` e
+> `Secret.stringData`. **Não varre comentário**, que o padrão também proíbe — comentário é
+> descartado pelo parser de YAML antes de o script ver. Fica como instrução de leitura
+> manual no passo 3.
+>
+> O Trivy não cobre esta regra. Demonstração em `cobertura-do-trivy.md`.
+
+## 3.4 `automountServiceAccountToken: false` quando não fala com a API · `obrigatório`
+
+A maioria das aplicações não precisa conversar com o apiserver, e montar o token por padrão
+entrega uma credencial de graça para quem comprometer o container.
+
+Passou de `recomendado` a `obrigatório` em **2026-07-29**.
+
+## 3.5 ServiceAccount dedicada · `recomendado`
+
+Não use a `default` do namespace. Uma ServiceAccount por workload, com o RBAC mínimo — e
+**nenhum RBAC** quando ela não fala com a API.
+
+## 3.6 `hostNetwork`, `hostPID` e `privileged` proibidos · `proibido`
+
+Sem exceção em workload de cliente. Se for infraestrutura da própria Metacortex e precisar,
+o pedido vai para Segurança com justificativa escrita.
+
+> **Três campos, não quatro.** O padrão não menciona `hostIPC`. O Trivy tem `KSV008` para
+> ele; a skill reporta como informativo, não como violação da 3.6.
+
+## 3.7 Imagem só de registry interno · `obrigatório`
+
+Todo `image:` aponta para `registry.metacortex.io`. Imagem de registry público entra pelo
+**Loom**, que a espelha, escaneia e republica internamente.
+
+---
+
+# Bloco 4 — Vocabulário e conceitos
+
+> **ESTE BLOCO FICOU FORA DA SKILL.** A justificativa está em `curadoria.md`, seção 7. Em
+> resumo: é material de onboarding, não critério de revisão — o próprio padrão diz "quem já
+> opera os clusters pode pular direto para os blocos anteriores". Nenhum item aqui produz
+> veredito, e carregar 8 definições de objeto do Kubernetes no contexto de toda conferência
+> gastaria orçamento sem mudar uma linha de relatório.
+>
+> As duas exceções que **vazaram para dentro da skill como conhecimento aplicado**, sem o
+> texto: 4.5 (`port` x `targetPort`), usada ao gerar os Services, e 4.8 (probes), que
+> reforça a 2.2.
+
+Os oito itens do bloco, para quem precisar: 4.1 Pod · 4.2 ReplicaSet · 4.3 Deployment ·
+4.4 Service · 4.5 A diferença entre `port` e `targetPort` · 4.6 Endpoints ·
+4.7 ConfigMap e Secret · 4.8 Probes.
+
+Dois deles têm valor operacional e não só didático, e vale registrar:
+
+- **4.5** — `port` é a porta em que o Service escuta; `targetPort` é a porta em que o
+  container realmente escuta. Normalmente são diferentes: o Service publica 80 e o
+  container escuta 8080. É por isso que os manifests gerados apontam `targetPort` para o
+  **nome** da porta e não para o número.
+- **4.6** — o objeto `Endpoints` é onde se descobre que um Service não entrega tráfego: sem
+  endereço nenhum, nenhum pod casou com o seletor. E **o campo de endereços não vem vazio
+  quando não há nenhum — ele simplesmente não aparece na resposta da API.** Isso é
+  diagnóstico de cluster, território da skill de triagem, não desta.
+
+---
+
+# Exceções
+
+| Nível da regra | O que a exceção exige |
+|---|---|
+| `obrigatório` | aprovação **escrita** de Segurança & Compliance no PR, **com prazo de validade** |
+| `recomendado` | só a justificativa no PR |
+| `proibido` | **não existe exceção** para workload de cliente |
+
+**Enquanto a aprovação não existe, o achado é violação e não conforme.** Comentário no YAML
+explicando o desvio é insumo para a aprovação, não a aprovação. Tratar desvio justificado
+como conforme transforma a revisão em carimbo.
+
+---
+
+# Histórico
+
+| Data | Mudança |
+|---|---|
+| 2026-07-29 | `automountServiceAccountToken: false` passa de recomendado a **obrigatório** |
+| 2026-05-14 | Adicionado o bloco de vocabulário a pedido do onboarding |
+| 2026-03-02 | `replicas >= 2` em prod passa a ser **obrigatório** após o incidente de março na borda |
+| 2025-11-20 | Proibida a tag `:latest` |
+
+---
+
+# Resumo por obrigatoriedade
 
 | Nível | Regras | Total |
 |---|---|---|
-| `obrigatório` | 1.1, 1.2, 1.3, 1.4, 2.1, 2.2, 2.3*, 2.4*, 3.2, 3.4, 3.7 | 11 |
+| `obrigatório` | 1.1, 1.2, 1.3, 1.4, 2.1, 2.2, 2.3\*, 2.4\*, 3.2, 3.4, 3.7 | 11 |
 | `proibido` | 3.1, 3.3, 3.6 | 3 |
 | `recomendado` | 1.5, 1.6, 2.5, 2.6, 3.5 | 5 |
 
 \* condicionadas a `prod`.
 
-**14 regras barram o deploy. 5 exigem justificativa no PR.**
-
-## Processo de exceção
-
-Exceção a regra `obrigatório` ou `proibido` exige, no PR:
-
-1. aprovação **escrita** de Segurança & Compliance
-2. **prazo de validade** da exceção
-3. o motivo técnico pelo qual cumprir a regra é pior que não cumprir
-
-Enquanto os três não existem, **o achado é violação e não conforme**. Comentário no YAML
-explicando o desvio é insumo para a aprovação, não a aprovação. Tratar desvio justificado
-como conforme transforma a revisão em carimbo.
+**14 regras barram o deploy. 5 exigem justificativa no PR.** O bloco 4 não produz regra.

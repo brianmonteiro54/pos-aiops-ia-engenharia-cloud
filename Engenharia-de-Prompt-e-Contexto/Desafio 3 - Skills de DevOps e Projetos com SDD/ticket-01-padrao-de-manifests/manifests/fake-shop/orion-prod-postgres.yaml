@@ -31,7 +31,16 @@ metadata:
     metacortex.io/owner: time-orion
     metacortex.io/runbook: https://wiki.metacortex.io/runbooks/orion-postgres
 spec:
-  # 2.3 EXCEÇÃO A REGRA OBRIGATORIA — replicas: 1 em prod.
+  # DUAS VIOLACOES DE REGRA OBRIGATORIA NESTE OBJETO, as duas pelo mesmo motivo de fundo
+  # (Postgres com volume unico em prod) e as duas exigindo exceção aprovada por Segurança
+  # & Compliance no PR, com prazo de validade:
+  #   2.3 — replicas: 1 em prod (comentado abaixo)
+  #   2.4 — strategy.type: Recreate (comentado mais abaixo)
+  # O relatorio da skill aponta as duas. Isso e deliberado: desvio documentado nao e
+  # exceção aprovada, e o caminho correto em producao e StatefulSet com
+  # PersistentVolumeClaim, fora do escopo deste ticket.
+  #
+  # 2.3 — replicas: 1 em prod.
   # Postgres com `emptyDir` e sem replicação não ganha nada com duas réplicas: as duas
   # subiriam com bancos independentes e a aplicação alternaria entre dois estados. Subir
   # para 2 aqui seria pior que a réplica única, não melhor.
@@ -42,8 +51,11 @@ spec:
   # volume persistente, fora do escopo deste ticket.
   replicas: 1
   strategy:
-    # Recreate, e não RollingUpdate: com volume único, duas instâncias do mesmo
-    # Postgres não podem coexistir nem por um instante.
+    # 2.4 VIOLA REGRA OBRIGATORIA EM PROD. O padrão exige RollingUpdate com
+    # maxUnavailable: 0 e nao preve alternativa. Recreate esta aqui porque, com volume
+    # unico, duas instancias do mesmo Postgres nao podem coexistir nem por um instante —
+    # RollingUpdate com maxSurge: 1 criaria exatamente isso.
+    # O caso e legitimo e o caminho e a exceção formal, nao a leitura flexivel da regra.
     type: Recreate
   selector:
     matchLabels:
@@ -100,10 +112,11 @@ spec:
             limits:   {cpu: 1,    memory: 384Mi}
           securityContext:
             runAsNonRoot: true
-            # DESVIO DOCUMENTADO: UID 70 é o `postgres` da imagem alpine e o processo
-            # precisa ser dono do PGDATA. O padrão pede > 10000; forçar 10001 aqui
-            # quebra a inicialização. Vai para o PR como desvio consciente, e o Trivy
-            # continua apontando KSV020/KSV021 de propósito — o apontamento é correto.
+            # UID 70 é o `postgres` da imagem alpine, e o processo precisa ser dono do
+            # PGDATA. Isto CUMPRE a regra 3.2: o padrão exige runAsUser declarado e
+            # não-root, e NÃO estabelece piso de UID — o `runAsUser: 10001` do wiki é
+            # exemplo. O Trivy aponta KSV020/KSV021 (UID/GID <= 10000); são regras do
+            # catálogo dele que a casa não adota, e saem no bloco informativo.
             runAsUser: 70
             runAsGroup: 70
             allowPrivilegeEscalation: false

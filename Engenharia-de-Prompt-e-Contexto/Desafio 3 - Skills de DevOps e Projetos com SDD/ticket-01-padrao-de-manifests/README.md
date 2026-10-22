@@ -1,36 +1,39 @@
-# Ticket 01 — Skill do Padrão de Manifests da Metacortex
+# Ticket 01 — Skill do padrão de manifests
 
-Empacotar em skill o trabalho de conferir e gerar manifests de Kubernetes contra o Padrão
-de Manifests da casa (19 regras, revisão 2026-07-29), sem reimplementar o que o Trivy já
-faz.
+Empacotar o Padrão de Manifests da Metacortex (revisão 2026-07-29) numa skill, com o que é
+mecânico virando script e o que exige ler o projeto virando instrução — sem reimplementar o
+que o Trivy já cobre.
+
+## Onde está cada item do `Entregue.`
+
+| Item pedido | Onde está |
+|---|---|
+| **A skill completa: corpo, script e arquivos de apoio** | `../../../.kiro/skills/padrao-de-manifests-metacortex/` — `SKILL.md`, `scripts/conferir_manifesto.py`, `references/padrao-completo.md`, `references/cobertura-do-trivy.md` |
+| **A origem da skill: de qual fluxo nasceu, como foi produzida e com qual ferramenta** | `curadoria.md` seção 0, e os dois fluxos em `fluxos/` |
+| **Saída real — os manifests gerados** | `manifests/fake-shop/` e `manifests/kube-news/`, com `DECISOES.md` em cada um |
+| **Saída real — a conferência do manifesto barrado** | `evidencias/relatorios/01-manifesto-barrado.txt` |
+| **Curadoria — a linha entre script e instrução, regra por regra** | `curadoria.md` seção 1 |
+| **Curadoria — o que o Trivy já cobria** | `curadoria.md` seções 2 e 3, e `references/cobertura-do-trivy.md` |
+| **Curadoria — corpo da skill x arquivo consultado sob demanda** | `curadoria.md` seção 4 |
+| **Curadoria — o que decidi não empacotar e por quê** | `curadoria.md` seção 7 |
+| **Curadoria — quais permissões a skill pede** | `curadoria.md` seção 8 |
+
+Extra, não pedido: `validacao/testes-cegos.md` — três sub-agentes executaram a skill sem
+acesso aos fluxos nem às sondas e acharam 15 defeitos nela, todos corrigidos. O que eles
+**não** pegaram foram as três regras que eu havia inventado: teste cego valida consistência
+interna, não fidelidade à fonte. Essas saíram do confronto com o anexo.
 
 ## A skill
 
-**`.kiro/skills/padrao-de-manifests-metacortex/`** — é a entrega funcional, e fica ali
-porque é de onde o Kiro carrega.
-
 ```
-SKILL.md                            270 linhas — procedimento dos dois modos
-references/padrao-completo.md       262 linhas — as 19 regras com obrigatoriedade
-references/cobertura-do-trivy.md    238 linhas — o mapa medido por experimento
-scripts/conferir_manifesto.py       900 linhas — 15 das 19 regras
+.kiro/skills/padrao-de-manifests-metacortex/
+├── SKILL.md                            procedimento dos dois modos
+├── references/padrao-completo.md       os 4 blocos do padrão, com minhas interpretações marcadas
+├── references/cobertura-do-trivy.md    o mapa medido por experimento
+└── scripts/conferir_manifesto.py       15 das 19 regras
 ```
 
-## O que está nesta pasta
-
-| Arquivo | O que é |
-|---|---|
-| **`curadoria.md`** | o documento central: o que entrou, o que ficou fora, e a medição por trás de cada decisão |
-| `fluxos/fluxo-01-conferencia-manual.md` | primeiro fluxo manual — conferir o manifesto barrado antes de existir skill |
-| `fluxos/fluxo-02-geracao-de-manifests.md` | segundo fluxo manual — gerar manifests para dois projetos |
-| `validacao/testes-cegos.md` | os três testes cegos e os treze defeitos que acharam |
-| `manifests/` | o manifesto barrado (entrada) e os dois conjuntos gerados, com `DECISOES.md` |
-| `evidencias/sondas/` | os manifestos-sonda que levantaram o mapa de cobertura do Trivy. A sonda de segredos é **gerada** por `gerar-sonda-de-segredos.py` e não versionada — ver abaixo |
-| `evidencias/relatorios/` | saídas reais das execuções, com data e código de saída |
-
-## Resultado em uma tabela
-
-Quem julga cada uma das 19 regras:
+Quem julga cada regra:
 
 | Juiz | Regras | Quantas |
 |---|---|---|
@@ -38,38 +41,48 @@ Quem julga cada uma das 19 regras:
 | **Trivy**, invocado e traduzido pelo script | 2.1, 3.1, 3.6 | 3 |
 | **só leitura do projeto** | 2.6 | 1 |
 
-O Trivy é juiz de **3 das 19**. Chegar a esse número exigiu dois experimentos, porque
-rodar `trivy config` num manifesto não diz o que a ferramenta tem — diz o que aquele
-manifesto violou.
+O Trivy é juiz de **3 das 19**. Chegar a esse número exigiu dois experimentos, porque rodar
+`trivy config` num manifesto não diz o que a ferramenta tem — diz o que aquele manifesto
+violou.
 
 ## Os três achados que mais mudaram a skill
 
-**1. O Trivy não vê a senha.** A regra 3.3 é `proibido` e é a que vaza credencial de
-banco. `trivy fs --scanners secret` acha `AKIA…`, `ghp_…` e `BEGIN RSA PRIVATE KEY`, e
-**não acha** `postgres://nyx:s3nh4-do-banco@pg…`. Pior: existe o `AVD-KSV-01010`, chamado
-"ConfigMap with sensitive content", que parece cobrir. Testado com a mesma senha em três
-lugares, ele alcança um, casa com a palavra `postgres` em vez da senha, e aponta a linha
-do separador `---`.
+**1. O Trivy não vê a senha.** A regra 3.3 é `proibido` e é a que vaza credencial de banco.
+`trivy fs --scanners secret` acha `AKIA…`, `ghp_…` e bloco de chave privada, e **não acha**
+`postgres://nyx:s3nh4-do-banco@pg…`. Pior: existe o `AVD-KSV-01010`, chamado "ConfigMap
+with sensitive content", que parece cobrir. Testado com a mesma senha em três lugares, ele
+alcança um, casa com a palavra `postgres` em vez da senha, e aponta a linha do `---`.
 
-**2. A regra 3.2 erra nas duas direções no Trivy, então o script a julga.** Falso negativo
-porque os cinco requisitos estão espalhados em regras de LOW a HIGH, sem o conceito do
-bloco da casa. Falso positivo porque `KSV020` ignora `runAsUser` declarado no pod, que o
-Kubernetes herda — provado com duas variantes do mesmo Deployment rodando o mesmo UID.
+**2. A regra 3.2 não pode ter o Trivy como juiz.** Ele confere os cinco requisitos por
+regras separadas, com severidades de LOW a HIGH, sem o conceito do bloco que a casa exige.
+Quem filtra por `--severity HIGH,CRITICAL` vê um e perde quatro.
 
 **3. A severidade do Trivy não é a obrigatoriedade da casa.** As quatro regras de
-`requests`/`limits` são **LOW** no Trivy e **barram o deploy** na Metacortex. Quem filtra
-por `--severity HIGH,CRITICAL` perde a regra 2.1 inteira.
+`requests`/`limits` são **LOW** no Trivy e **barram o deploy** na Metacortex.
 
-## Validação
+## Resultado das duas execuções
 
-Três sub-agentes executaram a skill sem acesso aos fluxos manuais nem às sondas, contra
-manifestos novos. Os três chegaram aos vereditos corretos — inclusive nos casos em que o
-certo é **não** reportar — e acharam **treze defeitos** na skill, todos corrigidos.
+| Alvo | rc | Barra | Recomendado |
+|---|---|---|---|
+| manifesto barrado (`nyx-prod`) | 1 | **20** | 3 |
+| fake-shop gerado (`orion-prod`) | 1 | 2 | 1 |
+| kube-news gerado (`nyx-dev`) | **0** | 0 | 1 |
 
-O que mais custou: eu havia afirmado que campos de container declarados no nível do pod
-são "silenciosamente ignorados". Testei contra o apiserver e está errado — `kubectl apply`
+As duas violações do fake-shop são do Postgres e saem do mesmo fato — volume único em prod:
+`replicas: 1` fere a 2.3 e `strategy.type: Recreate` fere a 2.4. Os dois casos são
+legítimos e **continuam barrando**, porque desvio documentado não é exceção aprovada. É o
+princípio que a skill protege.
+
+## Onde eu errei
+
+Três exigências da skill **não existiam no padrão** e saíram quando confrontei a skill com
+o anexo: piso de UID na 3.2, `Recreate` como alternativa na 2.4, e `hostIPC` na 3.6. As
+três nasceram de completar de cabeça uma regra que parecia incompleta. Detalhe em
+`curadoria.md` seção 7.
+
+Um quarto erro: eu afirmei que campo de container declarado no nível do pod é
+"silenciosamente ignorado". Testei contra o apiserver e está errado — `kubectl apply`
 strict **recusa** com `strict decoding error`; só `--validate=false` aceita e descarta.
-Era afirmação factual não verificada, e virou tabela com os três caminhos de apply.
 
 ## Reproduzir
 
@@ -77,14 +90,14 @@ Era afirmação factual não verificada, e virou tabela com os três caminhos de
 S=../../../.kiro/skills/padrao-de-manifests-metacortex/scripts/conferir_manifesto.py
 
 python3 "$S" manifests/nyx-api-barrado.yaml   # rc=1 — 20 barram, 3 recomendadas
-python3 "$S" manifests/fake-shop/             # rc=1 — 2 barram (desvios documentados)
-python3 "$S" manifests/kube-news/             # rc=1 — 1 barra  (desvio documentado)
+python3 "$S" manifests/fake-shop/             # rc=1 — 2 barram (desvios do Postgres)
+python3 "$S" manifests/kube-news/             # rc=0 — nada barra
 python3 "$S" validacao/teste-cego-01-vega-stg.yaml     # rc=1 — 4 barram
 python3 "$S" validacao/teste-cego-02-atlas-prod.yaml   # rc=1 — 4 barram
 ```
 
-Requer `python3` com PyYAML. Sem `trivy` o script confere 15 das 19 e avisa na saída
-quais ficaram de fora — rode com `--sem-trivy` para ver.
+Requer `python3` com PyYAML. Sem `trivy` o script confere 15 das 19 e avisa na saída quais
+ficaram de fora — rode com `--sem-trivy` para ver.
 
 ### A sonda de segredos é gerada, não versionada
 
@@ -95,30 +108,11 @@ trivy fs --scanners secret trivy-segredos-seis-formatos.yaml   # 5 de 6 detectad
 rm trivy-segredos-seis-formatos.yaml                            # nao commitar
 ```
 
-O motivo é concreto e vale como achado do ticket. A sonda precisa de valores com a **forma
-exata** de credencial real — `AKIA` mais 16 caracteres, `xoxb-` com três segmentos, chave
-AWS de 40 — senão o `trivy fs --scanners secret` não dispara e o experimento não mede nada.
+O motivo vale como achado. A sonda precisa de valores com a **forma exata** de credencial
+real, senão o scanner não dispara. Essa mesma forma fez o push protection do GitHub
+**bloquear** o push deste ticket, com três violações. A segunda tentativa guardou os
+valores em base64 — o GitHub decodificou e recusou de novo. Por isso o gerador **sorteia**
+os valores: o experimento mede a forma, não um valor específico.
 
-Essa mesma forma faz o push protection do GitHub recusar o push. Não é hipótese: a
-primeira tentativa de empurrar este ticket foi **bloqueada**, com três violações (AWS
-Access Key ID, AWS Secret Access Key, Slack API Token). O `ghp_` passou, provavelmente
-porque o token sintético não tem checksum válido — o detector do GitHub é mais estrito que
-o do Trivy sobre o mesmo valor.
-
-A segunda tentativa guardou os valores em **base64** no gerador. O GitHub decodificou e
-recusou de novo. Dois aprendizados: o detector dele decodifica base64, e codificar valor
-para escapar de controle de segurança é o padrão que o controle existe para impedir.
-
-Por isso o gerador **sorteia** os cinco valores de formato conhecido. O experimento mede
-se o scanner reconhece a forma, não um valor específico, então sortear não perde nada da
-medição — verificado em três execuções, 5 de 6 sempre. A senha da `DATABASE_URL` é a única
-fixa, porque é o objeto do experimento e a única que nenhum scanner detecta.
-
-O resultado está registrado em `evidencias/relatorios/06-trivy-saida-crua.txt`, então o
-experimento é auditável sem rodar nada. O `.gitignore` da raiz impede que o arquivo gerado
-volte por engano.
-
-Os manifests gerados continuam com achados **de propósito**: `replicas: 1` do Postgres em
-prod e `runAsUser: 70` da imagem alpine, que precisa ser dona do `PGDATA`. Os dois estão
-explicados nos `DECISOES.md` e continuam barrando, porque desvio documentado não é exceção
-aprovada — e é esse o princípio que a skill protege.
+O resultado está em `evidencias/relatorios/06-trivy-saida-crua.txt`, auditável sem rodar
+nada.
