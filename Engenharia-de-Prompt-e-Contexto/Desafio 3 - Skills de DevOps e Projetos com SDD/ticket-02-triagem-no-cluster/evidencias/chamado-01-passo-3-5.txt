@@ -1,0 +1,30 @@
+### passo 3: os logs ajudam? (OOMKill e acao do kernel, nao erro da aplicacao)
+--- log do container atual ---
+
+--- log da encarnacao ANTERIOR, que e a que morreu ---
+
+### passo 4: cruzar com o limite declarado
+{
+    "limits": {
+        "cpu": "200m",
+        "memory": "24Mi"
+    },
+    "requests": {
+        "cpu": "50m",
+        "memory": "16Mi"
+    }
+}
+
+### passo 5: eventos — confirmam ou contradizem?
+3m37s       Normal    Pulling             pod/nyx-api-79c5f4d8d7-zrwbb         Pulling image "fabricioveronez/kube-news:v1"
+3m37s       Normal    Pulling             pod/nyx-api-79c5f4d8d7-777ht         Pulling image "fabricioveronez/kube-news:v1"
+3m10s       Normal    Pulled              pod/nyx-api-79c5f4d8d7-zrwbb         Successfully pulled image "fabricioveronez/kube-news:v1" in 29.921s (29.922s including waiting). Image size: 75844157 bytes.
+3m8s        Normal    Pulled              pod/nyx-api-79c5f4d8d7-777ht         Successfully pulled image "fabricioveronez/kube-news:v1" in 31.86s (31.86s including waiting). Image size: 75844157 bytes.
+2m24s       Normal    Started             pod/nyx-api-79c5f4d8d7-zrwbb         Started container api
+2m21s       Normal    Started             pod/nyx-api-79c5f4d8d7-777ht         Started container api
+2m21s       Normal    Created             pod/nyx-api-79c5f4d8d7-777ht         Created container api
+112s        Warning   BackOff             pod/nyx-api-79c5f4d8d7-zrwbb         Back-off restarting failed container api in pod nyx-api-79c5f4d8d7-zrwbb_nyx-prod(94401e2e-0bf5-4785-8967-2734ef13b5d5)
+103s        Warning   BackOff             pod/nyx-api-79c5f4d8d7-777ht         Back-off restarting failed container api in pod nyx-api-79c5f4d8d7-777ht_nyx-prod(0fb89632-828d-42d4-b5c4-c539b9ae571a)
+101s        Normal    Pulled              pod/nyx-api-79c5f4d8d7-zrwbb         Container image "fabricioveronez/kube-news:v1" already present on machine
+101s        Normal    Created             pod/nyx-api-79c5f4d8d7-zrwbb         Created container api
+90s         Normal    Pulled              pod/nyx-api-79c5f4d8d7-777ht         Container image "fabricioveronez/kube-news:v1" already present on machine

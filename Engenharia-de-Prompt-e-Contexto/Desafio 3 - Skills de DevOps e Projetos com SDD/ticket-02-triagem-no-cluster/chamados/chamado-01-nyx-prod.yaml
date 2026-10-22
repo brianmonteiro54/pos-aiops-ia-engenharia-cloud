@@ -1,0 +1,83 @@
+# Chamado 1 — nyx-prod: a API do kube-news reinicia sozinha.
+# "O problema apareceu depois de um corte de custos que mudou os limites de recurso do
+#  namespace inteiro de uma vez."
+#
+# Manifesto exatamente como veio no enunciado. Nao corrigido de proposito: e o ambiente
+# sobre o qual a skill de triagem trabalha.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: nyx-prod
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nyx-postgres
+  namespace: nyx-prod
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: nyx-postgres}
+  template:
+    metadata:
+      labels: {app: nyx-postgres}
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          env:
+            - {name: POSTGRES_DB,       value: kubedevnews}
+            - {name: POSTGRES_USER,     value: kubedevnews}
+            - {name: POSTGRES_PASSWORD, value: "Pg#123"}
+          ports:
+            - containerPort: 5432
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nyx-postgres
+  namespace: nyx-prod
+spec:
+  selector: {app: nyx-postgres}
+  ports:
+    - {port: 5432, targetPort: 5432}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nyx-api
+  namespace: nyx-prod
+spec:
+  replicas: 2
+  selector:
+    matchLabels: {app: nyx-api}
+  template:
+    metadata:
+      labels: {app: nyx-api}
+    spec:
+      containers:
+        - name: api
+          image: fabricioveronez/kube-news:v1
+          ports:
+            - containerPort: 8080
+          env:
+            - {name: DB_HOST,     value: nyx-postgres}
+            - {name: DB_DATABASE, value: kubedevnews}
+            - {name: DB_USERNAME, value: kubedevnews}
+            - {name: DB_PASSWORD, value: "Pg#123"}
+          readinessProbe:
+            httpGet: {path: /ready, port: 8080}
+            initialDelaySeconds: 10
+          resources:
+            requests: {memory: 16Mi, cpu: 50m}
+            limits:   {memory: 24Mi, cpu: 200m}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nyx-api
+  namespace: nyx-prod
+spec:
+  selector: {app: nyx-api}
+  ports:
+    - {port: 80, targetPort: 8080}

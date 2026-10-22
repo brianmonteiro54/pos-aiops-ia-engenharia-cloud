@@ -1,0 +1,33 @@
+############ CHAMADO 3 — nyx-stg: 503 de fora, aplicacao de pe ############
+
+### passo 1: retrato — tudo parece bem
+NAME                           READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/nyx-api        2/2     2            2           5m38s
+deployment.apps/nyx-postgres   1/1     1            1           5m38s
+
+NAME                                READY   STATUS    RESTARTS       AGE
+pod/nyx-api-5cd5cdbf9d-h98pj        1/1     Running   2 (5m8s ago)   5m38s
+pod/nyx-api-5cd5cdbf9d-rl2d2        1/1     Running   2 (5m7s ago)   5m38s
+pod/nyx-postgres-5877b89bf8-wfdt5   1/1     Running   0              5m38s
+
+### passo 2: o container esta mesmo saudavel?
+  nyx-api-5cd5cdbf9d-h98pj: ready=True restarts=2 state=['running']
+     lastState: terminated reason=Error exitCode=1
+  nyx-api-5cd5cdbf9d-rl2d2: ready=True restarts=2 state=['running']
+     lastState: terminated reason=Error exitCode=1
+
+### passo 3: o Service tem endpoint? (a pergunta que resolve o chamado)
+  campo subsets: AUSENTE — o campo nao vem, nao vem vazio
+--- e o EndpointSlice, que e o substituto? ---
+  slice nyx-api-wszq8: endpoints=AUSENTE
+
+### passo 4: cruzar seletor do Service com rotulos do pod
+  selector do Service : {"app":"nyx-api"}
+  labels do pod       : {"app":"nyxapi","pod-template-hash":"5cd5cdbf9d"}
+  matchLabels do deploy: {"app":"nyxapi"}
+
+### passo 5: o Service encontra algum pod com o seletor dele?
+No resources found in nyx-stg namespace.
+
+### passo 6: a aplicacao responde se eu falar com o pod direto?
+{"state":"up","machine":"nyx-api-5cd5cdbf9d-h98pj"}

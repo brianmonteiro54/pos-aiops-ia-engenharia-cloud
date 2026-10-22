@@ -1,0 +1,47 @@
+############ CHAMADO 2 — orion-stg: a loja parou depois de uma publicacao ############
+
+### passo 1: retrato
+NAME                             READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/orion-postgres   1/1     1            1           4m44s
+deployment.apps/orion-web        0/3     3            0           4m44s
+
+NAME                                  READY   STATUS             RESTARTS   AGE
+pod/orion-postgres-5797459b75-cpfp6   1/1     Running            0          4m44s
+pod/orion-web-556748f4f8-npbl5        0/1     ImagePullBackOff   0          4m43s
+pod/orion-web-556748f4f8-ptlrz        0/1     ImagePullBackOff   0          4m43s
+pod/orion-web-556748f4f8-vmdbg        0/1     ImagePullBackOff   0          4m43s
+
+### passo 2: estado do container
+pod orion-web-556748f4f8-npbl5  phase=Pending
+  container web ready=False restartCount=0
+  state: waiting -> reason=ImagePullBackOff
+         message=Back-off pulling image "fabricioveronez/fake-shop:v1.14.2"
+  lastState: vazio — o container NUNCA rodou
+  image desejada: fabricioveronez/fake-shop:v1.14.2
+  imageID real  : (vazio)
+
+### passo 3: os logs ajudam?
+Error from server (BadRequest): container "web" in pod "orion-web-556748f4f8-npbl5" is waiting to start: trying and failing to pull image
+
+### passo 4: eventos
+3m8s        Warning   Failed              pod/orion-web-556748f4f8-ptlrz         Error: ImagePullBackOff
+3m5s        Warning   Failed              pod/orion-web-556748f4f8-vmdbg         Error: ImagePullBackOff
+3m5s        Warning   Failed              pod/orion-web-556748f4f8-npbl5         Error: ImagePullBackOff
+8s          Normal    BackOff             pod/orion-web-556748f4f8-npbl5         Back-off pulling image "fabricioveronez/fake-shop:v1.14.2"
+7s          Normal    BackOff             pod/orion-web-556748f4f8-vmdbg         Back-off pulling image "fabricioveronez/fake-shop:v1.14.2"
+6s          Normal    BackOff             pod/orion-web-556748f4f8-ptlrz         Back-off pulling image "fabricioveronez/fake-shop:v1.14.2"
+
+### passo 5: a tag existe no registry?
+fabricioveronez/fake-shop:v1.14.2
+--- o Deployment foi mesmo atualizado? geracao e historico ---
+1 / observedGeneration 1
+deployment.apps/orion-web 
+REVISION  CHANGE-CAUSE
+1         <none>
+
+--- status do rollout ---
+Waiting for deployment "orion-web" rollout to finish: 0 of 3 updated replicas are available...
+error: timed out waiting for the condition
+--- replicaSets: o antigo ainda tem pods? ---
+NAME                   DESIRED   CURRENT   READY   AGE
+orion-web-556748f4f8   3         3         0       4m50s

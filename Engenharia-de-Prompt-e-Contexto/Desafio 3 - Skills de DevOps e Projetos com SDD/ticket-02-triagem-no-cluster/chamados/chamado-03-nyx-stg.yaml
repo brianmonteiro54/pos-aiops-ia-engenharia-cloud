@@ -1,0 +1,81 @@
+# Chamado 3 — nyx-stg: o kube-news responde 503 para quem chama de fora.
+# "A aplicacao esta de pe e saudavel, e mesmo assim ninguem chega nela."
+#
+# Manifesto exatamente como veio no enunciado.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: nyx-stg
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nyx-postgres
+  namespace: nyx-stg
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: nyx-postgres}
+  template:
+    metadata:
+      labels: {app: nyx-postgres}
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          env:
+            - {name: POSTGRES_DB,       value: kubedevnews}
+            - {name: POSTGRES_USER,     value: kubedevnews}
+            - {name: POSTGRES_PASSWORD, value: "Pg#123"}
+          ports:
+            - containerPort: 5432
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nyx-postgres
+  namespace: nyx-stg
+spec:
+  selector: {app: nyx-postgres}
+  ports:
+    - {port: 5432, targetPort: 5432}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nyx-api
+  namespace: nyx-stg
+spec:
+  replicas: 2
+  selector:
+    matchLabels: {app: nyxapi}
+  template:
+    metadata:
+      labels: {app: nyxapi}
+    spec:
+      containers:
+        - name: api
+          image: fabricioveronez/kube-news:v1
+          ports:
+            - containerPort: 8080
+          env:
+            - {name: DB_HOST,     value: nyx-postgres}
+            - {name: DB_DATABASE, value: kubedevnews}
+            - {name: DB_USERNAME, value: kubedevnews}
+            - {name: DB_PASSWORD, value: "Pg#123"}
+          readinessProbe:
+            httpGet: {path: /ready, port: 8080}
+            initialDelaySeconds: 10
+          livenessProbe:
+            httpGet: {path: /health, port: 8080}
+            initialDelaySeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nyx-api
+  namespace: nyx-stg
+spec:
+  selector: {app: nyx-api}
+  ports:
+    - {port: 80, targetPort: 8080}

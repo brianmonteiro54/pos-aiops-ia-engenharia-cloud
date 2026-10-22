@@ -2,18 +2,21 @@
 name: padrao-de-manifests-metacortex
 description: >-
   Confere e gera manifests de Kubernetes contra o Padrão de Manifests da Metacortex
-  (19 regras de nomenclatura, disponibilidade e segurança). Use ao revisar um YAML ANTES
-  do apply, ao escrever manifests novos para um projeto, ao responder "isto passa na
-  revisão?", ao investigar por que o Construct barrou um deploy, ou ao preparar PR de
-  manifesto. NÃO use para diagnosticar aplicação já rodando: pod em CrashLoopBackOff,
-  OOMKilled, ImagePullBackOff, Service sem endpoint em produção, ou qualquer pergunta que
-  exija kubectl contra cluster vivo — isso é triagem de cluster, outra skill. O limite é a
-  fonte da verdade: esta skill lê arquivo YAML e código-fonte da aplicação, nunca o estado
-  do cluster.
+  (19 regras de nomenclatura, resiliência e segurança). Use ao revisar um YAML ANTES do
+  apply, ao escrever manifests novos a partir de um projeto, ao responder "isto passa na
+  revisão?", ao preparar PR de manifesto, ou quando o YAML é recusado por erro de schema ou
+  campo inválido, ou quando alguém diz "esse manifesto não sobe" e o erro é do YAML. Serve
+  para gerar manifesto de um projeto que ainda não tem nenhum: peça o repositório antes,
+  porque porta, probe e variável se descobrem lendo o código. NÃO use quando o objeto já
+  está no cluster e o problema é de execução — pod que não sobe, CrashLoopBackOff,
+  OOMKilled, ImagePullBackOff, Service sem endpoint, 503 — isso é triagem de cluster, outra
+  skill. Nem para explicar conceito de Kubernetes. O limite é a fonte da verdade: esta
+  skill lê arquivo YAML e código-fonte, nunca o estado do cluster.
 compatibility: >-
-  Requer python3 com PyYAML. O trivy é opcional: sem ele o script confere 15 das 19
-  regras e avisa que as regras 2.1, 3.1 e 3.6 NÃO foram conferidas. A regra 3.2 é julgada
-  pelo script e não depende do trivy. Não requer acesso ao cluster.
+  Requer python3 com PyYAML. O trivy é opcional: com ele o script julga 15 regras e traduz
+  outras 3 (2.1, 3.1, 3.6); sem ele as mesmas 15 continuam conferidas e as 3 ficam sem
+  conferência, com aviso na saída. A 19a regra, 2.6, é manual em qualquer caso. A 3.2 é
+  julgada pelo script e não depende do trivy. Não requer acesso ao cluster.
 metadata:
   autor: brian-monteiro
   versao: "1.0"

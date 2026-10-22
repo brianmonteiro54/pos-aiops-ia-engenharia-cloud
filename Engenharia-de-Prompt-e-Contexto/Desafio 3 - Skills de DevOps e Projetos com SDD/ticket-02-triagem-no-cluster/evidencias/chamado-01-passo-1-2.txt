@@ -1,0 +1,27 @@
+############ CHAMADO 1 — nyx-prod: a API reinicia sozinha ############
+
+### passo 1: o retrato do namespace
+NAME                           READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/nyx-api        0/2     2            0           3m9s
+deployment.apps/nyx-postgres   1/1     1            1           3m9s
+
+NAME                                READY   STATUS             RESTARTS      AGE
+pod/nyx-api-79c5f4d8d7-777ht        0/1     CrashLoopBackOff   4 (61s ago)   3m9s
+pod/nyx-api-79c5f4d8d7-zrwbb        0/1     CrashLoopBackOff   4 (72s ago)   3m9s
+pod/nyx-postgres-5877b89bf8-qtlkw   1/1     Running            0             3m9s
+
+NAME                   TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)    AGE
+service/nyx-api        ClusterIP   10.43.211.183   <none>        80/TCP     3m9s
+service/nyx-postgres   ClusterIP   10.43.142.39    <none>        5432/TCP   3m9s
+
+### passo 2: o estado do container, nao a fase do pod
+pod nyx-api-79c5f4d8d7-777ht
+  phase do POD : Running
+  container    : api  ready=False  restartCount=4
+  state        : waiting -> reason=CrashLoopBackOff msg=back-off 1m20s restarting failed container=api pod=nyx-api-79c5f4d8d7-777ht_nyx-prod(0fb89632-828d-42d4-b5c4-c539b9ae571a)
+  lastState    : terminated -> reason=OOMKilled exitCode=137
+pod nyx-api-79c5f4d8d7-zrwbb
+  phase do POD : Running
+  container    : api  ready=False  restartCount=4
+  state        : waiting -> reason=CrashLoopBackOff msg=back-off 1m20s restarting failed container=api pod=nyx-api-79c5f4d8d7-zrwbb_nyx-prod(94401e2e-0bf5-4785-8967-2734ef13b5d5)
+  lastState    : terminated -> reason=OOMKilled exitCode=137
