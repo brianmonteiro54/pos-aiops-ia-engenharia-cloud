@@ -25,7 +25,7 @@ projeto começou pelo código**.
 | Ticket | Entrega | Estado |
 |---|---|---|
 | **01** — [Padrão de manifests](ticket-01-padrao-de-manifests/) | skill que aplica as 19 regras do padrão da casa, nos modos escrita e conferência | **concluído** |
-| **02** — [Triagem de cluster](ticket-02-triagem-no-cluster/) | skill de triagem sobre `mcp-server-kubernetes` em modo não destrutivo, matriz de roteamento e medição com/sem skill | pendente |
+| **02** — [Triagem de cluster](ticket-02-triagem-no-cluster/) | skill de triagem sobre `mcp-server-kubernetes` em modo não destrutivo, matriz de roteamento e medição com/sem skill | **concluído** |
 | **03** — [Inventário e drift de VM](ticket-03-inventario-de-vm/) | ferramenta CLI que audita VM por SSH contra um baseline, com arco SDD completo | pendente |
 | **04** — [Dashboard do cluster](ticket-04-dashboard-do-cluster/) | aplicação local de leitura do cluster pelo kubeconfig, com arco SDD e 5 ADRs | pendente |
 
@@ -36,6 +36,8 @@ do repositório**:
 
 ```
 .kiro/skills/padrao-de-manifests-metacortex/     # Ticket 01
+.kiro/skills/triagem-de-cluster-metacortex/      # Ticket 02
+.kiro/settings/mcp.json                          # MCP em modo nao destrutivo
 ```
 
 Não é escolha de organização, é requisito do Kiro: ele descobre skills apenas em
@@ -57,6 +59,21 @@ invocações da ferramenta.
 Validada em duas frentes. Três testes cegos — sub-agentes que só podiam usar a skill, contra
 manifestos novos — acharam **15 defeitos** nela. E o confronto linha a linha com o anexo do
 padrão achou **três regras que eu havia inventado** e que não existem no texto da casa.
+
+## Ticket 02 em três linhas
+
+Método único de triagem, derivado do **sintoma relatado** em vez de uma ordem fixa de
+comandos — porque nenhuma fonte resolve os três chamados: os logs do primeiro estão vazios,
+o evento do segundo tem a causa inteira, e no terceiro tudo está verde e a resposta está na
+ausência de um campo.
+
+**Modo não destrutivo não é somente-leitura**: medi 23 ferramentas no default e 17 no modo
+restrito, e as 17 incluem sete que escrevem. A garantia de só-leitura é da skill, em três
+camadas, com uma quarta registrada como lacuna.
+
+E a skill **custou mais do que improvisar** — 8 e 12 chamadas contra 4 e 8 — acertando as
+mesmas causas. O que ela entregou a mais foi a fronteira da própria ignorância e a correção
+de dois relatos de cliente que estavam errados.
 
 ## Ambiente
 

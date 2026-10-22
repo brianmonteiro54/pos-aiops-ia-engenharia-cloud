@@ -10,26 +10,49 @@ Kubernetes costuma omitir o campo em vez de devolver lista vazia ou zero.**
 
 | Objeto | Campo | Quando não há nada |
 |---|---|---|
-| `Endpoints` | `subsets` | **não aparece.** Não vem `[]` |
-| `EndpointSlice` | `endpoints` | **não aparece** |
+| `Endpoints` | `subsets` | **a chave não aparece.** Não vem `[]` |
+| `EndpointSlice` | `endpoints` | **a chave aparece com valor `null`** |
+| `EndpointSlice` | `ports` | **a chave aparece com valor `null`** |
 | `Deployment` | `status.readyReplicas` | **não aparece.** Não vem `0` |
 | `Deployment` | `status.unavailableReplicas` | não aparece quando todas estão disponíveis |
 | `Pod` | `status.containerStatuses` | não aparece enquanto o pod está `Pending` |
 | container | `lastState` | vem como `{}` quando o container nunca morreu |
 
-Consequência prática:
+**Chave ausente e chave com `null` são dois jeitos diferentes de quebrar**, e `Endpoints` e
+`EndpointSlice` fazem um cada. Medido no mesmo Service sem endpoint:
+
+```
+Endpoints      chaves de topo: ['apiVersion','kind','metadata']
+                               -> 'subsets' NAO esta na lista
+
+EndpointSlice  chaves de topo: ['addressType','apiVersion','endpoints','kind',
+                                'metadata','ports']
+                               -> 'endpoints' esta na lista, com valor None
+```
+
+Consequência prática — só uma das três formas abaixo sobrevive aos dois:
 
 ```python
-# quebra com KeyError quando o Service nao tem endpoint —
-# que e exatamente o caso que voce esta investigando
-len(ep["subsets"])
+len(ep["subsets"])                  # KeyError no Endpoints
+len(sl.get("endpoints", []))         # TypeError no EndpointSlice: len(None)
+len(x.get("endpoints") or [])        # certo nos dois
 
-# certo
-len(ep.get("subsets") or [])
-
-# o mesmo para replicas prontas
-ready = dep["status"].get("readyReplicas", 0)
+ready = dep["status"].get("readyReplicas") or 0   # certo
 ```
+
+Cuidado com o `or` ao **rotular** em vez de contar: `valor or "AUSENTE"` imprime `AUSENTE`
+tanto para chave ausente quanto para `[]` e para `None`, porque os três são falsy. Para
+distinguir, teste a presença da chave:
+
+```python
+"endpoints" in sl                    # a chave existe?
+sl.get("endpoints") is None          # existe e esta nula?
+```
+
+Este erro é documentado porque eu o cometi: o script que coletou a evidência deste ticket
+usou `or "AUSENTE"` e rotulou o `EndpointSlice` como campo ausente quando a chave estava
+presente e nula. A conclusão da triagem não mudou — zero endpoint nos dois casos —, mas a
+regra que eu escrevi aqui estava errada até um teste cego medir de novo.
 
 Na triagem, o efeito é pior que um erro: código que falha ao ler o caso quebrado faz a
 ferramenta parecer que o cluster está bem.
@@ -107,6 +130,9 @@ controlador.
 Para triagem, consulte os dois: se divergirem, há problema no controlador de endpoints, o
 que é causa em si. A ligação do slice com o Service é o rótulo
 `kubernetes.io/service-name`, não o nome do objeto.
+
+**Os dois sinalizam "sem endpoint" de formas diferentes** — ver a primeira seção. Não use a
+presença da chave como teste; use o conteúdo normalizado com `or []`.
 
 ## "Pronto" não significa "saudável"
 

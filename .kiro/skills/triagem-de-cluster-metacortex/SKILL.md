@@ -26,36 +26,46 @@ metadata:
 # Triagem de cluster — método da Metacortex
 
 Antes deste método, cada plantonista começava por um lugar diferente: um pelos logs, outro
-pelos eventos. Os dois caminhos funcionam em parte dos chamados e falham no resto —
-medido, não suposto. Ver `references/por-que-a-ordem-importa.md`.
+pelos eventos. Os dois caminhos funcionam em parte dos chamados e falham no resto — medido,
+não suposto.
+
+> **Não leia as `references/` para triar.** Elas não são passo do método: a de cobertura
+> contém a **solução trabalhada** de três chamados específicos, com namespace, causa e valor.
+> Lida antes de uma triagem desses mesmos casos, ela entrega a resposta e você para de
+> investigar. Consulte-as quando alguém **contestar** o método, ou quando precisar da regra
+> exata de leitura de um campo da API. O método do corpo é autossuficiente.
 
 ## O limite, antes do método
 
 **Esta skill só lê o cluster.** Identificada a causa, a triagem acabou. Nenhuma correção é
 aplicada, **nem quando a ferramenta permite** — e ela permite.
 
-As únicas ferramentas que você pode usar:
+O servidor expõe **17 ferramentas** em modo não destrutivo. A lista abaixo classifica
+**todas as 17** — se aparecer uma que não está aqui, o servidor mudou de versão e a lista
+precisa ser revista antes de você usá-la.
 
-| Permitida | Para quê |
+| Permitidas (5) | Para quê |
 |---|---|
 | `kubectl_get` | o estado dos objetos |
-| `kubectl_describe` | eventos do objeto e detalhe que o `get` não traz |
-| `kubectl_logs` | saída da aplicação, inclusive `--previous` |
-| `list_api_resources`, `explain_resource` | descobrir o que existe no cluster |
-| `ping` | confirmar que há conexão |
+| `kubectl_describe` | **eventos** do objeto e detalhe que o `get` não traz |
+| `kubectl_logs` | saída da aplicação, inclusive a encarnação anterior |
+| `list_api_resources` | descobrir que tipos existem neste cluster |
+| `explain_resource` | o schema de um tipo |
 
-**Proibidas, mesmo estando disponíveis no servidor MCP:** `kubectl_apply`,
-`kubectl_create`, `kubectl_patch`, `kubectl_scale`, `kubectl_rollout`,
-`install_helm_chart`, `upgrade_helm_chart`, `port_forward`.
+| Proibidas (12) | Por quê |
+|---|---|
+| `kubectl_apply`, `kubectl_create`, `kubectl_patch`, `kubectl_scale`, `kubectl_rollout` | **escrevem no cluster** |
+| `install_helm_chart`, `upgrade_helm_chart` | **escrevem no cluster** |
+| `port_forward`, `stop_port_forward` | abrem túnel para dentro do cluster e não respondem nada que `get` e `describe` não respondam |
+| `kubectl_context` | **troca o cluster-alvo.** Triagem no cluster errado é pior que nenhuma |
+| `kubectl_reconnect` | muda estado do cliente; se a conexão caiu, isso é achado, não coisa a consertar |
+| `ping` | retorna conteúdo vazio com código 0. Sucesso em branco é indistinguível de no-op — não informa nada |
 
 O modo não destrutivo remove `kubectl_delete`, `kubectl_generic`, `exec_in_pod`,
-`cleanup`, `node_management` e `uninstall_helm_chart` — e deixa as sete primeiras da lista
-acima, que **escrevem no cluster**. Se você sentir vontade de rodar `kubectl_patch` para
-subir um limite de memória, é sinal de que a triagem já acabou: a causa está identificada e
-o conserto é de outra pessoa, com outro contexto.
-
-Também não use `port_forward`: ele não altera objeto, mas abre túnel para dentro do cluster
-e não responde nenhuma pergunta de triagem que `get` e `describe` não respondam.
+`cleanup`, `node_management` e `uninstall_helm_chart`. **E deixa sete que escrevem.** Se
+você sentir vontade de rodar `kubectl_patch` para subir um limite de memória, é sinal de que
+a triagem já acabou: a causa está identificada e o conserto é de outra pessoa, com outro
+contexto.
 
 ## Passo 1 — do sintoma para a camada
 
@@ -67,9 +77,29 @@ provavelmente está, e é o primeiro galho:
 | "reinicia sozinho", "fica de pé e cai", `CrashLoopBackOff`, `OOMKilled` | **container** | passo 3 |
 | "não sobe", "a versão nova não entrou", `ImagePullBackOff`, `Pending`, rollout travado | **imagem e agendamento** | passo 4 |
 | "está de pé mas ninguém chega", 503, timeout, "subiu mas não responde" | **rede** | passo 5 |
-| sintoma vago, "está fora do ar", ou nenhum dos acima | — | passo 2 e deixe o retrato decidir |
+| sintoma vago, "está fora do ar", ou nenhum dos acima | — | deixe o retrato do passo 2 decidir |
 
-Se o sintoma não disser a camada, o passo 2 diz.
+**O passo 2 é sempre o primeiro comando, qualquer que seja a camada.** A tabela acima diz
+para onde ir *depois* dele, não que ele pode ser pulado — é do retrato que saem os nomes
+dos objetos que os passos seguintes precisam.
+
+## Regra de leitura do MCP, antes de qualquer comando
+
+**`output: "json"` em modo LISTA devolve resumo, não o objeto da API.** Medido neste
+servidor:
+
+```
+kubectl_get {"resourceType":"pods","namespace":"nyx-prod","output":"json"}
+  -> cada item traz so: name, namespace, kind, status, createdAt
+
+kubectl_get {"resourceType":"pod","name":"<nome>","namespace":"nyx-prod","output":"json"}
+  -> objeto cru: apiVersion, kind, metadata, spec, status
+     e e aqui que vive status.containerStatuses[].lastState
+```
+
+Então o padrão de uso é **dois passos**: a lista para descobrir os nomes, o singular com
+`name` para ler o objeto. Pedir `output: json` numa lista e esperar `containerStatuses`
+desperdiça uma chamada — foi o erro mais caro na primeira execução desta skill.
 
 ## Passo 2 — o retrato do namespace, sempre
 
@@ -91,8 +121,11 @@ da Metacortex é `<cliente>-<ambiente>`, então "o nyx de produção" é `nyx-pr
 ## Passo 3 — camada do container
 
 ```
-kubectl_get  resourceType=pods  namespace=<ns>  output=json
+kubectl_get {"resourceType":"pod","name":"<pod-do-retrato>","namespace":"<ns>","output":"json"}
 ```
+
+**No singular, com `name`** — a lista não traz `containerStatuses`. Os nomes dos pods saem
+do retrato do passo 2.
 
 E leia **o status do container**, não a fase do pod. Três distinções que decidem o caso:
 
@@ -158,9 +191,23 @@ Failed to pull image "...:v1.14.2": rpc error: code = NotFound
 | `unauthorized`, `authentication required` | credencial de registry ausente ou errada |
 | `dial tcp`, `i/o timeout` | rede do nó até o registry |
 
-Para o primeiro caso, confirme fora do cluster: a tag existe no registry? Na Metacortex
-toda imagem vem de `registry.metacortex.io`, publicada pelo **Loom** — uma tag anunciada
-num release e nunca publicada é causa recorrente.
+**Você consegue descartar dois dos três sem sair do cluster**, e isso importa porque o MCP
+não tem ferramenta de registry:
+
+| Descartar | Como, por dentro |
+|---|---|
+| credencial | `spec.template.spec.imagePullSecrets` ausente **e** mensagem `NotFound` em vez de `unauthorized`. Repositório público não usa credencial |
+| rede do nó | procure outro pod **no mesmo nó** que tenha puxado do **mesmo registry** com `imageID` preenchido. Se existe, o nó alcança o registry. Cuidado: pod em outro nó não prova nada |
+
+Sobra a tag inexistente, e a mensagem `not found` do runtime **é a resposta do registry
+chegando pelo kubelet** — evidência indireta, mas forte. Se puder confirmar a lista de tags
+fora do cluster, confirme; se não, **declare como não verificado** em vez de afirmar.
+
+Qual registry esperar: o padrão da casa é `registry.metacortex.io`, publicado pelo **Loom**.
+Mas **confira o que o manifesto de fato usa** — `spec.containers[].image` — antes de
+procurar num registry que este workload não consome. Imagem apontando para registry público
+é, por si, violação da regra 3.7 do padrão de manifests, e vale registrar no relatório como
+achado lateral.
 
 **Pod `Pending` sem evento de imagem** é agendamento, não imagem. Aí o `describe` traz
 `FailedScheduling` com o motivo: recurso insuficiente, `nodeSelector` sem nó, taint sem
@@ -171,9 +218,11 @@ toleration.
 Quando o relato é "a versão nova não entrou", meça **quanto o cliente está sendo afetado**:
 
 ```
-kubectl_get  resourceType=deployments  namespace=<ns>  output=json
-kubectl_get  resourceType=replicasets  namespace=<ns>
+kubectl_get {"resourceType":"deployment","name":"<nome>","namespace":"<ns>","output":"json"}
+kubectl_get {"resourceType":"replicasets","namespace":"<ns>"}
 ```
+
+O Deployment **no singular**, senão `status` não vem.
 
 - `spec.replicas` x `status.readyReplicas` — quantas servem de fato
 - `status.unavailableReplicas` e `conditions[].reason` (`MinimumReplicasUnavailable`,
@@ -195,16 +244,20 @@ não há problema.
 A pergunta é uma só: **o Service tem endpoint?**
 
 ```
-kubectl_get  resourceType=endpoints  name=<svc>  namespace=<ns>  output=json
+kubectl_get {"resourceType":"endpoints","name":"<svc>","namespace":"<ns>","output":"json"}
+kubectl_get {"resourceType":"endpointslices","namespace":"<ns>"}
 ```
 
-**`subsets` ausente significa nenhum endpoint.** O campo não vem como lista vazia — ele não
-aparece na resposta. Código que faz `len(ep["subsets"])` quebra com `KeyError` em vez de
-reportar "sem endpoint". Confira também o `EndpointSlice`, que é o substituto:
+**Os dois sinalizam "nenhum endpoint" de formas diferentes**, e nenhuma delas é lista vazia:
 
-```
-kubectl_get  resourceType=endpointslices  namespace=<ns>
-```
+| Objeto | Sem endpoint |
+|---|---|
+| `Endpoints` | a chave `subsets` **não aparece** na resposta |
+| `EndpointSlice` | a chave `endpoints` **aparece com valor `null`** |
+
+Não teste a presença da chave. `len(x.get("endpoints") or [])` funciona nos dois;
+`len(x["subsets"])` dá `KeyError` e `len(x.get("endpoints", []))` dá `TypeError`. Detalhe em
+`references/leitura-da-api.md`.
 
 Sem endpoint, cruze seletor com rótulo — e **distinga os dois seletores**, porque são dois
 objetos, dois erros e dois consertos:
@@ -215,13 +268,26 @@ objetos, dois erros e dois consertos:
 | Deployment | `spec.selector.matchLabels` | o controlador não governa os próprios pods |
 
 ```
-kubectl_get  resourceType=services    name=<svc>  namespace=<ns>  output=json
-kubectl_get  resourceType=pods        namespace=<ns>  output=json
+kubectl_get {"resourceType":"service","name":"<svc>","namespace":"<ns>","output":"json"}
+kubectl_get {"resourceType":"pod","name":"<pod>","namespace":"<ns>","output":"json"}
 ```
 
 Compare `service.spec.selector` com `pod.metadata.labels` **caractere por caractere**. Um
-hífen de diferença é a causa mais comum do parque. Confirme pelos dois lados: um
-`kubectl_get` de pods filtrando pelo seletor do Service deve devolver **nenhum** pod.
+hífen de diferença é a causa mais comum do parque.
+
+Confirme pelos dois lados, com `labelSelector`:
+
+```
+kubectl_get {"resourceType":"pods","namespace":"<ns>","labelSelector":"<seletor do Service>"}
+   -> deve devolver NENHUM pod
+
+kubectl_get {"resourceType":"pods","namespace":"<ns>","labelSelector":"<rotulo do pod>"}
+   -> deve devolver os pods
+```
+
+**A segunda chamada não é redundante, é controle.** `items: []` na primeira é ambíguo: pode
+ser "nenhum pod casa" ou "o servidor ignorou o parâmetro". Só o contraste prova que o filtro
+está ativo e que o vazio é resultado.
 
 Se o seletor casa e ainda não há endpoint, desça para:
 
@@ -232,14 +298,37 @@ Se o seletor casa e ainda não há endpoint, desça para:
 - **NetworkPolicy**: `kubectl_get resourceType=networkpolicies` — seletor certo e endpoint
   presente, mas tráfego bloqueado
 
+### A borda, quando o sintoma é 503
+
+**Um `ClusterIP` sem endpoint não devolve 503** — ele recusa conexão ou estoura timeout. O
+texto 503 vem de um proxy que procurou backend saudável e não achou. Então "503 de fora"
+tem duas partes: a **condição** (zero endpoint, que você acabou de achar) e o **tradutor**
+(a borda, que transformou isso em 503).
+
+```
+kubectl_get {"resourceType":"ingress","allNamespaces":true}
+```
+
+Se houver Ingress, o `spec.rules[].backend` diz qual Service a borda procura — e pode ser
+outro que não o que você investigou. Se **não** houver nenhum, a borda está fora do alcance
+do MCP: balanceador ou reverse proxy externo ao cluster.
+
+Nos dois casos, zero endpoint explica inteiramente o "ninguém chega". **Diga no relatório
+que o código 503 específico vem de uma camada que você não enxerga**, em vez de atribuí-lo
+ao Service.
+
 ### O que você não pode fazer aqui
 
-Na triagem manual eu confirmei que a aplicação respondia com `kubectl exec ... wget
-localhost:8080/health`. **`exec_in_pod` não existe em modo não destrutivo**, e
-`port_forward` é proibido por esta skill. Então a prova de que a aplicação responde é
-indireta: `ready=True` significa que a readinessProbe passou, e a readinessProbe é uma
-requisição HTTP real feita pelo kubelet. Diga isso no relatório em vez de afirmar que
-testou o endpoint.
+Na triagem manual que originou esta skill eu confirmei que a aplicação respondia com
+`kubectl exec ... wget localhost:8080/health`. **`exec_in_pod` não existe em modo não
+destrutivo**, e `port_forward` é proibido por esta skill.
+
+Então a prova de que a aplicação responde é **indireta**: `ready=True` significa que a
+readinessProbe passou, e a readinessProbe é uma requisição HTTP real feita pelo kubelet
+contra a aplicação. Leia qual endpoint ela usa em
+`spec.containers[].readinessProbe.httpGet.path` e cite no relatório.
+
+Não é o mesmo que ter recebido 200 você mesmo. **Diga qual das duas coisas você tem.**
 
 ## Passo 6 — quando parar, e o que entregar
 
@@ -266,7 +355,8 @@ pessoa roda, não a execução dele.
 
 - `references/por-que-a-ordem-importa.md` — a medição dos três chamados que produziu esta
   ordem, com a tabela de qual fonte resolve e qual engana em cada camada. Consulte quando
-  alguém propuser "sempre comece pelos logs".
+  alguém propuser "sempre comece pelos logs". **Contém solução trabalhada: não leia antes de
+  triar um caso parecido.**
 - `references/leitura-da-api.md` — os campos que o Kubernetes **não devolve** quando são
   vazios, e os que mudam de lugar entre pod e container. Consulte ao escrever código ou ao
   interpretar JSON cru.
