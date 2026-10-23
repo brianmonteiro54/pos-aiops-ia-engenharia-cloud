@@ -1,0 +1,96 @@
+Validação do Ticket 04 — cluster-retrato
+data: 2026-10-23T10:15:53-03:00
+kubectl: v1.33.13
+python: Python 3.10.12
+
+=== CA-08 — nenhum caminho do código executa verbo de escrita
+  [ok]     varredura do fonte: CA-08 ok: nenhum verbo de escrita no fonte, subprocesso confinado a _kubectl
+  [ok]     testes de unidade: Ran 41 tests OK
+
+=== CA-01 — os seis itens do RF-02 contra o cluster real
+  [ok]     seção Namespaces presente
+  [ok]     seção Pods presente
+  [ok]     seção Deployments presente
+  [ok]     seção Services presente
+  [ok]     seção Eventos presente
+  [ok]     filtro por namespace e busca por nome
+  [ok]     hora da coleta no cabeçalho
+  [ok]     contexto corrente no cabeçalho
+  [ok]     fonte dos endpoints declarada
+  [ok]     contagem de quebrados por namespace
+
+=== CA-01b — a tela responde por HTTP, em loopback por padrão
+  [ok]     escutando em 127.0.0.1 (loopback) por padrão
+  [ok]     GET / respondeu 200
+  [ok]     filtro da query string aplicado (só pod com 'api')
+  [ok]     filtro excluiu o que não casa (postgres fora)
+
+=== CA-02 — readyReplicas ausente aparece como 0/N, não como erro
+  [ok]     deployment nyx-api em 0/2
+  [ok]     deployment saudável em 1/1
+  [ok]     nenhum rastro de exceção
+
+=== CA-03 — Service por endpoints prontos/total, nos dois modos de vazio
+  [ok]     nyx-prod/nyx-api: 0/2, endpoints existem e não servem
+  [ok]     nyx-stg/nyx-api: 0/0, selector não casa
+  [ok]     chave ausente e chave nula não quebraram
+
+=== CA-04 — CrashLoopBackOff com OOMKilled, apesar de phase: Running
+  [ok]     estado e causa juntos na mesma linha
+  [ok]     ImagePullBackOff em orion-stg
+  [ok]     a tag errada aparece no evento
+
+=== RF-03 — prontidão presumida é marcada como presumida
+  [ok]     pod pronto sem probe é marcado
+  [ok]     a ressalva é explicada
+
+=== CA-05 — cluster que não responde
+  [ok]     [fora] rótulo cluster_inacessivel
+  [ok]     [fora] mensagem explica
+  [ok]     [fora] sem rastro de exceção
+  [ok]     [fora] cabeçalho ainda presente
+  [ok]     [fora] sem ruído de diagnóstico do kubectl
+  [ok]     [blackhole] rótulo cluster_inacessivel
+  [ok]     [blackhole] mensagem explica
+  [ok]     [blackhole] sem rastro de exceção
+  [ok]     [blackhole] cabeçalho ainda presente
+  [ok]     [blackhole] sem ruído de diagnóstico do kubectl
+  [ok]     nenhum processo kubectl órfão após os estouros
+
+=== CA-06 — credencial rejeitada, distinguível de cluster fora
+  [ok]     [token-invalido] rótulo credencial_rejeitada
+  [ok]     [token-invalido] não foi confundido com cluster fora
+  [ok]     [token-invalido] sem rastro de exceção
+  [ok]     [token-expirado] rótulo credencial_rejeitada
+  [ok]     [token-expirado] não foi confundido com cluster fora
+  [ok]     [token-expirado] sem rastro de exceção
+  [ok]     [cert-expirado] rótulo credencial_rejeitada
+  [ok]     [cert-expirado] não foi confundido com cluster fora
+  [ok]     [cert-expirado] sem rastro de exceção
+  [ok]     [exec-falha] rótulo credencial_expirada
+  [ok]     [exec-falha] não foi confundido com cluster fora
+  [ok]     [exec-falha] sem rastro de exceção
+  [ok]     [exec-ausente] rótulo plugin_ausente
+  [ok]     [exec-ausente] não foi confundido com cluster fora
+  [ok]     [exec-ausente] sem rastro de exceção
+  [ok]     401 NÃO é afirmado como expiração
+  [ok]     expiração É afirmada quando o provedor informa
+
+=== CA-07 — permissão negada em um tipo, os outros seguem na tela
+  [ok]     eventos aparecem como negados
+  [ok]     o usuário negado é identificado
+  [ok]     a tela diz que o resto vale
+  [ok]     pods continuam preenchidos
+  [ok]     deployments continuam
+  [ok]     services continuam
+  [ok]     namespaces continuam
+  [ok]     a falha NÃO derrubou a tela
+  [ok]     sem rastro de exceção
+
+=== RE-01 — exposição na rede avisa que não há autenticação
+  [ok]     aviso de ausência de autenticação
+  [ok]     aviso nomeia o endereço
+
+=========================================
+ok: 66   falhou: 0
+=========================================

@@ -117,7 +117,7 @@ Evento é objeto próprio, com `involvedObject` apontando para o alvo. Dois efei
 |---|---|---|
 | `OOMKilled` | `lastState.terminated.reason` | log (vazio), evento (só `BackOff`) |
 | tag inexistente | evento do kubelet: `not found` | log (BadRequest, não há container) |
-| Service sem endpoint | ausência de `subsets` | log, evento, status do container |
+| Service sem endpoint **pronto** | `conditions.ready`, ou ausência de `subsets` | log, evento, status do container |
 | erro da aplicação | **log**, `exitCode: 1` | evento |
 | pod não agendável | `conditions[].reason`, evento `FailedScheduling` | log, `containerStatuses` |
 
@@ -133,6 +133,25 @@ que é causa em si. A ligação do slice com o Service é o rótulo
 
 **Os dois sinalizam "sem endpoint" de formas diferentes** — ver a primeira seção. Não use a
 presença da chave como teste; use o conteúdo normalizado com `or []`.
+
+### Contar endpoints não é contar endpoints prontos
+
+Correção vinda do Ticket 04. Endpoint **existir** e endpoint **servir** são coisas
+diferentes, e só a segunda responde "por que não responde":
+
+| Fonte | Prontos | Não prontos |
+|---|---|---|
+| `EndpointSlice` | `conditions.ready is True` | `ready: false`, e `terminating` separado |
+| `Endpoints` | `subsets[].addresses` | `subsets[].notReadyAddresses` |
+
+Num Service com 3 pods em `ImagePullBackOff`, `subsets` **está presente** e
+`len(subsets)` devolve 1 — um subset, com 3 endereços não prontos. Quem conta subsets ou
+conta endpoints conclui "tem endpoint" e segue adiante. A conta certa é
+`0 de 3 prontos`.
+
+`EndpointSlice` distingue `ready`, `serving` e `terminating`; `Endpoints` só separa pronto
+de não-pronto, sem a noção de terminando. Durante um rollout essa é a diferença entre um
+alarme e um não-evento.
 
 ## "Pronto" não significa "saudável"
 

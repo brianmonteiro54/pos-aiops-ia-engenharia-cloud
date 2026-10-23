@@ -241,16 +241,32 @@ Sinal: pods prontos, container são, e o cliente sem resposta. **É o caso mais 
 porque as fontes dos passos 3 e 4 não apontam nada** e uma triagem que pare ali conclui que
 não há problema.
 
-A pergunta é uma só: **o Service tem endpoint?**
+A pergunta é **quantos endpoints prontos o Service tem** — não se ele tem endpoint.
 
 ```
 kubectl_get {"resourceType":"endpoints","name":"<svc>","namespace":"<ns>","output":"json"}
 kubectl_get {"resourceType":"endpointslices","namespace":"<ns>"}
 ```
 
+> **Correção vinda do Ticket 04.** A versão anterior desta skill perguntava "o Service tem
+> endpoint?". A pergunta de sim-ou-não acerta este passo e **erra os passos 3 e 4**, porque
+> um Service cujos pods estão em `CrashLoopBackOff` ou `ImagePullBackOff` **tem** endpoints:
+> eles existem e não servem. Medido nos quatro estados do cluster de laboratório:
+>
+> | Sintoma | `Endpoints` | `EndpointSlice` | `len()` responde |
+> |---|---|---|---|
+> | saudável | `subsets` com `addresses` | 1 endpoint `ready: true` | 1 — certo |
+> | **selector não casa** | chave `subsets` **ausente** | chave presente, valor `null` | 0 — certo |
+> | **`CrashLoopBackOff`** | `subsets` **presente**, 2 em `notReadyAddresses` | 2 endpoints `ready: false` | **2 — errado** |
+> | **`ImagePullBackOff`** | `subsets` **presente**, 3 em `notReadyAddresses` | 3 endpoints `ready: false` | **3 — errado** |
+>
+> Conte prontos: `conditions.ready` no `EndpointSlice`, ou só `addresses` (nunca
+> `notReadyAddresses`) no `Endpoints`. E note que `0/0` e `0/3` contam histórias
+> diferentes: o primeiro é selector que não casa, o segundo é pod que existe e não sobe.
+
 **Os dois sinalizam "nenhum endpoint" de formas diferentes**, e nenhuma delas é lista vazia:
 
-| Objeto | Sem endpoint |
+| Objeto | Sem endpoint nenhum |
 |---|---|
 | `Endpoints` | a chave `subsets` **não aparece** na resposta |
 | `EndpointSlice` | a chave `endpoints` **aparece com valor `null`** |

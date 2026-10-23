@@ -1,0 +1,13 @@
+Medição dos modos de falha — kubectl v1.33.13
+data: 2026-10-23T09:58:53-03:00
+
+MODO                   EXIT   PRIMEIRA LINHA ÚTIL DO STDERR
+----                   ----   -----------------------------
+fora                   1      The connection to the server 127.0.0.1:59999 was refused - did you specify the right host or port?
+blackhole              1      Unable to connect to the server: context deadline exceeded
+token-invalido         1      error: You must be logged in to the server (Unauthorized)
+token-expirado         1      error: You must be logged in to the server (Unauthorized)
+cert-expirado          1      error: You must be logged in to the server (Unauthorized)
+exec-falha             1      could not get token: ExpiredTokenException: the security token included in the request is expired
+exec-ausente           1      Unable to connect to the server: getting credentials: exec: executable aws-iam-authenticator-que-nao-existe no
+permissao-negada       1      Error from server (Forbidden): events is forbidden: User "system:serviceaccount:default:retrato-restrito" cann

@@ -27,7 +27,7 @@ projeto começou pelo código**.
 | **01** — [Padrão de manifests](ticket-01-padrao-de-manifests/) | skill que aplica as 19 regras do padrão da casa, nos modos escrita e conferência | **concluído** |
 | **02** — [Triagem de cluster](ticket-02-triagem-no-cluster/) | skill de triagem sobre `mcp-server-kubernetes` em modo não destrutivo, matriz de roteamento e medição com/sem skill | **concluído** |
 | **03** — [Inventário e drift de VM](ticket-03-inventario-de-vm/) | ferramenta CLI que audita VM por SSH contra um baseline, com arco SDD completo | **concluído** |
-| **04** — [Dashboard do cluster](ticket-04-dashboard-do-cluster/) | aplicação local de leitura do cluster pelo kubeconfig, com arco SDD e 5 ADRs | pendente |
+| **04** — [Dashboard do cluster](ticket-04-dashboard-do-cluster/) | aplicação local de leitura do cluster pelo kubeconfig, com arco SDD e 5 ADRs | **concluído** |
 
 ## Onde as skills ficam, e por quê
 
@@ -74,6 +74,38 @@ camadas, com uma quarta registrada como lacuna.
 E a skill **custou mais do que improvisar** — 8 e 12 chamadas contra 4 e 8 — acertando as
 mesmas causas. O que ela entregou a mais foi a fronteira da própria ignorância e a correção
 de dois relatos de cliente que estavam errados.
+
+## Ticket 03 em três linhas
+
+`roster-inventario`: audita VM por SSH contra um baseline, com arco SDD completo e ciclo
+OpenSpec arquivado. O transporte é o `ssh` do sistema como subprocesso — não paramiko —
+para que `~/.ssh/config` com `ProxyJump` continue valendo e para não ter um segundo cliente
+SSH a auditar.
+
+A decisão menos confortável do projeto é o terceiro veredito: **`nao_verificado` com
+motivo**, em vez de abortar, mentir "conforme" ou inventar "desvio". Código de saída `0`,
+porque dado que não pôde ser coletado não é falha de conformidade.
+
+**Dois baselines**, porque o laboratório não consegue provar duas das regras: `baseline.yaml`
+para o parque e `baseline-laboratorio.yaml` sem kernel e swap. O CA-01 é validado nas duas
+pontas — zero desvios contra o do laboratório, **exatamente 2** contra o do parque.
+
+## Ticket 04 em três linhas
+
+`cluster-retrato`: lê seis tipos de recurso do cluster corrente e monta o retrato numa tela,
+sem dependência nenhuma. A garantia de só-leitura é **verificável**: lista branca de
+comandos num ponto único e um teste que varre o próprio fonte por AST — que, na primeira
+execução, **pegou um literal dentro do próprio auditor**.
+
+Três coisas que eu havia escrito e a medição desmentiu: `--request-timeout` **não** limita o
+comando (70s virando 25s contra IP não roteável); **"credencial expirada" não é afirmável**,
+porque token inválido, JWT expirado e certificado expirado dão a mesma linha; e **contar
+endpoints responde a pergunta errada**, porque pod em `CrashLoopBackOff` tem endpoint — ele
+só não serve.
+
+O registro das skills tem a resposta que o ticket pediu e que eu não poderia fabricar:
+**nenhuma skill foi carregada neste ticket**, e isso é verificável dos dois lados — 14
+`SKILL.md` no disco, zero num caminho que o runtime varre.
 
 ## Ambiente
 
