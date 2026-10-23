@@ -23,24 +23,24 @@ honesto de custo aqui**: cada uma é uma ida ao apiserver e uma resposta entrand
 
 Também **não medi tokens de verdade.** Não tenho acesso à contabilidade de tokens de um
 sub-agente. O que tenho é o número de chamadas e o volume do que elas devolvem, que é
-proporcional — mas é proxy, e digo isso em vez de inventar um número.
+proporcional, mas é proxy, e digo isso em vez de inventar um número.
 
 ## O custo
 
 | Chamado | Com skill | Sem skill | Diferença |
 |---|---|---|---|
-| **1** — `nyx-prod`, OOMKilled | **8** chamadas | **4** chamadas | a skill custou **2x** |
-| **3** — `nyx-stg`, sem endpoint | **12** chamadas | **8** chamadas | a skill custou **1,5x** |
+| **1**: `nyx-prod`, OOMKilled | **8** chamadas | **4** chamadas | a skill custou **2x** |
+| **3**: `nyx-stg`, sem endpoint | **12** chamadas | **8** chamadas | a skill custou **1,5x** |
 | chamadas sem retorno útil | 2 e 1 | 2 e 3 | empate técnico |
 
-Somando o corpo do `SKILL.md` que carrega a cada ativação — 248 linhas, ~2800 tokens — a
+Somando o corpo do `SKILL.md` que carrega a cada ativação (248 linhas, ~2800 tokens) a
 skill é claramente mais cara. **E ela chegou depois.**
 
 ### Por que custou mais, decomposto
 
 **Metade da diferença foi defeito meu, e já está corrigido.** Duas das oito chamadas do
 chamado 1 foram desperdiçadas porque a skill prescrevia
-`kubectl_get resourceType=pods output=json` esperando `containerStatuses` — e neste servidor
+`kubectl_get resourceType=pods output=json` esperando `containerStatuses`: e neste servidor
 MCP a lista devolve um resumo de cinco campos. Eu escrevi o método contra a saída do
 `kubectl`, não contra a do MCP, que é o acesso que a própria skill determina. Hoje a skill
 manda usar o singular com `name`, e tem uma seção sobre isso antes do passo 1.
@@ -89,13 +89,13 @@ o campo exato.
 
 O relatório com skill registrou, por chamado, o que **não** conseguiu verificar:
 
-- quanto de memória o kube-news precisa de fato — `kubectl_top` não existe entre as 17
+- quanto de memória o kube-news precisa de fato: `kubectl_top` não existe entre as 17
   ferramentas, então "24Mi não basta" é afirmável e "256Mi basta" não é
-- a lista de tags do registry — o MCP não tem ferramenta de registry
-- **que a aplicação responde HTTP** — `exec_in_pod` não existe em modo não destrutivo, então
+- a lista de tags do registry: o MCP não tem ferramenta de registry
+- **que a aplicação responde HTTP**: `exec_in_pod` não existe em modo não destrutivo, então
   a prova é indireta: `ready=True` significa que a readinessProbe passou, e ela é uma
   requisição real feita pelo kubelet. Não é o mesmo que ter recebido 200
-- quem emite o 503 — sem Ingress no cluster, a borda está fora do alcance
+- quem emite o 503, sem Ingress no cluster, a borda está fora do alcance
 
 O relatório sem skill não tem essa seção. Ele afirma "proxy/ingress devolve 503" como parte
 da causa, tendo confirmado nas próprias chamadas que **não existe Ingress em namespace
@@ -110,23 +110,23 @@ Os dois relatos têm afirmação falsa, e a skill as pegou de forma sistemática
 | O cliente disse | O cluster diz |
 |---|---|
 | "mudou os limites do **namespace inteiro** de uma vez" | não existe `LimitRange` em `nyx-prod`, e o Postgres está com `resources: {}`. O 24Mi está no template do `Deployment/nyx-api` e só ali |
-| "o pod nunca foi substituído" (chamado 2) | não existe ReplicaSet anterior. `revision: 1`, única. Não é "a nova não entrou", é **"a loja está fora"** — 0 de 3 |
+| "o pod nunca foi substituído" (chamado 2) | não existe ReplicaSet anterior. `revision: 1`, única. Não é "a nova não entrou", é **"a loja está fora"**: 0 de 3 |
 
 A segunda muda a urgência do chamado. O executor sem skill também achou a questão do
-`LimitRange`, gastando uma chamada que ele mesmo classificou como caminho errado — a skill
+`LimitRange`, gastando uma chamada que ele mesmo classificou como caminho errado: a skill
 transforma isso em achado deliberado em vez de subproduto.
 
 ### A skill desarmou a armadilha, e sem ela o risco é concreto
 
-No chamado 3 os pods têm `restartCount: 2` com `lastState.terminated.exitCode: 1` — falha
+No chamado 3 os pods têm `restartCount: 2` com `lastState.terminated.exitCode: 1`: falha
 **já curada**, a aplicação subiu antes do Postgres aceitar conexão.
 
 O executor **sem** skill registrou: *"distração do Terminated/Error/exit 1 no pod stg
 (boot antes do Postgres, descartado sem custo)"*. Descartou, e sem gastar chamada. Mérito
 dele.
 
-O executor **com** skill tinha a regra escrita — `state: running` significa que `lastState`
-é história — e também não caiu.
+O executor **com** skill tinha a regra escrita (`state: running` significa que `lastState`
+é história) e também não caiu.
 
 **Então a armadilha não pegou ninguém, e eu não posso usá-la como prova de valor da skill.**
 O que posso dizer é o que o próprio executor com skill escreveu: `exitCode: 1` é o único
@@ -151,14 +151,13 @@ não contra o MCP. Metade do custo extra era isso.
 
 **O que eu faria diferente no teste:** medir um chamado que **nenhum** dos dois tenha visto
 documentado. O executor com skill apontou, por conta própria, que
-`references/por-que-a-ordem-importa.md` é a solução trabalhada destes mesmos três chamados —
-com namespace, causa e valor — e que a skill mandava ler antes de triar. Ele leu, como
+`references/por-que-a-ordem-importa.md` é a solução trabalhada destes mesmos três chamados (com namespace, causa e valor) e que a skill mandava ler antes de triar. Ele leu, como
 instruído, e registrou que isso contamina o julgamento de "o método me levou direto".
 
 Está consertado na skill (as `references/` passaram a ser explicitamente fora do caminho de
 execução, com aviso de que contêm solução trabalhada), **mas a medição com skill foi feita
 antes do conserto.** Então o número de 8 e 12 chamadas é de um executor que já sabia as
-respostas. Provavelmente **otimista** — ele pode ter ido direto a campos que não teria
-adivinhado — e isso empurra o custo real da skill para cima, não para baixo.
+respostas. Provavelmente **otimista** (ele pode ter ido direto a campos que não teria
+adivinhado) e isso empurra o custo real da skill para cima, não para baixo.
 
 É a limitação mais séria desta medição, e foi o executor que a apontou, não eu.

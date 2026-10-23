@@ -4,8 +4,8 @@ Cliente MCP mínimo para o mcp-server-kubernetes, por stdio/JSON-RPC.
 
 POR QUE ISTO EXISTE
 -------------------
-A execução da skill de triagem precisa passar pelo transporte real — o servidor MCP em
-modo não destrutivo — e não por `kubectl` chamado direto. São coisas diferentes: o
+A execução da skill de triagem precisa passar pelo transporte real (o servidor MCP em
+modo não destrutivo) e não por `kubectl` chamado direto. São coisas diferentes: o
 servidor é quem decide quais ferramentas existem, e é essa decisão que o ticket pede para
 medir. Rodar `kubectl` e chamar de "execução da skill" mediria outra coisa.
 

@@ -52,7 +52,7 @@ e tela com atualização automática.
   tela, incluindo a normalização dos campos que o Kubernetes omite ou entrega como `null`,
   a extração do motivo real da falha de um pod, e a distinção entre prontidão verificada por
   probe e prontidão apenas presumida
-- `acesso-ao-cluster`: como a aplicação fala com a API do Kubernetes — o portão de verbos
+- `acesso-ao-cluster`: como a aplicação fala com a API do Kubernetes, o portão de verbos
   que torna a restrição de só-leitura verificável, os dois tetos de tempo que impedem a
   requisição pendurada, e a classificação das falhas de ambiente em mensagem que distingue
   cluster inacessível de credencial rejeitada de permissão negada

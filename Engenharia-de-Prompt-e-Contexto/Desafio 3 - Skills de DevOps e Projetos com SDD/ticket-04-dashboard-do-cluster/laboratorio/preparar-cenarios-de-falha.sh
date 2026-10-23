@@ -2,7 +2,7 @@
 # Prepara os cenários de falha de ambiente do RF-04 (CA-05, CA-06, CA-07).
 #
 # Gera kubeconfigs quebrados de propósito FORA do repositório, em ~/desafio03-lab/t04,
-# porque eles contêm token e chave privada de verdade — descartáveis, mas de verdade.
+# porque eles contêm token e chave privada de verdade: descartáveis, mas de verdade.
 # Nada aqui entra no git.
 set -euo pipefail
 
@@ -83,21 +83,21 @@ def monta(saida, user, cluster_cfg=None, ns=None):
     yaml.safe_dump(d, open(saida, "w"))
     os.chmod(saida, 0o600)
 
-# CA-05a — porta fechada: o pacote volta com RST, falha rápido
+# CA-05a: porta fechada: o pacote volta com RST, falha rápido
 fora = {k: v for k, v in srv.items()}
 fora["server"] = "https://127.0.0.1:59999"
 monta("kubeconfig-fora.yaml", usuario, fora)
 
-# CA-05b — IP não roteável: o pacote cai no vazio, kubectl TRAVA.
+# CA-05b: IP não roteável: o pacote cai no vazio, kubectl TRAVA.
 # É o cenário que prova que --request-timeout sozinho não basta.
 buraco = {k: v for k, v in srv.items()}
 buraco["server"] = "https://10.255.255.1:6443"
 monta("kubeconfig-blackhole.yaml", usuario, buraco)
 
-# CA-06a — token inválido
+# CA-06a: token inválido
 monta("kubeconfig-token-invalido.yaml", {"token": "token-de-mentira-que-nao-existe"})
 
-# CA-06b — JWT com exp no passado
+# CA-06b: JWT com exp no passado
 b64j = lambda o: base64.urlsafe_b64encode(json.dumps(o).encode()).decode().rstrip("=")
 agora = int(datetime.now(timezone.utc).timestamp())
 jwt_velho = ".".join([
@@ -107,7 +107,7 @@ jwt_velho = ".".join([
     "assinatura-invalida"])
 monta("kubeconfig-token-expirado.yaml", {"token": jwt_velho})
 
-# CA-06c — certificado de cliente expirado, assinado pela CA DE VERDADE do cluster.
+# CA-06c: certificado de cliente expirado, assinado pela CA DE VERDADE do cluster.
 # Sem isso o erro seria "unknown authority", que é outro problema.
 try:
     from cryptography import x509
@@ -153,7 +153,7 @@ try:
 except Exception as e:                                    # noqa: BLE001
     print(f"   cert de cliente expirado: PULADO ({type(e).__name__}: {e})")
 
-# CA-06d — exec plugin que falha dizendo que o token venceu.
+# CA-06d: exec plugin que falha dizendo que o token venceu.
 # É a forma que "credencial expirada" tem em EKS/GKE, e a ÚNICA que diz o motivo.
 with open("plugin-falha.sh", "w") as f:
     f.write("#!/bin/bash\n"
@@ -165,13 +165,13 @@ monta("kubeconfig-exec-falha.yaml",
       {"exec": {"apiVersion": "client.authentication.k8s.io/v1beta1",
                 "command": os.path.abspath("plugin-falha.sh")}})
 
-# CA-06e — exec plugin que nem existe
+# CA-06e: exec plugin que nem existe
 monta("kubeconfig-exec-ausente.yaml",
       {"exec": {"apiVersion": "client.authentication.k8s.io/v1beta1",
                 "command": "aws-iam-authenticator-que-nao-existe",
                 "args": ["token", "-i", "cluster"]}})
 
-# CA-07 — leitura restrita, eventos negados
+# CA-07: leitura restrita, eventos negados
 monta("kubeconfig-restrito.yaml", {"token": os.environ["TOKEN_RESTRITO"]}, ns="default")
 print("   kubeconfigs escritos")
 PY

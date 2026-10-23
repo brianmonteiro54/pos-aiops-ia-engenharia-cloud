@@ -1,6 +1,6 @@
-# Questão 08 — Postmortem técnico de incidente em produção
+# Questão 08: Postmortem técnico de incidente em produção
 
-**Framework escolhido:** R-I-S-E (Role, Input, Steps, Expectation) — escolha livre entre os 5 do capítulo. A comparação com as alternativas está na Justificativa, que é o ponto central de avaliação desta questão.
+**Framework escolhido:** R-I-S-E (Role, Input, Steps, Expectation): escolha livre entre os 5 do capítulo. A comparação com as alternativas está na Justificativa, que é o ponto central de avaliação desta questão.
 
 ---
 
@@ -71,7 +71,7 @@ O resultado esperado é um postmortem técnico que o Doc Brown consiga ler e usa
 
 Formato obrigatório, em Markdown, nesta ordem:
 
-1. DECISÃO — no máximo 3 linhas, no topo do documento: o que fazer agora, primeira ação e por quê.
+1. DECISÃO: no máximo 3 linhas, no topo do documento: o que fazer agora, primeira ação e por quê.
 2. Linha do tempo do incidente.
 3. Causa raiz provável, com nível de confiança e as evidências que a sustentam.
 4. Tabela comparando Opção A (rollback) e Opção B (scaling emergencial), com efeito, tempo, risco e limitação de cada uma.
@@ -98,7 +98,7 @@ Escolhido porque a tarefa é correlacionar cinco fontes heterogêneas (changelog
 
 ### 1. DECISÃO
 
-**Executar a Opção A (rollback de v2.48.0) agora. Não executar a Opção B neste momento.** Primeira ação: iniciar o rollback e, simultaneamente, congelar o consumer do Reactor para não competir por conexões. Motivo: o gargalo primário é capacidade de conexão ao Ledger (240/250, e 12 pods × pool 20 = 240 exatamente), e a Opção B tenta ampliar um teto que não se amplia com segurança em 20 minutos — elevar `max_connections` no PostgreSQL exige reinício da instância, ou seja, trocaria degradação por indisponibilidade total do Ledger em pico.
+**Executar a Opção A (rollback de v2.48.0) agora. Não executar a Opção B neste momento.** Primeira ação: iniciar o rollback e, simultaneamente, congelar o consumer do Reactor para não competir por conexões. Motivo: o gargalo primário é capacidade de conexão ao Ledger (240/250, e 12 pods × pool 20 = 240 exatamente), e a Opção B tenta ampliar um teto que não se amplia com segurança em 20 minutos, elevar `max_connections` no PostgreSQL exige reinício da instância, ou seja, trocaria degradação por indisponibilidade total do Ledger em pico.
 
 ---
 
@@ -107,10 +107,10 @@ Escolhido porque a tarefa é correlacionar cinco fontes heterogêneas (changelog
 | Momento | Evento | Insumo |
 |---|---|---|
 | 2026-08-16 18:42 UTC | Deploy v2.47.0 → v2.48.0 aplicado | Changelog (insumo 1) |
-| — | **Intervalo de ~25h30 sem degradação registrada** | Dedução da diferença entre insumo 1 e insumo 2 |
+| n/d | **Intervalo de ~25h30 sem degradação registrada** | Dedução da diferença entre insumo 1 e insumo 2 |
 | 2026-08-17 20:05 | Estado ainda saudável: p99 420ms, 1240 rps, erro 0,2% | Série temporal (insumo 2) |
 | 20:10 | Primeiro desvio claro: p99 780ms (1,9x), erro 0,4% | Insumo 2 |
-| 20:15 | p99 1650ms, erro 1,1% — degradação já perceptível ao cliente | Insumo 2 |
+| 20:15 | p99 1650ms, erro 1,1%: degradação já perceptível ao cliente | Insumo 2 |
 | 20:20 | **Pico de goodput: 1526 req/s bem-sucedidas.** p99 3100ms, erro 3,4% | Cálculo sobre insumo 2 |
 | 20:25 | Pico de tráfego total: 1610 rps. p99 5400ms, erro 6,8% | Insumo 2 |
 | 20:28:14 | Log: pool esgotado, `max=20, active=20, waiting=147` | Log (insumo 3) |
@@ -177,8 +177,8 @@ O goodput atingiu o máximo às 20:20 e caiu 23,6% desde então, enquanto o p99 
 | **H2** | A refatoração do pool para a nova biblioteca interna mudou o comportamento efetivo do pool (tamanho, semântica de aquisição/liberação, ou vazamento de conexão) | `max=20` por pod × 12 pods = 240 = exatamente o consumo observado contra o teto de 250 (insumos 3 e 5); a fila de espera de 147→163 indica que a demanda por conexão excede em muito a oferta configurada | Não há o valor de `max` anterior a v2.48.0 nos insumos, portanto não é possível provar que mudou | **Média-alta** como mecanismo |
 | **H3** | O bump do psycopg 3.1.18 → 3.2.0 alterou comportamento de conexão | Está no conjunto de mudanças (insumo 1); driver novo pode alterar pooling, prepared statements ou pipeline | Nenhum sinal nos logs aponta para camada de driver: os erros são de pool e de timeout, uma camada acima | **Baixa** |
 | **H4** | A redução do timeout de 5s para 2s é a causa do erro | O log traz literalmente `query timeout after 2000ms`, casando com o valor novo (insumos 1 e 3); com 2s, requisições que antes completavam lentas passam a virar erro, e erro pode gerar retry, que multiplica a demanda | Timeout menor **libera** conexão mais rápido, o que alivia o pool em vez de piorar. Só piora se houver retry automático, e a política de retry não está nos insumos | **Média** como amplificador da taxa de erro, **baixa** como causa da saturação |
-| **H5** | Crescimento puro de tráfego atingiu o teto de capacidade; o deploy é irrelevante | Degradação começa junto com o pico; rps sobe 1240→1610 (+29,8%) antes do colapso; HPA no teto e conexões em 240/250 são tetos duros (insumos 2 e 5) | +29,8% de carga produzindo 19,3x de p99 e 58,5x de erro é desproporcional para limite linear — mas é exatamente o que um **teto duro** de recurso produz, então esta contradição é fraca | **Média** — é a hipótese concorrente que mais importa |
-| **H6** | O Ledger degradou por conta própria (lock, vacuum, plano de query ruim, saturação de IO) e o Chronos é vítima | `query timeout after 2000ms` é compatível com banco genuinamente lento | Não há **nenhuma** métrica do lado do Ledger nos insumos: sem CPU, IOPS, locks ou `pg_stat_activity` não há como sustentar nem descartar | **Indeterminada** — maior ponto cego do diagnóstico |
+| **H5** | Crescimento puro de tráfego atingiu o teto de capacidade; o deploy é irrelevante | Degradação começa junto com o pico; rps sobe 1240→1610 (+29,8%) antes do colapso; HPA no teto e conexões em 240/250 são tetos duros (insumos 2 e 5) | +29,8% de carga produzindo 19,3x de p99 e 58,5x de erro é desproporcional para limite linear, mas é exatamente o que um **teto duro** de recurso produz, então esta contradição é fraca | **Média**: é a hipótese concorrente que mais importa |
+| **H6** | O Ledger degradou por conta própria (lock, vacuum, plano de query ruim, saturação de IO) e o Chronos é vítima | `query timeout after 2000ms` é compatível com banco genuinamente lento | Não há **nenhuma** métrica do lado do Ledger nos insumos: sem CPU, IOPS, locks ou `pg_stat_activity` não há como sustentar nem descartar | **Indeterminada**: maior ponto cego do diagnóstico |
 
 #### 3.3 Causa raiz escolhida e por que ela explica melhor
 
@@ -197,12 +197,12 @@ Por que a confiança é **média** e não alta: H5 e H6 continuam vivas. Se v2.4
 
 ### 4. Opção A (rollback) contra Opção B (scaling emergencial)
 
-| Critério | **Opção A — rollback de v2.48.0** | **Opção B — aumentar limits do RDS e o pool** |
+| Critério | **Opção A: rollback de v2.48.0** | **Opção B, aumentar limits do RDS e o pool** |
 |---|---|---|
 | **Efeito no gargalo primário** | Reduz a **demanda** por conexão: remove o endpoint em lote e devolve o pool à implementação anterior. Ataca o lado que dá para mover em 20 minutos | Tenta ampliar a **oferta** de conexão. Seria o ataque direto ao gargalo, se fosse executável com segurança agora |
 | **Tempo até surtir efeito** | Minutos. Rollout dos 12 pods; o alívio começa nos primeiros pods a subir | **Não é rápido.** `max_connections` no PostgreSQL é parâmetro estático: exige **reinício da instância** para valer (*hipótese*; Lacuna 6 traz o comando que confirma). Subir a classe da instância também exige reboot/failover. Alterar o pool exige redeploy dos 12 pods |
 | **Risco de piorar** | Médio. O timeout volta a 5s, o que faz cada conexão ficar retida por mais tempo. Com fila de 163 esperas, isso pode não aliviar de imediato. O próprio rollout agita os 12 pods em pico e causa churn de conexão. Reversível em um comando | **Alto.** Elevar o pool sem elevar o teto do RDS empurra o agregado além de 250 e troca timeout por recusa de conexão, o que pode derrubar **outros** consumidores do Ledger e até o acesso administrativo. Reiniciar o RDS em pico troca degradação de 11,7% por indisponibilidade total. Se H6 for verdadeira, mais concorrência num banco já saturado piora todo mundo |
-| **Restrições visíveis nos insumos** | Não remove o teto de 250 conexões. Se H5 dominar, o sistema volta ao mesmo limite com menos carga do endpoint novo | O teto de 250 é explicitamente "o limite do RDS" (insumo 5): a folga é de 10 conexões, ou seja, **0,8 conexão por pod**. HPA já em 12/12 significa que não há caminho por mais réplicas — e mais réplicas piorariam, porque cada uma abre mais 20 conexões |
+| **Restrições visíveis nos insumos** | Não remove o teto de 250 conexões. Se H5 dominar, o sistema volta ao mesmo limite com menos carga do endpoint novo | O teto de 250 é explicitamente "o limite do RDS" (insumo 5): a folga é de 10 conexões, ou seja, **0,8 conexão por pod**. HPA já em 12/12 significa que não há caminho por mais réplicas, e mais réplicas piorariam, porque cada uma abre mais 20 conexões |
 | **Efeito no backlog do Reactor** | Indireto e positivo: restabelecido o fluxo no Ledger, o `reactor-publisher` volta a publicar e o crescimento de +800/min tende a parar. O backlog acumulado ainda precisa ser drenado (seção 7) | Nenhum efeito direto. Mais conexões poderiam acelerar a drenagem, mas competindo com o tráfego vivo pelas mesmas conexões |
 | **Reversibilidade** | Alta: redeploy de v2.48.0 | Baixa no curto prazo: reinício de banco não se desfaz, e alteração de parameter group exige novo reboot para voltar |
 
@@ -250,7 +250,7 @@ kubectl -n production rollout undo deployment/chronos-api --to-revision=<REV_v2.
 kubectl -n production rollout status deployment/chronos-api --timeout=5m
 ```
 
-**4. Acompanhar a fila de espera do pool durante o rollout — este é o sinal que decide.**
+**4. Acompanhar a fila de espera do pool durante o rollout: este é o sinal que decide.**
 
 ```bash
 watch -n 15 'kubectl -n production logs -l app=chronos-api --tail=50 | grep -o "waiting=[0-9]*" | tail -5'
@@ -276,7 +276,7 @@ Janela: **10 minutos** a partir do fim do rollout (T_ok). Medir em T_ok+5 e T_ok
 | Circuit breaker | OPEN | **CLOSED**, sem reabrir por 5 min | Log do ledger-client |
 | Crescimento da fila do Reactor | +800/min | **≤ +100/min** (indica publisher normalizado) | Métrica do SQS |
 
-**Critério de sucesso:** todas as sete linhas atingidas em T_ok+10. Sem exceção — em especial `waiting` e goodput, que são os dois que distinguem alívio real de trégua momentânea.
+**Critério de sucesso:** todas as sete linhas atingidas em T_ok+10. Sem exceção, em especial `waiting` e goodput, que são os dois que distinguem alívio real de trégua momentânea.
 
 **Critério de reversão, com gatilhos objetivos:**
 
@@ -310,7 +310,7 @@ A opção de 60 minutos é a correta: metade da pressão sobre o Ledger, e a fil
 2. **Religar com concorrência limitada por orçamento de conexão, não por intuição.** Definir o orçamento antes: reservar no máximo 30 das 250 conexões para a drenagem (folga atual é de apenas 10). Com pool de 20 por réplica, isso significa **1 réplica de consumer com pool reduzido**, não 3 réplicas com pool padrão.
 3. **Verificar antes de cada aumento de concorrência:** conexões no RDS abaixo de 200/250 e `waiting` do Chronos abaixo de 20. Se qualquer um dos dois piorar, voltar ao passo anterior.
 4. **Acompanhar `ApproximateAgeOfOldestMessage`**, não apenas a contagem: a idade caindo é a prova de que a drenagem avança.
-5. **Riscos a checar antes de drenar** (todos são lacunas, não fatos): mensagens cuja *visibility timeout* expirou durante o incidente podem ser reprocessadas — a drenagem só é segura se o consumer for idempotente; e se houver DLQ configurada, parte do backlog pode já ter sido desviada.
+5. **Riscos a checar antes de drenar** (todos são lacunas, não fatos): mensagens cuja *visibility timeout* expirou durante o incidente podem ser reprocessadas, a drenagem só é segura se o consumer for idempotente; e se houver DLQ configurada, parte do backlog pode já ter sido desviada.
 
 **Nunca fazer:** aumentar réplicas do consumer para "acompanhar" o crescimento de 800/min durante o incidente. Isso resolveria a métrica da fila consumindo justamente o recurso que causou o incidente.
 
@@ -346,7 +346,7 @@ Nenhuma delas foi preenchida com suposição no diagnóstico acima. As duas prim
 5. **Timeout e retry desenhados juntos**, com orçamento total por requisição, jitter e teto de tentativas. Reduzir timeout de 5s para 2s isoladamente, sem revisar retry, muda o perfil de falha do sistema.
 6. **Alertas sobre os sinais que precedem o colapso:** fila de espera do pool (`waiting`) e conexões agregadas contra o limite do RDS. Ambos estavam disponíveis e nenhum alertou antes da queda de goodput.
 7. **Teste de carga em rps equivalente ao pico antes de liberar mudanças no cliente do banco.** As quatro mudanças de v2.48.0 tocam o caminho crítico do Ledger e subiram juntas.
-8. **Separar mudanças de risco em deploys distintos.** Endpoint novo, troca de biblioteca de pool, bump de driver e mudança de timeout no mesmo release tornam impossível atribuir causa em 20 minutos — o custo disso é exatamente este postmortem com confiança média em vez de alta.
+8. **Separar mudanças de risco em deploys distintos.** Endpoint novo, troca de biblioteca de pool, bump de driver e mudança de timeout no mesmo release tornam impossível atribuir causa em 20 minutos: o custo disso é exatamente este postmortem com confiança média em vez de alta.
 
 **Mitigações temporárias (têm prazo de validade e precisam sair do ar)**
 
@@ -366,27 +366,27 @@ Nenhuma delas foi preenchida com suposição no diagnóstico acima. As duas prim
 
 **Input:** cinco fontes heterogêneas em um único bloco: changelog com quatro mudanças simultâneas, série temporal de 7 pontos, trecho de log com 6 linhas, estado de fila e estado de cluster. Foi o Input que tornou possível a descoberta que decide o caso, e ela só existe cruzando dois insumos diferentes: `max=20` por pod (log) × 12 pods (cluster) = 240 = as conexões observadas contra o teto de 250. Nenhum insumo isolado revela isso.
 
-**Steps** — os 9 passos impuseram a ordem do raciocínio, e essa ordem é o que evita o erro mais provável do cenário. Diagnosticar antes de escolher (passos 1-4) mostrou que HPA no teto, circuit breaker e backlog do Reactor são consequência, não causa; avaliar A e B com critérios fixos (passo 5) expôs que a opção aparentemente mais direta, mexer no banco, é a que exige reboot em pico; e o passo 9, exigindo lacuna com o comando que a fecha, é o que permitiu declarar confiança média com honestidade em vez de fabricar certeza.
+**Steps**: os 9 passos impuseram a ordem do raciocínio, e essa ordem é o que evita o erro mais provável do cenário. Diagnosticar antes de escolher (passos 1-4) mostrou que HPA no teto, circuit breaker e backlog do Reactor são consequência, não causa; avaliar A e B com critérios fixos (passo 5) expôs que a opção aparentemente mais direta, mexer no banco, é a que exige reboot em pico; e o passo 9, exigindo lacuna com o comando que a fecha, é o que permitiu declarar confiança média com honestidade em vez de fabricar certeza.
 
 **Expectation:** a Expectation fixou o formato de consumo sob pressão: DECISÃO em 3 linhas no topo, porque o Doc Brown está numa call e pode ler só isso; tabela A contra B, porque ele precisa comparar, não ler prosa; e a proibição explícita de duas recomendações em paralelo, que foi resolvida com uma recomendação única (A) mais um gatilho documentado (R4) que transfere para B sob condição numérica. Sem essa restrição, o output natural teria sido "depende", que é inútil em 20 minutos.
 
 ### Comparação com alternativas
 
-**Alternativa 1 — T-A-G (Task, Action, Goal). O que se ganharia e o que se perderia.**
+**Alternativa 1: T-A-G (Task, Action, Goal). O que se ganharia e o que se perderia.**
 
 *Ganho:* T-A-G é mais enxuto e o Goal casa bem com este cenário, porque existe um objetivo de negócio nítido e verificável, decidir entre A e B em 20 minutos. A Action carregaria a sequência analítica, e o prompt sairia mais curto e mais rápido de escrever.
 
 *Perda:* T-A-G não tem componente de entrada. Este caso tem cinco insumos heterogêneos que precisam ser lidos como um conjunto e citados individualmente ("toda afirmação técnica deve apontar o insumo que a sustenta"). Em T-A-G esses dados seriam empilhados dentro da Task, e a distinção entre *o que analisar* e *como analisar* se dilui. A perda concreta e mensurável seria no rigor epistêmico: T-A-G não tem onde alojar naturalmente a exigência de marcar hipótese e declarar nível de confiança, porque isso é característica de **postura** do analista, que é papel do Role, e o Role não existe em T-A-G. O output mais provável seria um relatório correto no formato e otimista na conclusão, afirmando causa raiz com convicção que a evidência não dá. Em incidente, essa é a diferença entre reiniciar o banco por engano e não reiniciar.
 
-**Alternativa 2 — C-A-R-E (Context, Action, Result, Example). O que se ganharia e o que se perderia.**
+**Alternativa 2: C-A-R-E (Context, Action, Result, Example). O que se ganharia e o que se perderia.**
 
 *Ganho:* C-A-R-E é o mais forte dos cinco quando existe um artefato de referência a imitar, e postmortem é um gênero com formato consagrado. O Example poderia trazer um postmortem anterior da Hill Valley Tech, garantindo aderência de estilo e seções, e o Result descreveria o entregável com precisão. Foi a escolha certa na Questão 06 exatamente por isso.
 
-*Perda:* o Example é o componente mais caro e aqui ele seria o mais fraco. Postmortem exemplar é documento longo; incluí-lo consumiria uma fração significativa da janela de contexto competindo com os cinco insumos, que são o que realmente importa. Pior, um exemplo de postmortem **encerrado** ensinaria o modelo a escrever no passado, com causa raiz estabelecida — e este incidente está em andamento, com dados incompletos, precisando de recomendação no presente. Haveria risco real de o modelo imitar a confiança retrospectiva do exemplo e apresentar H1+H2 como fato. Além disso, C-A-R-E não tem componente de sequência: a ordem "diagnostique antes de escolher" ficaria dentro da Action como lista, sem a força que o Steps dá.
+*Perda:* o Example é o componente mais caro e aqui ele seria o mais fraco. Postmortem exemplar é documento longo; incluí-lo consumiria uma fração significativa da janela de contexto competindo com os cinco insumos, que são o que realmente importa. Pior, um exemplo de postmortem **encerrado** ensinaria o modelo a escrever no passado, com causa raiz estabelecida, e este incidente está em andamento, com dados incompletos, precisando de recomendação no presente. Haveria risco real de o modelo imitar a confiança retrospectiva do exemplo e apresentar H1+H2 como fato. Além disso, C-A-R-E não tem componente de sequência: a ordem "diagnostique antes de escolher" ficaria dentro da Action como lista, sem a força que o Steps dá.
 
-**Alternativa 3 — B-A-B, descartada rapidamente.** B-A-B pressupõe que se conhece o Before e o After e que a dúvida é a travessia. Aqui a incógnita é justamente o Before: não se sabe qual é a causa. Usar B-A-B obrigaria a assumir a causa raiz no próprio prompt, o que resolveria por decreto a pergunta que o Doc Brown está fazendo. Foi a escolha certa na Questão 05, onde o estado atual era um YAML conhecido e o estado desejado era o padrão da empresa.
+**Alternativa 3: B-A-B, descartada rapidamente.** B-A-B pressupõe que se conhece o Before e o After e que a dúvida é a travessia. Aqui a incógnita é justamente o Before: não se sabe qual é a causa. Usar B-A-B obrigaria a assumir a causa raiz no próprio prompt, o que resolveria por decreto a pergunta que o Doc Brown está fazendo. Foi a escolha certa na Questão 05, onde o estado atual era um YAML conhecido e o estado desejado era o padrão da empresa.
 
-**Alternativa 4 — R-T-F, descartada rapidamente.** R-T-F é ótimo para produzir artefato com formato rígido (Questões 01 e 02), mas não tem onde colocar cinco insumos nem como impor sequência de raciocínio. Sobrariam Role e Format, e o Task viraria um parágrafo gigante fazendo o trabalho de Input e Steps ao mesmo tempo.
+**Alternativa 4: R-T-F, descartada rapidamente.** R-T-F é ótimo para produzir artefato com formato rígido (Questões 01 e 02), mas não tem onde colocar cinco insumos nem como impor sequência de raciocínio. Sobrariam Role e Format, e o Task viraria um parágrafo gigante fazendo o trabalho de Input e Steps ao mesmo tempo.
 
 ### Por que R-I-S-E vence neste caso específico
 

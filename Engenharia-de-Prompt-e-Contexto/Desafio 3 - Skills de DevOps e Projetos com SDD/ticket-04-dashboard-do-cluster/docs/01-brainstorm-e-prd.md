@@ -1,4 +1,4 @@
-# Brainstorm e PRD — dashboard do cluster
+# Brainstorm e PRD: dashboard do cluster
 
 ## Brainstorm: o recorte
 
@@ -38,7 +38,7 @@ O ticket os entrega, e o Ticket 02 já tinha medido dois deles contra o cluster:
 **Campo ausente não é campo vazio.** `Endpoints.subsets` **não vem** quando não há endpoint.
 `Deployment.status.readyReplicas` **não vem** quando é zero. Medido no Ticket 02, com um
 detalhe a mais: `EndpointSlice.endpoints` **vem, com valor `null`**. São dois modos
-diferentes de quebrar — `KeyError` num, `TypeError` no outro.
+diferentes de quebrar: `KeyError` num, `TypeError` no outro.
 
 **`Endpoints` está sendo descontinuado**, e a informação equivalente vive em
 `EndpointSlice` → ADR-004.
@@ -46,7 +46,7 @@ diferentes de quebrar — `KeyError` num, `TypeError` no outro.
 > **Correção a este PRD, vinda da medição do ADR-004.** Eu havia escrito que "ausência de
 > endpoint é o que explica 'subiu mas não responde'". Medi os dois tipos contra os quatro
 > estados do cluster e **está incompleto**: nos namespaces com `CrashLoopBackOff` e com
-> `ImagePullBackOff`, o objeto `Endpoints` **tem** `subsets` — populado com
+> `ImagePullBackOff`, o objeto `Endpoints` **tem** `subsets`: populado com
 > `notReadyAddresses`. Contar endpoints acusa só o caso do selector que não casa e passa
 > batido nos outros dois. A pergunta certa é **quantos endpoints prontos**, não se existem.
 > O RF-02 e o CA-03 foram reescritos por causa disso.
@@ -62,12 +62,12 @@ e o que está inferindo**.
 
 ### Requisitos funcionais
 
-#### RF-01 — Lê apenas o contexto corrente do kubeconfig
+#### RF-01: Lê apenas o contexto corrente do kubeconfig
 
 No momento em que sobe. **Sem seletor de cluster, sem troca de contexto por dentro.**
 Multicluster está fora de escopo.
 
-#### RF-02 — O mínimo da tela
+#### RF-02: O mínimo da tela
 
 | O que mostrar | Detalhe que não é decoração |
 |---|---|
@@ -78,23 +78,23 @@ Multicluster está fora de escopo.
 | **eventos recentes** do namespace selecionado | objeto próprio, com `count`, `firstTimestamp` e `lastTimestamp` |
 | **filtro por namespace** e **busca por nome** | |
 
-#### RF-03 — Distinguir o que sabe do que infere
+#### RF-03: Distinguir o que sabe do que infere
 
 `ready=true` significa que a readinessProbe passou. Se a aplicação **não tem** probe, isso
 significa só que o processo subiu. O dashboard SHALL marcar pod pronto **sem probe
 declarada** de forma diferente de pod pronto com probe.
 
-#### RF-04 — Três cenários de falha de ambiente, sem tela branca nem stack trace
+#### RF-04: Três cenários de falha de ambiente, sem tela branca nem stack trace
 
 1. contexto corrente apontando para cluster que **não responde**
 2. **credencial expirada**
-3. **permissão negada** para um tipo de recurso enquanto os outros seguem acessíveis — é o
+3. **permissão negada** para um tipo de recurso enquanto os outros seguem acessíveis: é o
    caso de um contexto de leitura restrita
 
 ### Restrição
 
-**RE-01 — Só leitura.** Nenhuma operação de escrita: nada de `apply`, `delete` ou `scale`.
-**A garantia precisa estar visível no projeto** — código, configuração ou permissões — não
+**RE-01, Só leitura.** Nenhuma operação de escrita: nada de `apply`, `delete` ou `scale`.
+**A garantia precisa estar visível no projeto**: código, configuração ou permissões, não
 só na intenção de quem escreveu.
 
 ### Critérios de aceite

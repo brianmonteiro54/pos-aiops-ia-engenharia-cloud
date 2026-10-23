@@ -1,4 +1,4 @@
-# ADR-005 — O recorte da primeira fatia
+# ADR-005: O recorte da primeira fatia
 
 **Status:** aceito
 **Contexto:** o ticket pede explicitamente que a primeira fatia seja recortada, e deixa a
@@ -13,17 +13,17 @@ que existe no papel.
 A parte que custa ser dita: **os três cenários de falha entram na primeira fatia, no mesmo
 nível dos dados.** Não são acabamento. Uma tela que mostra página em branco quando a
 credencial expirou é **pior que não ter tela**, porque quem está de plantão gasta os
-primeiros minutos — os que a aplicação prometeu encurtar — se perguntando se o cluster caiu
+primeiros minutos (os que a aplicação prometeu encurtar) se perguntando se o cluster caiu
 ou se o painel está quebrado.
 
 ## Alternativas consideradas
 
-### A — fatia em profundidade: um namespace, retrato completo
+### A: fatia em profundidade: um namespace, retrato completo
 
 Um namespace por vez, escolhido na subida, com tudo que o RF-02 pede mais o que der.
 
 **O que se ganha:** é o caminho mais curto até algo útil. Numa triagem você já sabe o
-namespace — o chamado vem com ele. E a consulta cai de 6 `LIST` de cluster para 6 `LIST` de
+namespace: o chamado vem com ele. E a consulta cai de 6 `LIST` de cluster para 6 `LIST` de
 namespace, que é mais barato e precisa de menos permissão.
 
 **O que se perde:**
@@ -33,24 +33,24 @@ namespace, que é mais barato e precisa de menos permissão.
   responde mal: "onde está o problema". Os outros cinco só condensam o que `kubectl get` já
   diz
 - o chamado nem sempre vem com o namespace certo. Dos três chamados do Ticket 02, o do
-  `nyx-stg` chegou como "a API não responde" — descobrir **qual** `nyx` era parte do
+  `nyx-stg` chegou como "a API não responde": descobrir **qual** `nyx` era parte do
   trabalho
 - obriga reiniciar a aplicação para trocar de namespace, o que é pior que o terminal
 
-### B — fatia em largura: cluster todo, só pods
+### B: fatia em largura: cluster todo, só pods
 
 Todos os namespaces, só a lista de pods com estado e motivo.
 
-**O que se ganha:** é a fatia mais rápida de escrever e cobre o chamado 1 sozinha —
+**O que se ganha:** é a fatia mais rápida de escrever e cobre o chamado 1 sozinha,
 `CrashLoopBackOff` com `OOMKilled` aparece na tela.
 
 **O que se perde, e foi decisivo:** **não cobre o chamado 3.** Pod `Running`, `2/2`,
 `ready: true`, e a aplicação não responde. Uma tela só de pods mostra tudo verde e **confirma
-a conclusão errada** — a mesma conclusão que o relato do cliente já trazia. Uma ferramenta
+a conclusão errada**: a mesma conclusão que o relato do cliente já trazia. Uma ferramenta
 que corrobora o diagnóstico errado com mais confiança é prejuízo, não ganho. O Service sem
 endpoint pronto não é o sexto item em importância; é o item que justifica a tela existir.
 
-### C — incluir logs desde já
+### C: incluir logs desde já
 
 **O que se ganha:** é o primeiro pedido que vai chegar depois da demo. Quem vê o
 `CrashLoopBackOff` na tela quer clicar e ver por quê.
@@ -69,14 +69,14 @@ endpoint pronto não é o sexto item em importância; é o item que justifica a 
 **Registrado como o primeiro candidato da fatia seguinte**, com a ressalva de que ele reabre
 o ADR-002.
 
-### D — o mínimo do RF-02 + RF-03 + RF-04 (escolhida)
+### D: o mínimo do RF-02 + RF-03 + RF-04 (escolhida)
 
 **O que entra:**
 
 | Item | Por que está dentro |
 |---|---|
 | namespaces com contagem de quebrado | responde "onde está o problema", que o terminal responde mal |
-| pods com estado, reinícios e **motivo** | o motivo vive em `state.waiting.reason` e `lastState.terminated.reason` — cobre o chamado 1 |
+| pods com estado, reinícios e **motivo** | o motivo vive em `state.waiting.reason` e `lastState.terminated.reason`: cobre o chamado 1 |
 | deployments `prontas/desejadas` | `readyReplicas` ausente é zero (CA-02) |
 | services com **endpoints prontos/total** | cobre o chamado 3, e pelo ADR-004 distingue os três modos de "não responde" |
 | eventos do namespace selecionado | cobre o chamado 2 (`ImagePullBackOff` com a tag errada no texto do evento) |
@@ -87,7 +87,7 @@ o ADR-002.
 **O que se perde, aceito:** a fatia é maior que A e B, e vai levar mais tempo. A troca é
 deliberada: é a menor fatia que **cobre os três chamados que o Ticket 02 já triou de
 verdade**. Qualquer coisa menor deixa um chamado conhecido fora, e eu não tenho desculpa
-para isso — os três estão rodando no cluster agora.
+para isso: os três estão rodando no cluster agora.
 
 ## Fora da primeira fatia, com o motivo
 
@@ -107,7 +107,7 @@ para isso — os três estão rodando no cluster agora.
 
 - **os critérios de aceite da primeira fatia são CA-01 a CA-08 inteiros.** O CA-05, CA-06 e
   CA-07 não são opcionais, e o CA-07 exige construir um contexto de leitura restrita no
-  laboratório — trabalho de ambiente que não produz linha de código visível
+  laboratório: trabalho de ambiente que não produz linha de código visível
 - o CA-08 (nenhum caminho executa verbo de escrita) é verificado por **teste que varre o
   próprio fonte**, não por inspeção. É a razão de a lista branca do ADR-002 viver num único
   ponto

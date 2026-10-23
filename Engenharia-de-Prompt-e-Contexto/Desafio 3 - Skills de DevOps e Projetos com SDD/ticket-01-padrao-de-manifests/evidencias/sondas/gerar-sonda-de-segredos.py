@@ -6,7 +6,7 @@ O QUE O EXPERIMENTO MEDE
 ------------------------
 Se o `trivy fs --scanners secret` detecta seis tipos de segredo num manifesto. Cinco têm
 formato conhecido de credencial de terceiro; o sexto é uma senha dentro de string de
-conexão. O resultado é **5 de 6** — e o que passa é justamente a senha na URI, que é a
+conexão. O resultado é **5 de 6**: e o que passa é justamente a senha na URI, que é a
 forma mais comum de vazamento em manifesto. É por isso que a regra 3.3 ficou com o script
 da skill em vez de ficar com a ferramenta.
 
@@ -16,7 +16,7 @@ O experimento mede se o scanner reconhece a **forma**, não um valor específico
 `AKIA` seguido de 16 caracteres dispara a regra; o valor em si é irrelevante para a
 medição. Então este gerador sorteia.
 
-A alternativa — guardar os valores no arquivo — foi tentada e abandonada por um motivo
+A alternativa (guardar os valores no arquivo) foi tentada e abandonada por um motivo
 que vale registrar como achado do ticket:
 
   1. Versionar a sonda com os valores: o **push protection do GitHub recusou o push**,
@@ -65,7 +65,7 @@ def valores_sorteados() -> dict[str, str]:
     Cada valor respeita a FORMA que o detector reconhece. Nada aqui é credencial.
 
     A senha da `DATABASE_URL` é fixa e legível de propósito: ela é o objeto do
-    experimento, precisa ser identificável no relatório, e nenhum scanner a detecta —
+    experimento, precisa ser identificável no relatório, e nenhum scanner a detecta,
     que é exatamente o achado.
     """
     return {
@@ -106,13 +106,13 @@ ORDEM = (
 
 CABECALHO = """\
 # ============================================================================
-# ARQUIVO GERADO por gerar-sonda-de-segredos.py — NAO COMMITAR.
+# ARQUIVO GERADO por gerar-sonda-de-segredos.py: NAO COMMITAR.
 #
 # Os cinco valores de formato conhecido sao SORTEADOS a cada execucao. Nenhum e
 # credencial real, e nenhum existe em lugar nenhum do repositorio: o gerador
 # produz a forma, nao o valor.
 #
-# A senha da DATABASE_URL e fixa de proposito — ela e o objeto do experimento.
+# A senha da DATABASE_URL e fixa de proposito: ela e o objeto do experimento.
 #
 # Resultado esperado (Trivy 0.52.2): 5 dos 6 detectados. O que passa e a senha
 # dentro da string de conexao, que e a forma mais comum de vazamento em

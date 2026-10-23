@@ -1,4 +1,4 @@
-# Questão 04 — Relatório mensal de transações do Ledger
+# Questão 04: Relatório mensal de transações do Ledger
 
 **Framework:** T-A-G (Task, Action, Goal)
 
@@ -162,7 +162,7 @@ ORDER BY
 
 **Goal:** o Goal (Jennifer não escreve SQL, executa e cola na apresentação da Goldie) puxou o que a query sozinha não daria: a lista de premissas em linguagem de negócio e o exemplo de 3 a 4 linhas de saída, para ela conferir o formato antes de montar tabela e gráfico. Sem o Goal, o modelo provavelmente teria entregado só o SQL.
 
-**O que eu faria diferente — três defeitos no output**
+**O que eu faria diferente: três defeitos no output**
 
 Os três pontos abaixo foram verificados executando a query exata do modelo em um PostgreSQL 16 com o DDL do enunciado e uma transação `completed` por mês entre set/2025 e mai/2026.
 

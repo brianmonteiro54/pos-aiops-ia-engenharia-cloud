@@ -34,7 +34,7 @@ echo "=== 3. subindo os dois hosts ==="
 docker rm -f roster-conforme roster-desvios >/dev/null 2>&1 || true
 
 # Container recriado gera host key NOVA no mesmo endereco e porta. Com a entrada antiga em
-# known_hosts, a ferramenta recusa a conexao — e esta CERTA: ela usa
+# known_hosts, a ferramenta recusa a conexao: e esta CERTA: ela usa
 # StrictHostKeyChecking=accept-new, que aceita host novo e barra host cuja chave mudou.
 # Isso apareceu na primeira validacao depois de um rebuild, e o veredito foi
 # "a chave do host mudou desde a ultima conexao".

@@ -1,4 +1,4 @@
-# Questão 05 — Modernizar deployment legado
+# Questão 05: Modernizar deployment legado
 
 **Framework:** B-A-B (Before, After, Bridge)
 
@@ -7,7 +7,7 @@
 ## Prompt
 
 ````text
-[BEFORE — estado atual problemático]
+[BEFORE: estado atual problemático]
 Em uma revisão de produção da Hill Valley Tech, Doc Brown (CTO) encontrou o manifest do Chronos, o API gateway que é ponto de entrada de todo o tráfego da empresa. O arquivo foi escrito pelo George há três anos e ninguém mexeu desde então. Ele está fora de várias práticas hoje obrigatórias no padrão interno.
 
 Manifest legado atualmente aplicado no cluster:
@@ -52,7 +52,7 @@ Problemas conhecidos deste estado atual:
 - Nenhum securityContext: container roda como root.
 - Nenhuma estratégia de rollout, disruption budget ou anti-afinidade definida.
 
-[AFTER — estado desejado]
+[AFTER: estado desejado]
 O mesmo Deployment, funcionalmente equivalente, mas aderente ao padrão de produção da empresa:
 
 - Alta disponibilidade: múltiplas réplicas distribuídas entre nós e zonas, com PodDisruptionBudget e estratégia de rolling update sem downtime.
@@ -64,7 +64,7 @@ O mesmo Deployment, funcionalmente equivalente, mas aderente ao padrão de produ
 - Labels padronizadas, anotações úteis para operação e serviceAccountName dedicada, sem uso da default.
 - Manifest pronto para ser aplicado no namespace production sem interromper o tráfego atual.
 
-[BRIDGE — o que você deve fazer para sair do Before e chegar no After]
+[BRIDGE, o que você deve fazer para sair do Before e chegar no After]
 Você é um engenheiro de plataforma sênior especializado em Kubernetes em produção. Faça a ponte entre os dois estados:
 
 1. Entregue o manifest modernizado completo do Deployment chronos-api, aplicável no namespace production.
@@ -94,7 +94,7 @@ Escolhido porque a questão é a mais longa e mais interdependente do desafio: e
 Vou estruturar os quatro recursos na ordem segura de aplicação e explicitar, no próprio YAML, todas as premissas que precisam ser validadas antes do rollout.
 
 ```yaml
-# 1/4 — Aplicar primeiro.
+# 1/4: Aplicar primeiro.
 # O Deployment legado usa implicitamente a ServiceAccount "default".
 # Uma identidade dedicada permite aplicar RBAC mínimo caso o Chronos precise,
 # futuramente, acessar a API do Kubernetes.
@@ -117,7 +117,7 @@ automountServiceAccountToken: false
 ```
 
 ```yaml
-# 2/4 — Aplicar depois da ServiceAccount e antes do Deployment.
+# 2/4: Aplicar depois da ServiceAccount e antes do Deployment.
 #
 # ATENÇÃO:
 # - Estes valores são placeholders deliberados; nunca devem chegar assim à aplicação.
@@ -147,7 +147,7 @@ stringData:
 ```
 
 ```yaml
-# 3/4 — Aplicar antes da alteração do Deployment.
+# 3/4: Aplicar antes da alteração do Deployment.
 #
 # Este PDB passa a proteger tanto o pod legado quanto os novos pods porque usa
 # a label histórica app=chronos-api, presente nos dois modelos.
@@ -178,7 +178,7 @@ spec:
 ```
 
 ```yaml
-# 4/4 — Aplicar somente após:
+# 4/4: Aplicar somente após:
 # - substituir a tag e o digest da imagem;
 # - criar o Secret com valores reais por canal seguro;
 # - confirmar que a imagem implementa os três endpoints de health;

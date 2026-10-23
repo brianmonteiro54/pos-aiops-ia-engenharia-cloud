@@ -1,4 +1,4 @@
-# Questão 02 — Script de backup do Ledger
+# Questão 02: Script de backup do Ledger
 
 **Framework:** R-T-F (Role, Task, Format)
 
@@ -49,7 +49,7 @@ Sem introdução, sem explicação em prosa, sem conclusão, sem comentários fo
 
 ## Modelo
 
-**Gemini Flash (Google) — modo de raciocínio estendido**
+**Gemini Flash (Google): modo de raciocínio estendido**
 
 Escolhido porque a tarefa é mecânica e totalmente especificada (10 requisitos verificáveis, formato de saída fechado): não exige o modelo mais caro, e o raciocínio estendido é suficiente para o único ponto que pede cuidado real, o tratamento do status de cada comando do pipe.
 

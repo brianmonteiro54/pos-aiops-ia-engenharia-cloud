@@ -1,4 +1,4 @@
-# Proposta — inventário e drift de VM
+# Proposta: inventário e drift de VM
 
 ## Why
 
@@ -15,8 +15,8 @@ Uma ferramenta de linha de comando que audita **uma** VM por SSH, sem agente, e 
 que encontra com o baseline versionado do parque.
 
 Ela roda na máquina de quem opera. Recebe endereço, usuário e chave privada; coleta nove
-grupos de dados; e devolve inventário e conformidade em **JSON** — para o Roster consumir —
-e em **Markdown** — para o plantão ler no terminal.
+grupos de dados; e devolve inventário e conformidade em **JSON**: para o Roster consumir,
+e em **Markdown**: para o plantão ler no terminal.
 
 Cada regra do baseline recebe um de três vereditos: `conforme`, `desvio` com a severidade
 que o baseline atribui, ou `nao_verificado` com o motivo.
@@ -35,8 +35,8 @@ que o baseline atribui, ou `nao_verificado` com o motivo.
 ## Por que agora, e nesta ordem
 
 O inventário e o julgamento são separados de propósito: o Roster quer saber o que existe,
-não só o que está errado. Essa separação é o que permite a segunda peça — varredura de
-frota — reusar coleta e julgamento sem reescrever nada.
+não só o que está errado. Essa separação é o que permite a segunda peça (varredura de
+frota) reusar coleta e julgamento sem reescrever nada.
 
 ## Como se sabe que funcionou
 

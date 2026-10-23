@@ -21,15 +21,15 @@ Skill em `.kiro/skills/padrao-de-manifests-metacortex/`.
 1. Rodei o Trivy no manifesto barrado e numa sonda que viola as 19 regras de propósito,
    para medir a cobertura **antes** de escrever qualquer linha de script.
 2. Conferi o manifesto barrado à mão, regra por regra, abrindo o repositório do kube-news
-   para decidir as probes — está em `fluxos/fluxo-01-conferencia-manual.md`.
-3. Gerei os manifests de dois projetos à mão, lendo o código de cada um — está em
+   para decidir as probes: está em `fluxos/fluxo-01-conferencia-manual.md`.
+3. Gerei os manifests de dois projetos à mão, lendo o código de cada um: está em
    `fluxos/fluxo-02-geracao-de-manifests.md`.
 4. **Só então** empacotei: o que nos dois fluxos foi comparação de string virou script, o
    que exigiu abrir o projeto virou instrução.
 5. Validei com três sub-agentes que só podiam usar a skill, contra manifestos novos.
 
 Os dois fluxos registram onde eu travei e onde eu errei, e é de lá que vêm as decisões de
-corte. A skill não foi escrita de cabeça e depois ilustrada — ela é a destilação de dois
+corte. A skill não foi escrita de cabeça e depois ilustrada: ela é a destilação de dois
 fluxos que produziram artefato real.
 
 ---
@@ -84,7 +84,7 @@ A diferença fecha o mapa. Evidência em `evidencias/relatorios/06-trivy-saida-c
 
 Entrou no script o que se decide **olhando só o YAML**: parsing, comparação de string,
 presença de campo, igualdade entre dois campos. É onde leitura humana erra e script não
-erra — e eu quase errei a 1.4 no fluxo 1, confundindo o seletor do Deployment com o do
+erra, e eu quase errei a 1.4 no fluxo 1, confundindo o seletor do Deployment com o do
 Service.
 
 Ficou como instrução o que exige **ler o código da aplicação**: o que cada endpoint toca,
@@ -111,7 +111,7 @@ Mas repassar a saída crua seria pior que não usar. Dois motivos medidos:
 | KSV018 limite de memória | **LOW** | 2.1 | **obrigatório** |
 | KSV013 tag `:latest` | MEDIUM | 3.1 | **proibido** |
 
-Quem filtra por `--severity HIGH,CRITICAL` — prática comum — **perde a regra 2.1 inteira**.
+Quem filtra por `--severity HIGH,CRITICAL` (prática comum) **perde a regra 2.1 inteira**.
 Daí a tradução: o script reporta KSV015 como "2.1, obrigatório, barra o deploy".
 
 ### O Trivy tem regras que a casa não adota
@@ -124,13 +124,13 @@ o revisor perder tempo consertando o que a casa não pede.
 
 ## 3. As três regras onde eu decidi contra a ferramenta, e a medição que sustenta
 
-### 3.3 — o Trivy produz aparência de cobertura
+### 3.3: o Trivy produz aparência de cobertura
 
 Esta é a regra que mais pesa: é `proibido`, e é a que vaza credencial de banco de produção.
 
 Três mecanismos testados, nenhum resolve:
 
-**`trivy fs --scanners secret`** — sonda com seis valores de formatos diferentes:
+**`trivy fs --scanners secret`**: sonda com seis valores de formatos diferentes:
 
 | Variável | Forma do valor | Detectado? |
 |---|---|---|
@@ -142,12 +142,12 @@ Três mecanismos testados, nenhum resolve:
 | `DATABASE_URL` | `postgres://nyx:s3nh4-do-banco@pg…:5432/nyx` | **NÃO** |
 
 Os valores são sintéticos e a tabela descreve a forma em vez de reproduzi-la, porque o
-push protection do GitHub casa com a forma — ver a seção 8.
+push protection do GitHub casa com a forma: ver a seção 8.
 
 Ele reconhece formato conhecido de credencial de terceiro. Senha arbitrária dentro de URI
 não tem formato reconhecível.
 
-**`AVD-KSV-01010`** — descoberto tarde, num manifesto de teste que não estava no
+**`AVD-KSV-01010`**: descoberto tarde, num manifesto de teste que não estava no
 experimento original. O título é "ConfigMap with sensitive content", o que faz qualquer um
 concluir que a 3.3 está coberta. Mesma senha em três lugares:
 
@@ -158,7 +158,7 @@ concluir que a 3.3 está coberta. Mesma senha em três lugares:
 | `Deployment` → `env.value` | **não** | não | **sim** |
 
 E quando dispara, não é a senha que ele achou. A mensagem diz o que casou:
-`'{"postgres"}'` — o esquema da URI. Noutro teste casou com `'{"CACHE_TTL", "mysql"}'`:
+`'{"postgres"}'`: o esquema da URI. Noutro teste casou com `'{"CACHE_TTL", "mysql"}'`:
 um tempo de expiração em segundos e o nome de um motor de banco. Dois falsos positivos e
 um falso negativo num único achado. A localização aponta para a linha do separador `---`.
 
@@ -166,7 +166,7 @@ um falso negativo num único achado. A localização aponta para a linha do sepa
 (`esquema://usuario:senha@host`) mais nome de variável sensível com valor literal, nos três
 lugares, com o campo exato no relatório.
 
-### 3.2 — o Trivy erra nas duas direções, então não pode ser o juiz
+### 3.2: o Trivy erra nas duas direções, então não pode ser o juiz
 
 Esta foi a decisão mais difícil e a que mudei no meio do caminho. A primeira versão do
 script delegava a 3.2 ao Trivy. Está errado, por dois motivos opostos:
@@ -192,15 +192,15 @@ julga o bloco com a herança, e os KSVs correspondentes passaram a ser **corrobo
 Não é reimplementação por capricho: é cobrir uma lacuna medida, e o único lugar em que o
 script julga por cima da ferramenta.
 
-### 2.2 — a presença das probes é parsing, e eu tinha deixado de fora
+### 2.2: a presença das probes é parsing, e eu tinha deixado de fora
 
 A primeira versão da skill mandava conferir as probes à mão por inteiro. Errado: a
 **presença** dos dois campos é parsing puro, pelo mesmo critério que colocou 1.1 e 1.4 no
 script. Só o julgamento de *o que cada endpoint toca* precisa de leitura.
 
 Hoje o script confere:
-- as duas probes existem — faltar uma **barra**
-- as duas testam exatamente a mesma coisa — vira `recomendado`, porque o veredito depende
+- as duas probes existem: faltar uma **barra**
+- as duas testam exatamente a mesma coisa: vira `recomendado`, porque o veredito depende
   do que o teste toca
 - e não exige probe de `Job`, `CronJob` nem `initContainer`
 
@@ -225,17 +225,17 @@ Regra que usei: **o corpo é o procedimento, a reference é a consulta.**
 | mapa de cobertura, severidades, falsos positivos | `references/cobertura-do-trivy.md` | argumento para quando alguém contesta o relatório |
 | as 15 verificações mecânicas | `scripts/conferir_manifesto.py` | determinístico; instrução aqui seria desperdício e erraria |
 
-Corpo do `SKILL.md` (sem o frontmatter): **249 linhas, ~3420 tokens** — dentro do limite
+Corpo do `SKILL.md` (sem o frontmatter): **249 linhas, ~3420 tokens**: dentro do limite
 recomendado de 500 linhas / 5000 tokens, com as duas references somando mais 500 linhas
 que só carregam quando o passo manda.
 
 ### O que eu tirei do corpo de propósito
 
-- **Severidades do Trivy KSV por KSV** — foi para a reference. No corpo ficou só o
+- **Severidades do Trivy KSV por KSV**: foi para a reference. No corpo ficou só o
   princípio ("LOW no Trivy pode ser obrigatório na casa"), que é o que muda a ação.
-- **As tabelas de experimento** — evidência, não procedimento. Quem executa a skill não
+- **As tabelas de experimento**: evidência, não procedimento. Quem executa a skill não
   precisa delas; quem contesta o relatório precisa.
-- **O texto integral das 19 regras** — no corpo ficou o número, o nível e o critério de
+- **O texto integral das 19 regras**: no corpo ficou o número, o nível e o critério de
   cada uma só nas quatro do passo 3.
 
 ---
@@ -254,7 +254,7 @@ A description declara as duas coisas:
 - **quando NÃO usar**, por nome: `CrashLoopBackOff`, `OOMKilled`, `ImagePullBackOff`,
   Service sem endpoint em produção, qualquer coisa que exija `kubectl` contra cluster vivo
 
-E fecha com o critério que generaliza além da lista: **o limite é a fonte da verdade** —
+E fecha com o critério que generaliza além da lista: **o limite é a fonte da verdade**,
 esta skill lê arquivo YAML e código-fonte, nunca o estado do cluster.
 
 697 de 1024 caracteres. O `compatibility` declara a dependência real e o que se perde sem
@@ -274,7 +274,7 @@ que eles não tinham visto. Detalhe em `validacao/testes-cegos.md`.
 | 2 | `vega-stg`, depois das correções | 6 | 5 |
 | 3 | `atlas-prod` (prod, 3.2 no nível errado) | 5 | 5 |
 
-Os três reproduziram os vereditos corretos. O valor não estava nisso — estava nos
+Os três reproduziram os vereditos corretos. O valor não estava nisso: estava nos
 **quinze defeitos** que eles acharam na skill. Os cinco que mais custaram:
 
 1. **A 3.2 não tinha juiz** e meus dois references se contradiziam sobre o nível dos
@@ -291,8 +291,8 @@ Os três reproduziram os vereditos corretos. O valor não estava nisso — estav
    e o campo aceita percentual. Bug real, e `maxSurge` não era conferido de forma alguma.
 
 Um sexto atrito eu diagnostiquei errado, e vale registrar: o teste 3 apontou que a regra
-2.4 premiava a opção pior, porque `maxUnavailable: 1` barrava e `Recreate` — que derruba a
-capacidade inteira — só pedia justificativa. Classifiquei como tensão do padrão da casa,
+2.4 premiava a opção pior, porque `maxUnavailable: 1` barrava e `Recreate` (que derruba a
+capacidade inteira) só pedia justificativa. Classifiquei como tensão do padrão da casa,
 fora do meu alcance. Não era: o padrão **não menciona `Recreate`**, e a flexibilização era
 minha. Detalhe na seção 7.
 
@@ -300,7 +300,7 @@ minha. Detalhe na seção 7.
 
 ## 7. O que NÃO foi empacotado, e por quê
 
-### O Bloco 4 inteiro — vocabulário e conceitos
+### O Bloco 4 inteiro: vocabulário e conceitos
 
 A decisão de corte mais volumosa: **oito itens, nenhum empacotado.** São 4.1 Pod,
 4.2 ReplicaSet, 4.3 Deployment, 4.4 Service, 4.5 `port` x `targetPort`, 4.6 Endpoints,
@@ -311,7 +311,7 @@ Três motivos, em ordem de peso:
 1. **Nenhum item produz veredito.** A skill existe para dizer "isto barra" ou "isto passa".
    A definição de ReplicaSet não muda uma linha de relatório. O próprio padrão diz que o
    bloco existe "para quem está chegando na plataforma" e que "quem já opera os clusters
-   pode pular direto para os blocos anteriores" — é material de onboarding, e a skill não é
+   pode pular direto para os blocos anteriores": é material de onboarding, e a skill não é
    onboarding.
 2. **Custo de contexto sem retorno.** O corpo do `SKILL.md` carrega inteiro a cada
    ativação. Oito definições de objeto do Kubernetes gastariam orçamento em toda conferência
@@ -324,8 +324,8 @@ Três motivos, em ordem de peso:
 - **4.5** (`port` x `targetPort`) virou prática nos manifests gerados: o `targetPort`
   aponta para o **nome** da porta e não para o número, para o Service acompanhar se a porta
   do container mudar. A definição não está no corpo da skill; o comportamento está.
-- **4.8** (probes) reforça a regra 2.2, e a parte operacional — liveness reinicia, readiness
-  tira do Service — está no corpo porque é o critério de decisão das probes. A `startupProbe`,
+- **4.8** (probes) reforça a regra 2.2, e a parte operacional: liveness reinicia, readiness
+  tira do Service: está no corpo porque é o critério de decisão das probes. A `startupProbe`,
   que o bloco menciona e nenhuma regra exige, ficou fora.
 
 O bloco está transcrito no fim de `references/padrao-completo.md` com esta justificativa ao
@@ -333,7 +333,7 @@ lado, para que a decisão seja auditável sem precisar voltar ao wiki.
 
 ### Três exigências que eu inventei, e que o anexo desmentiu
 
-Não é curadoria, é erro — mas pertence aqui porque mudou veredito e porque o mecanismo é o
+Não é curadoria, é erro, mas pertence aqui porque mudou veredito e porque o mecanismo é o
 mesmo que faz uma skill apodrecer.
 
 | O que a skill exigia | O que o padrão diz | Efeito do erro |
@@ -348,14 +348,14 @@ acomodar o Postgres com volume único; o `hostIPC` veio de o `KSV008` estar ao l
 outros três no catálogo.
 
 A segunda e a terceira são plausíveis o suficiente para passar numa leitura rápida. A
-primeira foi pior: eu a usei para **reverter uma classificação que estava certa** —
+primeira foi pior: eu a usei para **reverter uma classificação que estava certa**,
 `KSV020`/`KSV021` saíram de "fora do padrão" para "corrobora a 3.2", e eu escrevi uma seção
 explicando a troca. Está registrada em `cobertura-do-trivy.md`, junto com o desmentido.
 
 O que mudou na skill por causa disso: `references/padrao-completo.md` passou a marcar cada
 desvio do texto com `INTERPRETAÇÃO DA SKILL` e o motivo. Hoje restam três interpretações
-declaradas — subconjunto na 1.4, isenção de probe para `Job`/`CronJob`/`initContainer` na
-2.2, e o nível de cada campo na 3.2 — e nenhuma delas se confunde com texto da casa.
+declaradas: subconjunto na 1.4, isenção de probe para `Job`/`CronJob`/`initContainer` na
+2.2, e o nível de cada campo na 3.2, e nenhuma delas se confunde com texto da casa.
 
 Efeito colateral útil: a correção da 2.4 **resolveu** uma tensão que o terceiro teste cego
 tinha apontado. O sub-agente observou que a regra premiava a opção pior, porque
@@ -368,7 +368,7 @@ invenção, não do padrão.
 |---|---|
 | **Reimplementar 2.1, 3.1, 3.6** | o enunciado proíbe, e o Trivy acerta nessas três. O script invoca e traduz |
 | **Varrer segredo em comentário** | a regra 3.3 proíbe segredo "nem em comentário", e o parser de YAML descarta comentário antes de o script ver. Virou instrução de leitura no passo 3 em vez de um segundo parser só para comentários |
-| **Aceitar digest como alternativa à tag** | a regra 3.1 aceita `@sha256:...`, e o script só reprova `:latest`, então digest passa sem código extra. Não há verificação de que o digest existe no registry — isso exigiria rede e é trabalho do Loom |
+| **Aceitar digest como alternativa à tag** | a regra 3.1 aceita `@sha256:...`, e o script só reprova `:latest`, então digest passa sem código extra. Não há verificação de que o digest existe no registry: isso exigiria rede e é trabalho do Loom |
 | **Conferir 2.6 por script** | o valor correto depende de a aplicação tratar SIGTERM. Não há como inferir do YAML. É a única regra 100% manual |
 | **Decidir o que cada endpoint toca** | exige ler o código. Script que chutasse isso daria veredito confiante e errado na regra mais perigosa de operar |
 | **Qualquer acesso ao cluster** | é o limite da skill e o contrato com a de triagem do Ticket 02. `kubectl apply --dry-run=server` aparece como instrução do modo escrita, não como verificação do script |
@@ -381,8 +381,8 @@ invenção, não do padrão.
 
 ## 8. Permissões e execução
 
-- **Nada de `chmod +x`.** O script é invocado por interpretador — `python3
-  scripts/conferir_manifesto.py` — o que dispensa bit de execução e deixa explícito com
+- **Nada de `chmod +x`.** O script é invocado por interpretador: `python3
+  scripts/conferir_manifesto.py`: o que dispensa bit de execução e deixa explícito com
   que runtime ele roda.
 - **Rodar o script cai na capability `shell`**, que pede aprovação a menos que exista
   regra `allow` em `~/.kiro/settings/permissions.yaml` ou no escopo do workspace. Em
@@ -390,14 +390,14 @@ invenção, não do padrão.
   workspace. É o comportamento certo: a skill executa código e invoca ferramenta externa.
 - **Duas operações, dois níveis de risco.** `trivy config` e o script são leitura pura:
   não tocam cluster, não escrevem arquivo, não saem para a rede. Já o
-  `kubectl apply --dry-run=server` do modo escrita **fala com o apiserver** — é só
+  `kubectl apply --dry-run=server` do modo escrita **fala com o apiserver**: é só
   validação de schema, não altera estado, mas exige kubeconfig apontando para o cluster
   certo. A skill avisa que `--dry-run=client` não substitui.
 - **Dependência declarada no `compatibility`**, com o que se degrada sem ela: sem Trivy o
   script confere 15 das 19 e **avisa na saída** que 2.1, 3.1 e 3.6 não foram conferidas.
   Falhar em silêncio seria pior que não rodar.
 - **Nenhum segredo é lido ou escrito.** O script reporta a *existência* de senha em texto
-  puro e o *tamanho* dela, nunca o valor — `senha de 11 caracteres`, não a senha. Foi
+  puro e o *tamanho* dela, nunca o valor: `senha de 11 caracteres`, não a senha. Foi
   decisão deliberada: relatório de violação costuma ser colado em PR e em canal de chat.
 
 ### A sonda de segredos não pôde ser versionada, e isso é um achado
@@ -413,7 +413,7 @@ credencial real, senão o `trivy fs --scanners secret` não dispara. Essa mesma 
 | Slack API Token | `xoxb-` com três segmentos |
 
 O `ghp_` **não** foi flagrado, provavelmente porque o token sintético não tem checksum
-válido — o detector do GitHub é mais estrito que o do Trivy nesse ponto, e os dois
+válido: o detector do GitHub é mais estrito que o do Trivy nesse ponto, e os dois
 discordam sobre o mesmo valor.
 
 Minha primeira correção foi **guardar os valores em base64** dentro de um gerador. O
@@ -426,13 +426,13 @@ saíram dessa tentativa:
   trabalho sobre disciplina operacional, é precedente ruim.
 
 Solução que resolve em vez de contornar: o gerador **sorteia** os cinco valores de formato
-conhecido a cada execução. O experimento mede se o scanner reconhece a **forma** — qualquer
+conhecido a cada execução. O experimento mede se o scanner reconhece a **forma**: qualquer
 `AKIA` com 16 caracteres dispara a regra, o valor é irrelevante para a medição. Assim não
 existe credencial no repositório, nem em texto nem codificada. Verificado em três execuções
 seguidas: 5 de 6 detectados, sempre os mesmos cinco detectores.
 
 A senha da `DATABASE_URL` segue fixa, porque é o objeto do experimento e precisa ser
-identificável no relatório — e é a única que nenhum scanner detecta.
+identificável no relatório, e é a única que nenhum scanner detecta.
 
 Custo aceito: a sonda não é mais reprodutível byte a byte. O **resultado** é, e está em
 `evidencias/relatorios/06-trivy-saida-crua.txt`.
@@ -449,7 +449,7 @@ dois lê o que o valor significa.
 A skill tem duas datas embutidas e vale dizer qual quebra antes.
 
 1. **A versão do Trivy.** O mapa de cobertura foi medido com 0.52.2. Versão nova traz
-   regra nova, e regra nova que desaparece em silêncio é pior que regra ruidosa — foi
+   regra nova, e regra nova que desaparece em silêncio é pior que regra ruidosa: foi
    exatamente o que aconteceu com o `AVD-KSV-01010`. Por isso o script tem o balde
    `TRIVY APONTOU E O MAPA NÃO CONHECE`, e a reference traz a tabela de como classificar o
    que cair nele.

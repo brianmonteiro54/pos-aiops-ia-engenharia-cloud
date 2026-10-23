@@ -1,24 +1,24 @@
-# Ticket 01 — Skill do padrão de manifests
+# Ticket 01: Skill do padrão de manifests
 
 Empacotar o Padrão de Manifests da Metacortex (revisão 2026-07-29) numa skill, com o que é
-mecânico virando script e o que exige ler o projeto virando instrução — sem reimplementar o
+mecânico virando script e o que exige ler o projeto virando instrução, sem reimplementar o
 que o Trivy já cobre.
 
 ## Onde está cada item do `Entregue.`
 
 | Item pedido | Onde está |
 |---|---|
-| **A skill completa: corpo, script e arquivos de apoio** | `../../../.kiro/skills/padrao-de-manifests-metacortex/` — `SKILL.md`, `scripts/conferir_manifesto.py`, `references/padrao-completo.md`, `references/cobertura-do-trivy.md` |
+| **A skill completa: corpo, script e arquivos de apoio** | `../../../.kiro/skills/padrao-de-manifests-metacortex/`: `SKILL.md`, `scripts/conferir_manifesto.py`, `references/padrao-completo.md`, `references/cobertura-do-trivy.md` |
 | **A origem da skill: de qual fluxo nasceu, como foi produzida e com qual ferramenta** | `curadoria.md` seção 0, e os dois fluxos em `fluxos/` |
-| **Saída real — os manifests gerados** | `manifests/fake-shop/` e `manifests/kube-news/`, com `DECISOES.md` em cada um |
-| **Saída real — a conferência do manifesto barrado** | `evidencias/relatorios/01-manifesto-barrado.txt` |
-| **Curadoria — a linha entre script e instrução, regra por regra** | `curadoria.md` seção 1 |
-| **Curadoria — o que o Trivy já cobria** | `curadoria.md` seções 2 e 3, e `references/cobertura-do-trivy.md` |
-| **Curadoria — corpo da skill x arquivo consultado sob demanda** | `curadoria.md` seção 4 |
-| **Curadoria — o que decidi não empacotar e por quê** | `curadoria.md` seção 7 |
-| **Curadoria — quais permissões a skill pede** | `curadoria.md` seção 8 |
+| **Saída real: os manifests gerados** | `manifests/fake-shop/` e `manifests/kube-news/`, com `DECISOES.md` em cada um |
+| **Saída real: a conferência do manifesto barrado** | `evidencias/relatorios/01-manifesto-barrado.txt` |
+| **Curadoria: a linha entre script e instrução, regra por regra** | `curadoria.md` seção 1 |
+| **Curadoria, o que o Trivy já cobria** | `curadoria.md` seções 2 e 3, e `references/cobertura-do-trivy.md` |
+| **Curadoria: corpo da skill x arquivo consultado sob demanda** | `curadoria.md` seção 4 |
+| **Curadoria, o que decidi não empacotar e por quê** | `curadoria.md` seção 7 |
+| **Curadoria: quais permissões a skill pede** | `curadoria.md` seção 8 |
 
-Extra, não pedido: `validacao/testes-cegos.md` — três sub-agentes executaram a skill sem
+Extra, não pedido: `validacao/testes-cegos.md`: três sub-agentes executaram a skill sem
 acesso aos fluxos nem às sondas e acharam 15 defeitos nela, todos corrigidos. O que eles
 **não** pegaram foram as três regras que eu havia inventado: teste cego valida consistência
 interna, não fidelidade à fonte. Essas saíram do confronto com o anexo.
@@ -42,7 +42,7 @@ Quem julga cada regra:
 | **só leitura do projeto** | 2.6 | 1 |
 
 O Trivy é juiz de **3 das 19**. Chegar a esse número exigiu dois experimentos, porque rodar
-`trivy config` num manifesto não diz o que a ferramenta tem — diz o que aquele manifesto
+`trivy config` num manifesto não diz o que a ferramenta tem: diz o que aquele manifesto
 violou.
 
 ## Os três achados que mais mudaram a skill
@@ -68,7 +68,7 @@ Quem filtra por `--severity HIGH,CRITICAL` vê um e perde quatro.
 | fake-shop gerado (`orion-prod`) | 1 | 2 | 1 |
 | kube-news gerado (`nyx-dev`) | **0** | 0 | 1 |
 
-As duas violações do fake-shop são do Postgres e saem do mesmo fato — volume único em prod:
+As duas violações do fake-shop são do Postgres e saem do mesmo fato: volume único em prod:
 `replicas: 1` fere a 2.3 e `strategy.type: Recreate` fere a 2.4. Os dois casos são
 legítimos e **continuam barrando**, porque desvio documentado não é exceção aprovada. É o
 princípio que a skill protege.
@@ -81,7 +81,7 @@ três nasceram de completar de cabeça uma regra que parecia incompleta. Detalhe
 `curadoria.md` seção 7.
 
 Um quarto erro: eu afirmei que campo de container declarado no nível do pod é
-"silenciosamente ignorado". Testei contra o apiserver e está errado — `kubectl apply`
+"silenciosamente ignorado". Testei contra o apiserver e está errado: `kubectl apply`
 strict **recusa** com `strict decoding error`; só `--validate=false` aceita e descarta.
 
 ## Reproduzir
@@ -89,15 +89,15 @@ strict **recusa** com `strict decoding error`; só `--validate=false` aceita e d
 ```bash
 S=../../../.kiro/skills/padrao-de-manifests-metacortex/scripts/conferir_manifesto.py
 
-python3 "$S" manifests/nyx-api-barrado.yaml   # rc=1 — 20 barram, 3 recomendadas
-python3 "$S" manifests/fake-shop/             # rc=1 — 2 barram (desvios do Postgres)
-python3 "$S" manifests/kube-news/             # rc=0 — nada barra
-python3 "$S" validacao/teste-cego-01-vega-stg.yaml     # rc=1 — 4 barram
-python3 "$S" validacao/teste-cego-02-atlas-prod.yaml   # rc=1 — 4 barram
+python3 "$S" manifests/nyx-api-barrado.yaml   # rc=1: 20 barram, 3 recomendadas
+python3 "$S" manifests/fake-shop/             # rc=1: 2 barram (desvios do Postgres)
+python3 "$S" manifests/kube-news/             # rc=0: nada barra
+python3 "$S" validacao/teste-cego-01-vega-stg.yaml     # rc=1: 4 barram
+python3 "$S" validacao/teste-cego-02-atlas-prod.yaml   # rc=1: 4 barram
 ```
 
 Requer `python3` com PyYAML. Sem `trivy` o script confere 15 das 19 e avisa na saída quais
-ficaram de fora — rode com `--sem-trivy` para ver.
+ficaram de fora: rode com `--sem-trivy` para ver.
 
 ### A sonda de segredos é gerada, não versionada
 
@@ -111,7 +111,7 @@ rm trivy-segredos-seis-formatos.yaml                            # nao commitar
 O motivo vale como achado. A sonda precisa de valores com a **forma exata** de credencial
 real, senão o scanner não dispara. Essa mesma forma fez o push protection do GitHub
 **bloquear** o push deste ticket, com três violações. A segunda tentativa guardou os
-valores em base64 — o GitHub decodificou e recusou de novo. Por isso o gerador **sorteia**
+valores em base64: o GitHub decodificou e recusou de novo. Por isso o gerador **sorteia**
 os valores: o experimento mede a forma, não um valor específico.
 
 O resultado está em `evidencias/relatorios/06-trivy-saida-crua.txt`, auditável sem rodar

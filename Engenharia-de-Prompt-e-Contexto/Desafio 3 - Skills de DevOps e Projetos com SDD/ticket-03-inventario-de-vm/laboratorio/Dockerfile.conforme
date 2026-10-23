@@ -14,7 +14,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends containerd \
     && systemctl enable containerd
 
 # node_exporter em unidade propria, escutando SO no endereco interno.
-# `portas_em_escuta.somente_rede_interna: [9100]` — bind em 0.0.0.0 e desvio critico, e e
+# `portas_em_escuta.somente_rede_interna: [9100]`: bind em 0.0.0.0 e desvio critico, e e
 # justamente o que o host de desvios faz.
 RUN printf '%s\n' \
     '[Unit]' \

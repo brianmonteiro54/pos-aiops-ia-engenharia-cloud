@@ -7,7 +7,7 @@
 # POR QUE A IMAGEM É SUBSTITUÍDA
 # ------------------------------
 # Os manifests do Ticket 01 apontam para `registry.metacortex.io`, porque a regra 3.7 do
-# padrão da casa exige registry interno. Esse registry é da ficção do desafio e não existe —
+# padrão da casa exige registry interno. Esse registry é da ficção do desafio e não existe,
 # aplicar os manifests sem tocar nada dá ImagePullBackOff nos dois projetos.
 #
 # Então a substituição é SÓ da imagem, feita com `kubectl set image` DEPOIS do apply, e o
@@ -52,7 +52,7 @@ kubectl -n orion-prod delete job orion-web-migracao --ignore-not-found >/dev/nul
 kubectl -n orion-prod get deploy orion-web -o json 2>/dev/null >/dev/null
 
 echo "=== 4. o UID do Postgres: a imagem alpine precisa do 70 ==="
-# Os manifests ja declaram runAsUser 70 e fsGroup 70 — nada a fazer, so registrando.
+# Os manifests ja declaram runAsUser 70 e fsGroup 70: nada a fazer, so registrando.
 echo "  ja declarado nos manifests do Ticket 01"
 
 echo "=== 5. esperando ==="

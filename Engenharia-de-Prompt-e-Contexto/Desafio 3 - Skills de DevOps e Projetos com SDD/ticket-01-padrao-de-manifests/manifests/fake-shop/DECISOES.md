@@ -46,8 +46,8 @@ toca:
 
 | Probe | Rota | Linha | O que faz |
 |---|---|---|---|
-| readiness | `GET /` | `src/index.py:252-254` | `Product.query.all()` — **toca o banco** |
-| liveness | `GET /contact` | `src/index.py:49-51` | só renderiza template — **não toca o banco** |
+| readiness | `GET /` | `src/index.py:252-254` | `Product.query.all()`: **toca o banco** |
+| liveness | `GET /contact` | `src/index.py:49-51` | só renderiza template: **não toca o banco** |
 
 A divisão é o ponto. Banco fora do ar tira o pod do Service (readiness falha) mas **não
 reinicia o container** (liveness continua passando). Reiniciar não traz o banco de volta;
@@ -73,8 +73,8 @@ diretório, o processo não sobe.
 
 Daí os dois volumes do container:
 
-- `emptyDir` em `/tmp` — temporários do Python e do gunicorn
-- `emptyDir` em `/tmp/metrics` — apontado por `PROMETHEUS_MULTIPROC_DIR`
+- `emptyDir` em `/tmp`: temporários do Python e do gunicorn
+- `emptyDir` em `/tmp/metrics`: apontado por `PROMETHEUS_MULTIPROC_DIR`
 
 Esta é a parte da regra 3.2 que nenhuma ferramenta responde. O Trivy sabe dizer que
 `readOnlyRootFilesystem` está ausente; ele não sabe **em que caminho** montar o volume
@@ -85,7 +85,7 @@ para que a aplicação continue funcionando com a flag ligada.
 `src/index.py:22-26` lê `DB_HOST`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `DB_PORT`.
 
 Só `DB_PASSWORD` vem de `secretKeyRef` (regra 3.3). As outras quatro são `value` literal
-porque não são segredo — host, porta, nome do banco e nome do usuário não dão acesso a
+porque não são segredo: host, porta, nome do banco e nome do usuário não dão acesso a
 nada sozinhos, e colocar tudo em Secret só esconde configuração de quem precisa ler.
 
 `FLASK_APP: index.py` é necessário porque o Job chama `flask db upgrade` sem o entrypoint
@@ -94,18 +94,18 @@ original, que era quem definia o contexto da aplicação.
 ## 5. `terminationGracePeriodSeconds: 30`
 
 Gunicorn trata SIGTERM encerrando os workers depois de terminarem a requisição em curso.
-A requisição mais longa desta aplicação é o checkout. 30 segundos — o default do
-Kubernetes — cobre, e a regra 2.6 só pede que o valor seja **deliberado**, não que seja
+A requisição mais longa desta aplicação é o checkout. 30 segundos (o default do
+Kubernetes) cobre, e a regra 2.6 só pede que o valor seja **deliberado**, não que seja
 diferente do default. Mantido com justificativa, não por omissão.
 
 ## Pendência conhecida: o Postgres viola a regra 2.3 de propósito
 
 `orion-prod-postgres.yaml` tem `replicas: 1` em `prod`. O motivo está comentado no
 próprio arquivo: com `emptyDir` e sem replicação, duas réplicas sobem com bancos
-independentes e a aplicação alterna entre dois estados — pior que uma réplica, não melhor.
+independentes e a aplicação alterna entre dois estados: pior que uma réplica, não melhor.
 
 O caminho correto é `StatefulSet` com `PersistentVolumeClaim`, fora do escopo deste
 ticket. O padrão exige que exceção a regra obrigatória venha com aprovação escrita de
 Segurança & Compliance e prazo de validade; este manifesto é de laboratório e a aprovação
-não existe. **Por isso a skill reporta este ponto como violação e não como conforme** —
+não existe. **Por isso a skill reporta este ponto como violação e não como conforme**,
 desvio documentado continua sendo desvio até alguém assinar.

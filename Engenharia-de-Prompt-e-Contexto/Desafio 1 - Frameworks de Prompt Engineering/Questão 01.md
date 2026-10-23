@@ -1,4 +1,4 @@
-# Questão 01 — Dockerfile para o Lift
+# Questão 01: Dockerfile para o Lift
 
 **Framework:** R-T-F (Role, Task, Format)
 
@@ -66,7 +66,7 @@ Responda somente com o Dockerfile, dentro de um único bloco de código.
 
 ## Modelo
 
-**Gemini Pro (Google) — modo de raciocínio estendido**
+**Gemini Pro (Google): modo de raciocínio estendido**
 
 Escolhido porque a tarefa é geração de um único artefato técnico com muitas restrições simultâneas (10 requisitos de boas práticas + formato de saída restritivo), cenário em que o raciocínio estendido ajuda o modelo a resolver os trade-offs entre estágios do build antes de escrever o arquivo.
 

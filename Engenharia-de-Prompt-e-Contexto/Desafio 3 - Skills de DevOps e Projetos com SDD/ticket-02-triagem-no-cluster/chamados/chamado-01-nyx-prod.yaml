@@ -1,4 +1,4 @@
-# Chamado 1 — nyx-prod: a API do kube-news reinicia sozinha.
+# Chamado 1: nyx-prod: a API do kube-news reinicia sozinha.
 # "O problema apareceu depois de um corte de custos que mudou os limites de recurso do
 #  namespace inteiro de uma vez."
 #

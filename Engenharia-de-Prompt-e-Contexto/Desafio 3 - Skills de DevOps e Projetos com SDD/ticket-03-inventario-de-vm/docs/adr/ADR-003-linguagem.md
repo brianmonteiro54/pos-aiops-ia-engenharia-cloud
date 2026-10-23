@@ -1,4 +1,4 @@
-# ADR-003 — Em que linguagem a ferramenta é escrita
+# ADR-003: Em que linguagem a ferramenta é escrita
 
 **Status:** aceito
 **Contexto:** quem vai manter é o time de **infraestrutura** da Metacortex, não um time de
@@ -7,11 +7,11 @@ produto. A ferramenta roda na estação de quem opera e em esteira de CI.
 ## Decisão
 
 **Python 3, com biblioteca padrão apenas.** A única dependência externa é `PyYAML`, para ler
-o baseline — e com degradação declarada se ela faltar.
+o baseline, e com degradação declarada se ela faltar.
 
 ## Alternativas consideradas
 
-### A — Go
+### A: Go
 
 **O que se ganha, e é muito:**
 
@@ -34,7 +34,7 @@ o baseline — e com degradação declarada se ela faltar.
 - a vantagem do binário único é menor do que parece: `python3` **já está** em qualquer host
   e estação Linux do parque.
 
-### B — Shell (bash)
+### B: Shell (bash)
 
 **O que se ganha:** é a linguagem nativa do problema. Os comandos de coleta já são shell, e
 não haveria tradução nenhuma. Zero dependência, nem `python3`.
@@ -45,18 +45,18 @@ não haveria tradução nenhuma. Zero dependência, nem `python3`.
   listas. Montar isso com `printf` é frágil em escape; usar `jq` troca a dependência de
   `python3` por `jq`, sem ganho.
 - **comparação de versão por componente**, que o TRD exige, é desconfortável em bash e fácil
-  de errar — e `"22.04" < "9.10"` é verdade em comparação de string
+  de errar, e `"22.04" < "9.10"` é verdade em comparação de string
 - **três estados por regra** em estrutura de dados que bash não tem. Seria array associativo
   com chave composta, ilegível em um mês
 - erro silencioso é o default. `set -euo pipefail` ajuda e não resolve pipeline com `grep`
   que não casa
 
-### C — Python 3, biblioteca padrão (escolhida)
+### C: Python 3, biblioteca padrão (escolhida)
 
 **O que se ganha:**
 
 - **o time mantém.** É o critério de maior peso, e o contexto o define
-- `python3` está em toda estação e host Linux do parque — nada para instalar
+- `python3` está em toda estação e host Linux do parque: nada para instalar
 - `json`, `argparse`, `subprocess`, `re` e `dataclasses` cobrem tudo que a ferramenta faz
 - o código é inspecionável no host onde está. Para ferramenta de plantão, ler a fonte é
   parte da depuração
@@ -79,7 +79,7 @@ O baseline é YAML, e YAML não está na biblioteca padrão do Python. Três sa�
 | escrever um parser mínimo de YAML | reinventar roda com risco de divergir do YAML de verdade em caso de borda |
 | **depender de `PyYAML`** | escolhida |
 
-`PyYAML` é a dependência mais comum do ecossistema de infraestrutura — já está instalada
+`PyYAML` é a dependência mais comum do ecossistema de infraestrutura: já está instalada
 nesta estação, e Ansible a traz. E a falha é **declarada**: se ela faltar, a ferramenta sai
 com código `2` e a mensagem diz o que instalar, em vez de estourar `ImportError`.
 
@@ -87,7 +87,7 @@ com código `2` e a mensagem diz o que instalar, em vez de estourar `ImportError
 
 - pré-requisitos: `python3` ≥ 3.9 (por `dict | dict` e tipagem com `|`), `PyYAML`, `ssh`
 - o parsing de saída de comando é por regex e `split`, que é frágil por natureza. O
-  tratamento é cada coletor falhar para `nao_verificado` em vez de quebrar — **ADR-002**
+  tratamento é cada coletor falhar para `nao_verificado` em vez de quebrar: **ADR-002**
 - se a ferramenta crescer para varrer frota em paralelo, Python entrega isso com
   `concurrent.futures` da biblioteca padrão, sem mudar a decisão
 - **se o requisito mudar para "distribuir sem runtime"**, esta decisão se inverte e Go passa

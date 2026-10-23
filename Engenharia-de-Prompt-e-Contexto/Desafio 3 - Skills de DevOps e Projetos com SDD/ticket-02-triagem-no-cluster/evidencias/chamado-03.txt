@@ -1,6 +1,6 @@
-############ CHAMADO 3 — nyx-stg: 503 de fora, aplicacao de pe ############
+############ CHAMADO 3: nyx-stg: 503 de fora, aplicacao de pe ############
 
-### passo 1: retrato — tudo parece bem
+### passo 1: retrato: tudo parece bem
 NAME                           READY   UP-TO-DATE   AVAILABLE   AGE
 deployment.apps/nyx-api        2/2     2            2           5m38s
 deployment.apps/nyx-postgres   1/1     1            1           5m38s
@@ -17,7 +17,7 @@ pod/nyx-postgres-5877b89bf8-wfdt5   1/1     Running   0              5m38s
      lastState: terminated reason=Error exitCode=1
 
 ### passo 3: o Service tem endpoint? (a pergunta que resolve o chamado)
-  campo subsets: AUSENTE — o campo nao vem, nao vem vazio
+  campo subsets: AUSENTE, o campo nao vem, nao vem vazio
 --- e o EndpointSlice, que e o substituto? ---
   slice nyx-api-wszq8: endpoints=AUSENTE
 

@@ -1,4 +1,4 @@
-# Desafio 1 — Frameworks de Prompt Engineering aplicados a Cloud, DevOps e SRE
+# Desafio 1: Frameworks de Prompt Engineering aplicados a Cloud, DevOps e SRE
 
 Desafio prático da pós-graduação **AIOps e IA na Engenharia de Cloud**, no capítulo de Engenharia de Prompt e Contexto.
 
@@ -69,7 +69,7 @@ Os 4 campos são obrigatórios pelo enunciado do desafio:
 
 ---
 
-### Questão 01 — Dockerfile para o Lift · R-T-F
+### Questão 01: Dockerfile para o Lift · R-T-F
 
 O Lift vai sair de VMs e entrar no cluster Kubernetes. O código existe: API Python/Flask na porta 8080, dependências com versões fixadas, duas variáveis obrigatórias em runtime (`DATABASE_URL`, `API_KEY`), start com gunicorn e 4 workers. Falta o Dockerfile.
 
@@ -77,7 +77,7 @@ O Lift vai sair de VMs e entrar no cluster Kubernetes. O código existe: API Pyt
 
 O `Format` é o componente interessante desta questão: é ele que transforma a resposta em artefato pronto para commit em vez de tutorial.
 
-### Questão 02 — Script de backup do Ledger · R-T-F
+### Questão 02: Script de backup do Ledger · R-T-F
 
 O Ledger nunca teve backup automatizado. É uma dependência em aberto no radar da SRE, que quer resolver com uma rotina diária via cron.
 
@@ -85,7 +85,7 @@ O Ledger nunca teve backup automatizado. É uma dependência em aberto no radar 
 
 O requisito que separa script amador de script de produção está aqui: **falha no meio do pipe não pode gerar backup incompleto tratado como sucesso.**
 
-### Questão 03 — Relatório de redução de custo cloud · T-A-G
+### Questão 03: Relatório de redução de custo cloud · T-A-G
 
 A CEO definiu meta de reduzir 15% do custo cloud no trimestre sem degradar SLA. O breakdown da fatura AWS do último mês veio em CSV com 12 linhas de serviço, cada uma com categoria, custo, uso médio e uma observação.
 
@@ -93,7 +93,7 @@ A CEO definiu meta de reduzir 15% do custo cloud no trimestre sem degradar SLA. 
 
 O `Goal` é o que faz o relatório responder à pergunta do CTO em vez de listar boas práticas de FinOps.
 
-### Questão 04 — Relatório mensal de transações do Ledger · T-A-G
+### Questão 04: Relatório mensal de transações do Ledger · T-A-G
 
 A PM está fechando uma apresentação para a CEO sobre crescimento de transações por categoria. Ela não escreve SQL, então a demanda caiu na fila da engenharia.
 
@@ -101,7 +101,7 @@ A PM está fechando uma apresentação para a CEO sobre crescimento de transaç�
 
 O output desta questão saiu com três defeitos reais, todos documentados com a evidência da execução. É o caso que mostra que output plausível não é output correto.
 
-### Questão 05 — Modernizar deployment legado · B-A-B
+### Questão 05: Modernizar deployment legado · B-A-B
 
 Numa revisão de produção, o CTO encontrou o manifest do Chronos escrito três anos antes: 1 réplica, imagem `:latest`, segredos em texto puro versionados no Git, sem probes, sem resources, sem securityContext. Ninguém mexeu desde então, e o Chronos recebe todo o tráfego da empresa.
 
@@ -109,7 +109,7 @@ Numa revisão de produção, o CTO encontrou o manifest do Chronos escrito três
 
 É a questão em que o framework casa melhor com o problema: existe um estado atual conhecido, um estado desejado conhecido, e a dificuldade real é a **travessia** entre os dois.
 
-### Questão 06 — Módulo Terraform no padrão interno · C-A-R-E
+### Questão 06: Módulo Terraform no padrão interno · C-A-R-E
 
 Segurança e compliance publicaram o padrão interno de IaC: tags obrigatórias, prefixo nos nomes, `description` e `type` em toda variável, e para S3 encryption, versioning, block public access e logging sempre ativos. O CTO pediu um módulo reutilizável de buckets S3 que todos os times vão consumir.
 
@@ -117,7 +117,7 @@ Segurança e compliance publicaram o padrão interno de IaC: tags obrigatórias,
 
 O `Example` é o componente decisivo: sem ele o módulo sairia correto e fora do padrão visual da casa. O módulo gerado está versionado como código em [`Questão 06/`](<Questão 06>), não apenas transcrito no markdown.
 
-### Questão 07 — Runbook para alerta recorrente · R-I-S-E
+### Questão 07: Runbook para alerta recorrente · R-I-S-E
 
 O Beacon dispara em média 4 vezes por semana o mesmo alerta crítico de memória alta nos pods do Chronos. Cada plantonista gasta de 30 a 40 minutos resolvendo, de forma diferente a cada vez, porque não existe procedimento documentado.
 
@@ -125,7 +125,7 @@ O Beacon dispara em média 4 vezes por semana o mesmo alerta crítico de memóri
 
 O `Role` aqui tem dois lados que mudam o resultado: o papel do modelo e, principalmente, **quem é o leitor do runbook**.
 
-### Questão 08 — Postmortem técnico de incidente em produção · framework à escolha
+### Questão 08: Postmortem técnico de incidente em produção · framework à escolha
 
 Incidente em andamento durante o pico de tráfego. O CTO está numa call e precisa, em 20 minutos, decidir entre duas opções mutuamente exclusivas: rollback do deploy que subiu ontem, ou scaling emergencial do banco e do pool de conexões. Os insumos são cinco fontes heterogêneas: changelog, série temporal, trecho de log, estado da fila e estado do cluster.
 
@@ -174,12 +174,12 @@ O enunciado pede o output real e permite registrar output ruim, comentando o que
 ```
 Desafio 1 - Frameworks de Prompt Engineering/
 ├── README.md              # este arquivo
-├── Questão 01.md          # R-T-F   — Dockerfile
-├── Questão 02.md          # R-T-F   — script de backup
-├── Questão 03.md          # T-A-G   — relatório de custo
-├── Questão 04.md          # T-A-G   — query SQL
-├── Questão 05.md          # B-A-B   — manifest Kubernetes
-├── Questão 06.md          # C-A-R-E — módulo Terraform
+├── Questão 01.md          # R-T-F: Dockerfile
+├── Questão 02.md          # R-T-F: script de backup
+├── Questão 03.md          # T-A-G: relatório de custo
+├── Questão 04.md          # T-A-G: query SQL
+├── Questão 05.md          # B-A-B: manifest Kubernetes
+├── Questão 06.md          # C-A-R-E: módulo Terraform
 ├── Questão 06/            # o módulo Terraform gerado, versionado como código
 │   ├── main.tf
 │   ├── variables.tf
@@ -187,6 +187,6 @@ Desafio 1 - Frameworks de Prompt Engineering/
 │   ├── versions.tf
 │   ├── README.md
 │   └── examples/basic/main.tf
-├── Questão 07.md          # R-I-S-E — runbook de plantão
-└── Questão 08.md          # R-I-S-E escolhido — postmortem
+├── Questão 07.md          # R-I-S-E: runbook de plantão
+└── Questão 08.md          # R-I-S-E escolhido: postmortem
 ```

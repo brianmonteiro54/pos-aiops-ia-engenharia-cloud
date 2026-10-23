@@ -31,26 +31,26 @@ printf '# Validacao de roster-inventario contra os critérios de pronto\n'
 printf '# %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
 # ---------------------------------------------------------------- CA-01
-titulo "CA-01 — host conforme sai sem nenhum desvio (baseline do laboratorio)"
+titulo "CA-01: host conforme sai sem nenhum desvio (baseline do laboratorio)"
 auditar $CONFORME_PORTA baseline-laboratorio.yaml markdown
 auditar $CONFORME_PORTA baseline-laboratorio.yaml json > /dev/null
 printf '\ncodigo de saida: %s   (esperado 0)\n' "$?"
 
 # ---------------------------------------------------------------- CA-01b
-titulo "CA-01b — o MESMO host contra o baseline do parque (ADR-004)"
+titulo "CA-01b: o MESMO host contra o baseline do parque (ADR-004)"
 printf 'Esperado: exatamente DOIS desvios, kernel e swap, e nada mais.\n'
 printf 'Os dois sao de nivel de HOST e o container compartilha os dois.\n\n'
 auditar $CONFORME_PORTA baseline.yaml markdown
 auditar $CONFORME_PORTA baseline.yaml json > /dev/null
-printf '\ncodigo de saida: %s   (esperado 1 — ha desvio, e e verdade)\n' "$?"
+printf '\ncodigo de saida: %s   (esperado 1, ha desvio, e e verdade)\n' "$?"
 
 # ---------------------------------------------------------------- CA-02
-titulo "CA-02 — host com desvios, cada um com a severidade do baseline"
+titulo "CA-02: host com desvios, cada um com a severidade do baseline"
 auditar $DESVIOS_PORTA baseline.yaml markdown
 auditar $DESVIOS_PORTA baseline.yaml json > /dev/null
 printf '\ncodigo de saida: %s   (esperado 1)\n' "$?"
 
-titulo "CA-02 — a classificacao por severidade, do JSON"
+titulo "CA-02: a classificacao por severidade, do JSON"
 auditar $DESVIOS_PORTA baseline.yaml json 2>/dev/null > /tmp/rst-ca02.json
 python3 - <<'PY'
 import json
@@ -63,7 +63,7 @@ PY
 rm -f /tmp/rst-ca02.json
 
 # ---------------------------------------------------------------- CA-03
-titulo "CA-03 — regra nao verificavel aparece separada de conforme"
+titulo "CA-03: regra nao verificavel aparece separada de conforme"
 printf 'O usuario da coleta e sem privilegio, e `sshd -T` exige root.\n\n'
 auditar $DESVIOS_PORTA baseline.yaml json 2>/dev/null > /tmp/rst-ca03.json
 python3 - <<'PY'
@@ -87,7 +87,7 @@ PY
 rm -f /tmp/rst-ca03.json
 
 # ---------------------------------------------------------------- CA-04
-titulo "CA-04 — host inalcancavel: tres falhas, sem stack trace"
+titulo "CA-04: host inalcancavel: tres falhas, sem stack trace"
 for caso in "porta sem SSH:19999:$CHAVES/auditor" \
             "chave recusada:$CONFORME_PORTA:$CHAVES/intruso" \
             "nome que nao resolve:22:$CHAVES/auditor"; do
@@ -107,7 +107,7 @@ python3 "$FERRAMENTA" --host 127.0.0.1 --porta $CONFORME_PORTA --usuario "$USUAR
 printf 'codigo de saida: %s   (esperado 2)\n' "$?"
 
 # ---------------------------------------------------------------- CA-05
-titulo "CA-05 — a segunda execucao devolve o mesmo resultado"
+titulo "CA-05: a segunda execucao devolve o mesmo resultado"
 auditar $DESVIOS_PORTA baseline.yaml json 2>/dev/null > /tmp/rst-1.json
 sleep 2
 auditar $DESVIOS_PORTA baseline.yaml json 2>/dev/null > /tmp/rst-2.json
@@ -130,19 +130,19 @@ PY
 rm -f /tmp/rst-1.json /tmp/rst-2.json
 
 # ---------------------------------------------------------------- RE-03
-titulo "RE-03 — a chave privada nao aparece em saida nenhuma"
+titulo "RE-03: a chave privada nao aparece em saida nenhuma"
 PRIV="$(head -2 "$CHAVES/auditor" | tail -1 | cut -c1-40)"
 TUDO="$( { auditar $DESVIOS_PORTA baseline.yaml ambos; \
            python3 "$FERRAMENTA" --host 127.0.0.1 --porta 19999 --usuario "$USUARIO" \
              --chave "$CHAVES/auditor" --baseline baseline.yaml; } 2>&1 )"
 printf '  conteudo da chave na saida : %s\n' \
-  "$(grep -qF "$PRIV" <<<"$TUDO" && echo 'ENCONTRADO — FALHA' || echo 'ausente')"
+  "$(grep -qF "$PRIV" <<<"$TUDO" && echo 'ENCONTRADO: FALHA' || echo 'ausente')"
 printf '  caminho da chave na saida  : %s\n' \
-  "$(grep -qF "$CHAVES/auditor" <<<"$TUDO" && echo 'ENCONTRADO — FALHA' || echo 'ausente')"
+  "$(grep -qF "$CHAVES/auditor" <<<"$TUDO" && echo 'ENCONTRADO: FALHA' || echo 'ausente')"
 printf '  "BEGIN OPENSSH PRIVATE KEY": %s\n' \
-  "$(grep -qF 'BEGIN OPENSSH PRIVATE KEY' <<<"$TUDO" && echo 'ENCONTRADO — FALHA' || echo 'ausente')"
+  "$(grep -qF 'BEGIN OPENSSH PRIVATE KEY' <<<"$TUDO" && echo 'ENCONTRADO: FALHA' || echo 'ausente')"
 printf '  traceback na saida         : %s\n' \
-  "$(grep -qF 'Traceback' <<<"$TUDO" && echo 'ENCONTRADO — FALHA' || echo 'ausente')"
+  "$(grep -qF 'Traceback' <<<"$TUDO" && echo 'ENCONTRADO: FALHA' || echo 'ausente')"
 
 printf '\n########## fim ##########\n'
 } 2>&1 | tee "$SAIDA/validacao.txt"

@@ -1,4 +1,4 @@
-# Curadoria — onde a spec precisou ser corrigida, e o que o agente entendeu diferente
+# Curadoria: onde a spec precisou ser corrigida, e o que o agente entendeu diferente
 
 O ticket pede duas coisas desta curadoria: **onde a spec precisou ser corrigida durante a
 implementação** e **o que o agente entendeu diferente do que eu escrevi**. As duas abaixo,
@@ -47,7 +47,7 @@ correção do **laboratório**, não da ferramenta: ela reportou `nao_verificado
 real, que é o comportamento especificado em ADR-002.
 
 **O que isso ensina sobre a spec.** O ADR-004 afirmava que o container entrega "systemd
-respondendo a `systemctl`". Entregava — para root. A spec não distinguiu **quem** pergunta,
+respondendo a `systemctl`". Entregava, para root. A spec não distinguiu **quem** pergunta,
 e a ferramenta pergunta como usuário comum de propósito. A premissa estava certa e
 incompleta.
 
@@ -74,7 +74,7 @@ incidente.
 **Efeito colateral útil.** Antes do conserto, o caso "chave recusada" do CA-04 reportava
 `a chave do host mudou` em vez de `autenticação recusada`, porque a verificação de host key
 acontece **antes** da autenticação. Depois, as quatro categorias de falha ficaram
-distinguíveis — e isso é precisão que eu não teria testado se a validação tivesse passado
+distinguíveis, e isso é precisão que eu não teria testado se a validação tivesse passado
 de primeira.
 
 ### 1.3 O CA-01 não era demonstrável como escrito, e o conserto foi na validação
@@ -94,7 +94,7 @@ partes**:
 
 | Parte | Baseline | Resultado medido |
 |---|---|---|
-| CA-01 | laboratório | **0 desvios, rc=0** — prova a lógica de julgamento |
+| CA-01 | laboratório | **0 desvios, rc=0**: prova a lógica de julgamento |
 | CA-01b | parque | **exatamente 2 desvios**: `swap.habilitado` crítico e `kernel.versao_minima` médio | 
 
 A segunda parte é a que vale: ela prova que os dois desvios são **os previstos pelo
@@ -132,7 +132,7 @@ dado já está na saída.
 
 ## 2. O que o agente entendeu diferente do que eu escrevi
 
-### 2.1 "A configuração efetiva, não a escrita no arquivo" — e eu quase implementei o arquivo
+### 2.1 "A configuração efetiva, não a escrita no arquivo": e eu quase implementei o arquivo
 
 O PRD diz, sobre login de root: *a configuração efetiva (a que vale), não a que está escrita
 no arquivo.*
@@ -142,7 +142,7 @@ Funciona, e é a resposta errada: `sshd_config.d/*.conf` sobrepõe, `Match` cria
 condicional, e em repetição **a primeira diretiva vence**, não a última.
 
 O que a frase exige é `sshd -T`, que imprime a configuração resolvida pelo daemon. E é por
-isso que a regra cai em `nao_verificado` no laboratório — `sshd -T` exige privilégio.
+isso que a regra cai em `nao_verificado` no laboratório: `sshd -T` exige privilégio.
 
 **A frase da spec estava certa e eu quase a implementei ao contrário.** Os dois hosts do
 laboratório têm `PermitRootLogin` em `sshd_config.d/00-metacortex.conf`, que é exatamente
@@ -154,7 +154,7 @@ O PRD pede que os serviços voltem *distinguindo `service` de `socket`*. Na prim
 eu entendi como campo informativo do inventário.
 
 É filtro de coleta. `systemctl list-units --type=service` é o default que a mão digita, e
-`telnet.socket` e `rpcbind.socket` — **os dois únicos itens de `servicos.proibidos`** — não
+`telnet.socket` e `rpcbind.socket` (**os dois únicos itens de `servicos.proibidos`**) não
 aparecem ali. Sem `--type=service,socket`, a regra `servicos.proibidos` sempre diria
 "nenhum ativo".
 
@@ -164,7 +164,7 @@ A validação confirma que o filtro é necessário: o host de desvios tem `rpcbi
 ### 2.3 "Porta 9100 em 0.0.0.0 e porta 9100 só no endereço interno têm vereditos diferentes"
 
 Esta frase do ticket eu li três vezes antes de entender que ela obriga **três campos por
-porta**, não dois. Porta e processo não bastam — sem o endereço de bind, as duas situações
+porta**, não dois. Porta e processo não bastam, sem o endereço de bind, as duas situações
 são indistinguíveis.
 
 E obriga uma **normalização**: `0.0.0.0`, `*`, `::` são o mesmo escopo com três grafias. O
@@ -172,7 +172,7 @@ E obriga uma **normalização**: `0.0.0.0`, `*`, `::` são o mesmo escopo com tr
 desvios com `9100 em *`.
 
 Sem a normalização, a regra `somente_rede_interna` passaria dependendo da grafia que o `ss`
-escolheu naquela execução — e seria um bug intermitente, do pior tipo.
+escolheu naquela execução, e seria um bug intermitente, do pior tipo.
 
 ### 2.4 A comparação de versão: `"22.04" < "9.10"`
 
@@ -188,12 +188,12 @@ contra `6.5` precisa virar `(5,15,167,4)` contra `(6,5)`.
 
 | O que deu errado | O que eu faria diferente |
 |---|---|
-| **validei o laboratório como root** e só descobri o problema do `dbus` na primeira execução da ferramenta | validar o laboratório pelo **mesmo caminho** que a ferramenta usa — SSH, usuário comum — desde o primeiro minuto |
+| **validei o laboratório como root** e só descobri o problema do `dbus` na primeira execução da ferramenta | validar o laboratório pelo **mesmo caminho** que a ferramenta usa: SSH, usuário comum, desde o primeiro minuto |
 | o `validar.sh` teve **dois bugs de quoting** de f-string em heredoc de shell, que estouraram `SyntaxError` e `JSONDecodeError` no meio da validação | não misturar f-string de Python com escape de shell. Virou heredoc com `<<'PY'` e `.format()` |
 | gastei uma rodada inteira de validação com as **host keys obsoletas**, e a saída ficou ilegível | o `subir.sh` agora limpa, e a limpeza tem o motivo escrito |
 
-Nenhuma das três foi defeito da ferramenta. As três foram defeito do **arredor** — do
-laboratório e do script de validação — e as três só apareceram porque a validação é
+Nenhuma das três foi defeito da ferramenta. As três foram defeito do **arredor** (do
+laboratório e do script de validação) e as três só apareceram porque a validação é
 execução real contra host real, não mock.
 
 É o argumento do ADR-004 contra a alternativa C: mock testaria o meu entendimento do
@@ -205,8 +205,8 @@ O `openspec/config.yaml` gerado pelo `init --language pt-BR` diz, em inglês:
 
 > Keep OpenSpec structural headings and SHALL/MUST keywords in English.
 
-Escrevi `## Por quê` e `## O quê` no `proposal.md`. O `validate` passou — os cabeçalhos
-estruturais não são validados na proposta — e o **`archive` avisou**:
+Escrevi `## Por quê` e `## O quê` no `proposal.md`. O `validate` passou (os cabeçalhos
+estruturais não são validados na proposta) e o **`archive` avisou**:
 
 ```
 ⚠ Change must have a Why section. Missing required sections.
@@ -228,6 +228,6 @@ saída do `archive` que ele apareceu.
 | **varredura de frota e paralelismo** | esta é a primeira peça: uma VM. A separação coleta/julgamento é o que permite a segunda reusar tudo |
 | **histórico de drift** | exige armazenamento entre execuções, e muda o produto de "ferramenta" para "serviço" |
 | **correção de desvio** | não deve existir nesta ferramenta. Auditoria que conserta não é auditoria |
-| **baseline por papel de host** | `aplica_a` existe no baseline e hoje tem um valor. Quando houver dois papéis, a decisão é onde o papel do host é declarado — e isso não está resolvido |
+| **baseline por papel de host** | `aplica_a` existe no baseline e hoje tem um valor. Quando houver dois papéis, a decisão é onde o papel do host é declarado, e isso não está resolvido |
 | **PID do processo dono da porta** | identificaria melhor e **muda a cada reinício**, quebrando o determinismo do RE-02. O nome basta para o julgamento |
 | **`uptime`, uso de memória, disco** | não estão no baseline e tornariam a saída instável entre execuções |

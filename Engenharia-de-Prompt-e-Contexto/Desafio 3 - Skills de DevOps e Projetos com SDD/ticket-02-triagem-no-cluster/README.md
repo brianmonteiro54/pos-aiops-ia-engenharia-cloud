@@ -1,4 +1,4 @@
-# Ticket 02 — Skill de triagem de cluster
+# Ticket 02: Skill de triagem de cluster
 
 Escrever o método único de triagem da SRE numa skill que usa o `mcp-server-kubernetes` em
 modo não destrutivo, executá-la em três chamados reais, e medir como as duas skills do
@@ -8,13 +8,13 @@ desafio se comportam juntas.
 
 | Item pedido | Onde está |
 |---|---|
-| **A skill completa** | `../../../.kiro/skills/triagem-de-cluster-metacortex/` — `SKILL.md`, `references/por-que-a-ordem-importa.md`, `references/leitura-da-api.md`. Configuração do MCP em `../../../.kiro/settings/mcp.json` |
+| **A skill completa** | `../../../.kiro/skills/triagem-de-cluster-metacortex/`: `SKILL.md`, `references/por-que-a-ordem-importa.md`, `references/leitura-da-api.md`. Configuração do MCP em `../../../.kiro/settings/mcp.json` |
 | **A origem da skill: de qual fluxo nasceu, como foi produzida e com qual ferramenta** | `curadoria.md` seção 0, e `fluxos/fluxo-01-triagem-manual.md` |
 | **A saída real da triagem dos três chamados, com a causa de cada um** | `execucao-da-skill.md`, e as evidências brutas da triagem manual em `evidencias/` |
 | **O resultado da matriz de roteamento: o que disparou, o que errou, o que mudei** | `matriz-de-roteamento.md` |
 | **A comparação com e sem skill (saída, custo e tempo)** | `com-e-sem-skill.md` |
-| **Curadoria — o que o método fixou e o que ficou a critério do agente** | `curadoria.md` seções 1 e 2 |
-| **Curadoria — como garanti que a skill não escreve no cluster** | `curadoria.md` seção 3 |
+| **Curadoria, o que o método fixou e o que ficou a critério do agente** | `curadoria.md` seções 1 e 2 |
+| **Curadoria, como garanti que a skill não escreve no cluster** | `curadoria.md` seção 3 |
 
 Extra, não pedido: `ferramentas/mcp.py`, o cliente MCP mínimo usado para executar a skill
 pelo transporte real em vez de `kubectl` disfarçado.
@@ -29,7 +29,7 @@ Aplicados com `kubectl apply -f` no k3d `metacortex` e deixados nesse estado.
 | **2** `orion-stg` | "a loja parou depois de uma publicação" | a tag `v1.14.2` não existe. Evento do kubelet: `not found`. O registry tem 18 tags, nenhuma com ponto |
 | **3** `nyx-stg` | "503 de fora, a aplicação está de pé" | `Service.spec.selector: app: nyx-api` contra `pod.metadata.labels: app: nyxapi`. Um hífen |
 
-Nos três, o Postgres estava de pé e saudável — componente são ao lado do quebrado é a norma.
+Nos três, o Postgres estava de pé e saudável: componente são ao lado do quebrado é a norma.
 
 **A skill corrigiu os dois relatos do cliente que estavam errados:** não existe `LimitRange`
 em `nyx-prod` (o 24Mi está no template do Deployment, não numa política de namespace), e não
@@ -54,7 +54,7 @@ deriva a camada do **sintoma relatado** e desce dali, em vez de fixar uma ordem 
 ## Modo não destrutivo não é somente-leitura
 
 Medido pelo protocolo, não lido no README: **23 ferramentas no modo default, 17 no modo não
-destrutivo.** Ele remove 6 e **deixa 7 que escrevem no cluster** — `kubectl_apply`, `create`,
+destrutivo.** Ele remove 6 e **deixa 7 que escrevem no cluster**: `kubectl_apply`, `create`,
 `patch`, `scale`, `rollout` e os dois Helm.
 
 Um agente de triagem poderia consertar o OOM do chamado 1 com `kubectl_patch`, e o servidor
@@ -64,7 +64,7 @@ em produção seria a primeira e não a quarta.
 
 ## Roteamento entre as duas skills
 
-Três rodadas, com sub-agentes lendo **apenas o frontmatter** — porque é o único insumo do
+Três rodadas, com sub-agentes lendo **apenas o frontmatter**: porque é o único insumo do
 roteamento real. **Confiança alta: 6 → 8 → 9 de 10.**
 
 Nove defeitos nas descriptions, e quatro deles eu introduzi consertando os outros. A frase
@@ -82,8 +82,8 @@ correção sistemática do relato do cliente, e o conserto como recomendação. 
 skill afirma "proxy/ingress devolve 503" tendo confirmado nas próprias chamadas que não
 existe Ingress em namespace nenhum.
 
-Metade do custo extra era defeito meu — os comandos estavam escritos contra o `kubectl` e não
-contra o MCP — e já está corrigido. A outra metade é rigor, e é escolha. Veredito por
+Metade do custo extra era defeito meu (os comandos estavam escritos contra o `kubectl` e não
+contra o MCP) e já está corrigido. A outra metade é rigor, e é escolha. Veredito por
 cenário em `com-e-sem-skill.md`.
 
 ## Onde eu errei
@@ -93,10 +93,10 @@ uma triagem real:
 
 - os comandos do método estavam escritos contra a saída do `kubectl`, não do MCP
 - a skill afirmava que toda imagem vem de `registry.metacortex.io`, e as do cluster vêm de
-  `docker.io` — mandaria o plantonista ao registry errado
+  `docker.io`: mandaria o plantonista ao registry errado
 - a `leitura-da-api.md` dizia que a chave `endpoints` do `EndpointSlice` não aparece quando
   vazia. **Aparece, com valor `null`.** Só `Endpoints.subsets` some de verdade. O erro veio do
-  meu script de coleta, que usou `or "AUSENTE"` — e `[]`, `None` e chave ausente são todos
+  meu script de coleta, que usou `or "AUSENTE"`: e `[]`, `None` e chave ausente são todos
   falsy
 
 O último é o mais incômodo: é uma regra de leitura errada dentro do arquivo que existe para

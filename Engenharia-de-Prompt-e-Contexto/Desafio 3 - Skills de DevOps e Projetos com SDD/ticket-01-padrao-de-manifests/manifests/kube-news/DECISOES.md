@@ -84,7 +84,7 @@ app.use('/', config.routers);
 
 Então quando alguém chama `PUT /unhealth`, o 500 passa a valer para **toda** requisição,
 inclusive `/ready` e `/health`. É o que faz a liveness em `/health` de fato conseguir
-reiniciar o container — sem esse middleware, `/health` responderia 200 para sempre e a
+reiniciar o container, sem esse middleware, `/health` responderia 200 para sempre e a
 liveness seria decorativa. Não muda a escolha das probes, explica por que ela funciona.
 
 ## 4. `readOnlyRootFilesystem: true` precisou de UM volume, não dois
@@ -111,7 +111,7 @@ const DB_PASSWORD = process.env.DB_PASSWORD || "Pg#123";
 ```
 
 Todas as seis variáveis `DB_*` têm fallback. O efeito prático: se o `secretKeyRef` falhar
-ou o Secret não existir, **a aplicação não quebra** — ela sobe silenciosamente tentando
+ou o Secret não existir, **a aplicação não quebra**: ela sobe silenciosamente tentando
 conectar com `kubedevnews` / `Pg#123` em `localhost`. Não há erro de configuração, só um
 pod pronto que não serve nada.
 
@@ -121,7 +121,7 @@ Duas consequências para o manifesto:
   para o pod falhar no start se o Secret não existir em vez de cair no fallback.
 - A senha `Pg#123` está no código-fonte público do projeto. Isso é problema do projeto,
   não do manifesto, mas é exatamente a classe de segredo em texto puro que a regra 3.3
-  existe para pegar — e que está fora do alcance de qualquer verificação de manifesto.
+  existe para pegar, e que está fora do alcance de qualquer verificação de manifesto.
 
 ## 6. Configuração não-secreta foi para ConfigMap, não para `env` literal
 

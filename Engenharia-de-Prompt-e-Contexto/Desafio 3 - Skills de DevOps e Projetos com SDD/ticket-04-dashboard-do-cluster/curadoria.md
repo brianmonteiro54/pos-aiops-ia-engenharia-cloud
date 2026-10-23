@@ -1,4 +1,4 @@
-# Curadoria — Ticket 04
+# Curadoria: Ticket 04
 
 ## O que foi entregue
 
@@ -29,7 +29,7 @@ cluster disse outra.
 "`--request-timeout` fixo, para a tela não pendurar". Medido contra um IP não roteável: sem
 teto, travou **além de 70s**; com `--request-timeout=5s`, levou **25s**. O `kubectl` repete
 a descoberta de grupos da API e os tempos somam. Precisou de um segundo teto, do lado da
-aplicação, matando o **grupo** de processos — matar o PID deixa órfão.
+aplicação, matando o **grupo** de processos: matar o PID deixa órfão.
 
 **2. Credencial expirada é indistinguível de credencial inválida.** Construí três
 kubeconfigs: token inválido, JWT com `exp` no passado, e certificado de cliente expirado
@@ -49,10 +49,10 @@ PRD, o RF-02, o CA-03 e a skill do Ticket 02.**
 **4. O cabeçalho mentia sobre qual cluster estava lendo.** A primeira versão lia o
 kubeconfig como texto e pegava o primeiro `server:` do arquivo. Num kubeconfig com vários
 clusters, isso é o servidor errado: a tela anunciou um endpoint de EKS enquanto lia um k3d
-local. **Nenhum critério de aceite olhava o cabeçalho** — apareceu ao ler a saída.
+local. **Nenhum critério de aceite olhava o cabeçalho**: apareceu ao ler a saída.
 
 **5. Minha própria varredura de segurança me pegou.** Na primeira execução, o teste do CA-08
-falhou acusando o literal `"run"` — dentro do próprio auditor, no conjunto de nomes de
+falhou acusando o literal `"run"`: dentro do próprio auditor, no conjunto de nomes de
 método de `subprocess` que ele procura. Verdadeiro positivo da regra aplicado ao vocabulário
 de quem a aplica. Isentei o auditor e declarei a isenção, em vez de encurtar a lista de
 verbos.
@@ -60,7 +60,7 @@ verbos.
 ## O erro de método que repeti
 
 No registro das skills eu escrevi que a reference de triagem do Ticket 02 estava incompleta
-sobre endpoints. **Fui conferir e ela não estava** — tinha os dois modos de quebra, a
+sobre endpoints. **Fui conferir e ela não estava**: tinha os dois modos de quebra, a
 comparação e o idioma correto. Afirmei sobre um documento meu sem reler o documento.
 
 É o **mesmo erro do Ticket 01**, onde eu inventei três regras do Padrão de Manifests e só
@@ -88,7 +88,7 @@ Registrado porque 66 verificações verdes dão uma sensação de cobertura que 
 - **a soma de N `EndpointSlice` por Service não é exercitada com N > 1.** Medido: 14 pares
   `(namespace, service)`, máximo 1 slice cada. O código soma; o teste não prova
 - **a classificação depende do texto do `kubectl` v1.33.13.** Outra versão cai em
-  `nao_classificada` — degrada para feio, não para errado, que é o motivo de esse rótulo
+  `nao_classificada`: degrada para feio, não para errado, que é o motivo de esse rótulo
   existir
 - **nada foi medido em cluster grande.** `get pods -A` carrega um JSON único na memória, e
   os seis `LIST` são sequenciais

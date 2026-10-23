@@ -11,7 +11,7 @@ leitura humana erra com facilidade e script não erra.
 Ele NÃO reimplementa o Trivy. As regras 2.1 (requests e limits), 3.1 (tag :latest) e
 3.6 (hostNetwork/hostPID/privileged) são cobertas pelo catálogo do Trivy e ficam com
 ele. O que este script faz com o Trivy é outra coisa: invoca, lê o JSON e **traduz** cada
-KSV para a regra da casa com a obrigatoriedade da casa. O motivo é concreto — o Trivy
+KSV para a regra da casa com a obrigatoriedade da casa. O motivo é concreto: o Trivy
 reporta "requests de CPU não especificado" como LOW, e na Metacortex requests e limits
 são obrigatórios; quem lê a saída crua do Trivy conclui que é opcional.
 
@@ -92,15 +92,15 @@ TRIVY_FORA_DO_PADRAO = {
     "KSV030": "seccompProfile RuntimeDefault",
     "KSV104": "seccompProfile ausente",
     "KSV117": "bind em porta privilegiada",
-    # hostIPC. A regra 3.6 do padrão proíbe TRÊS campos — hostNetwork, hostPID e
-    # privileged — e não menciona hostIPC. Informativo, não violação.
-    "KSV008": "hostIPC — a regra 3.6 proíbe hostNetwork, hostPID e privileged, não este",
+    # hostIPC. A regra 3.6 do padrão proíbe TRÊS campos: hostNetwork, hostPID e
+    # privileged, e não menciona hostIPC. Informativo, não violação.
+    "KSV008": "hostIPC, a regra 3.6 proíbe hostNetwork, hostPID e privileged, não este",
     # UID/GID <= 10000. O padrão mostra `runAsUser: 10001` como EXEMPLO e não estabelece
     # piso de UID. Uma versão anterior desta skill tratou isso como regra da casa, o que
     # fazia o UID 70 da imagem alpine do Postgres barrar indevidamente. Não é regra da
     # casa: a 3.2 exige runAsUser declarado e não-root, o que runAsNonRoot já garante.
-    "KSV020": "UID <= 10000 — a 3.2 não estabelece piso de UID",
-    "KSV021": "GID <= 10000 — a 3.2 não tem requisito de runAsGroup",
+    "KSV020": "UID <= 10000 (a 3.2 não estabelece piso de UID",
+    "KSV021": "GID <= 10000) a 3.2 não tem requisito de runAsGroup",
 }
 # KSVs que têm a mesma INTENÇÃO de uma regra da casa e implementação que não serve de
 # veredito. Não cabem em TRIVY_FORA_DO_PADRAO: a casa adota a regra, e dizer "fora do
@@ -109,7 +109,7 @@ TRIVY_CORROBORA = {
     # Parece cobrir a 3.3 e NÃO cobre. Verificado por experimento: só olha ConfigMap
     # (ignora Secret.stringData e env.value), casa com palavra de uma lista ('postgres',
     # 'mysql', e até 'CACHE_TTL') e NÃO identifica a senha.
-    "AVD-KSV-01010": ("3.3", "conteúdo sensível em ConfigMap — casa por palavra-chave, "
+    "AVD-KSV-01010": ("3.3", "conteúdo sensível em ConfigMap, casa por palavra-chave, "
                              "não detecta a senha, e ignora Secret e env.value"),
     "KSV012": ("3.2", "runAsNonRoot"),
     "KSV001": ("3.2", "allowPrivilegeEscalation"),
@@ -128,7 +128,7 @@ CAMPO_3_2_NIVEL = {
     "readOnlyRootFilesystem": "container",
     "capabilities": "container",
 }
-# O padrão NÃO estabelece piso de UID — `runAsUser: 10001` no wiki é exemplo. A exigência
+# O padrão NÃO estabelece piso de UID: `runAsUser: 10001` no wiki é exemplo. A exigência
 # é runAsUser declarado e não-root, e root é o UID 0.
 UID_PROIBIDO = 0
 
@@ -373,7 +373,7 @@ def regra_2_4_estrategia(doc, achados):
     st = (doc.get("spec") or {}).get("strategy") or {}
     tipo = st.get("type")
     # O padrão exige RollingUpdate com maxUnavailable: 0 em prod e NÃO prevê alternativa.
-    # Uma versão anterior desta skill tratava Recreate como `recomendado`/justificável —
+    # Uma versão anterior desta skill tratava Recreate como `recomendado`/justificável,
     # era invenção minha, e tinha um efeito perverso: `maxUnavailable: 1` barrava enquanto
     # Recreate, que derruba a capacidade inteira, só pedia justificativa. O caminho certo
     # para banco com volume único é a exceção formal, não a leitura flexível da regra.
@@ -454,7 +454,7 @@ def regra_2_2_probes(doc, achados):
     Parte MECÂNICA da regra 2.2: as duas probes existem, e elas testam a mesma coisa?
 
     O julgamento de *o que* cada endpoint toca exige ler o projeto e fica no bloco 3.
-    Mas presença de campo e comparação de duas assinaturas é parsing — o mesmo motivo
+    Mas presença de campo e comparação de duas assinaturas é parsing: o mesmo motivo
     pelo qual as regras 1.1 e 1.4 estão aqui. Deixar isso para leitura humana era uma
     lacuna: a regra é obrigatória e faltar uma das duas probes barra o deploy.
 
@@ -720,12 +720,12 @@ def rodar_trivy(caminho: Path):
                 regra, nivel, descricao = TRIVY_PARA_REGRA[ksv]
                 traduzidos.append(Achado(
                     regra, nivel, alvo,
-                    (m.get("CauseMetadata") or {}).get("Resource") or "—",
+                    (m.get("CauseMetadata") or {}).get("Resource") or "n/d",
                     f"{descricao} [{ksv}]", fonte="trivy",
                 ))
             elif ksv in TRIVY_CORROBORA:
                 # Não entra como violação: quem julga estas regras é o script. Fica
-                # registrado para o revisor ver que a ferramenta opinou — e, no caso da
+                # registrado para o revisor ver que a ferramenta opinou, e, no caso da
                 # 3.2, que ela discordou por cegueira de herança.
                 regra, nota = TRIVY_CORROBORA[ksv]
                 corrobora.append(f"[{regra}] {ksv} em {alvo}: {nota}")
@@ -736,9 +736,9 @@ def rodar_trivy(caminho: Path):
                 # contra o Trivy 0.52.2; versão nova traz regra nova, e regra nova que
                 # desaparece em silêncio é pior que regra ruidosa. Quem vê um item aqui
                 # precisa decidir se ele entra em TRIVY_PARA_REGRA ou em
-                # TRIVY_FORA_DO_PADRAO — e atualizar references/cobertura-do-trivy.md.
+                # TRIVY_FORA_DO_PADRAO, e atualizar references/cobertura-do-trivy.md.
                 nao_mapeados.append(
-                    f"{ksv} em {alvo} ({m.get('Severity', '?')}): {m.get('Title', '—')}"
+                    f"{ksv} em {alvo} ({m.get('Severity', '?')}): {m.get('Title', 'n/d')}"
                 )
     return (traduzidos, informativos, nao_mapeados, corrobora), None
 
@@ -839,7 +839,7 @@ def main():
     # Degradar em silêncio é pior que não rodar: quem lê o relatório precisa saber que
     # três regras não foram conferidas, seja por opção (--sem-trivy) ou por falha.
     if args.sem_trivy:
-        print("AVISO: --sem-trivy — as regras 2.1 (requests e limits), 3.1 (tag :latest) e")
+        print("AVISO: --sem-trivy, as regras 2.1 (requests e limits), 3.1 (tag :latest) e")
         print("       3.6 (hostNetwork/hostPID/privileged) NÃO foram conferidas. 15 das 19.")
     elif erro_trivy:
         print(f"AVISO: {erro_trivy}")
@@ -855,24 +855,24 @@ def main():
             print(f"        campo: {a.campo}{marca}")
             print(f"        {a.problema}")
 
-    bloco(f"BARRA A REVISÃO — {len(bloqueia)} violação(ões) de regra obrigatória ou proibida", bloqueia)
-    bloco(f"EXIGE JUSTIFICATIVA NO PR — {len(recomenda)} regra(s) recomendada(s)", recomenda)
+    bloco(f"BARRA A REVISÃO: {len(bloqueia)} violação(ões) de regra obrigatória ou proibida", bloqueia)
+    bloco(f"EXIGE JUSTIFICATIVA NO PR: {len(recomenda)} regra(s) recomendada(s)", recomenda)
 
     if informativos:
-        print(f"\nAPONTADO PELO TRIVY, FORA DO PADRÃO DA CASA — {len(informativos)} item(ns)")
+        print(f"\nAPONTADO PELO TRIVY, FORA DO PADRÃO DA CASA: {len(informativos)} item(ns)")
         print("  (não barra a revisão; o padrão da Metacortex não adota estas regras)")
         for i in informativos:
             print(f"  - {i}")
 
     if nao_mapeados:
-        print(f"\nTRIVY APONTOU E O MAPA NÃO CONHECE — {len(nao_mapeados)} item(ns)")
+        print(f"\nTRIVY APONTOU E O MAPA NÃO CONHECE: {len(nao_mapeados)} item(ns)")
         print("  (o mapa de cobertura foi levantado contra o Trivy 0.52.2; decida se cada")
         print("   item entra no padrão da casa e atualize references/cobertura-do-trivy.md)")
         for i in nao_mapeados:
             print(f"  - {i}")
 
     if corrobora:
-        print(f"\nO TRIVY OPINOU SOBRE REGRAS QUE ESTE SCRIPT JULGA — {len(corrobora)} item(ns)")
+        print(f"\nO TRIVY OPINOU SOBRE REGRAS QUE ESTE SCRIPT JULGA: {len(corrobora)} item(ns)")
         print("  (A CASA ADOTA estas regras. O que não serve de veredito é a implementação")
         print("   do Trivy: KSV020/KSV021 acusam manifesto correto quando runAsUser está no")
         print("   pod, e AVD-KSV-01010 casa por palavra-chave sem achar a senha. O veredito")
@@ -882,19 +882,19 @@ def main():
 
     # Bloco 3. Cada item diz o NÍVEL da regra, para o revisor saber o veredito que
     # precisa dar depois de abrir o projeto, em vez de ficar entre "barra" e "pendente".
-    print("\nNÃO CONFERIDO POR ESTE SCRIPT — exige abrir o projeto:")
-    print("  [2.2] obrigatório — a PRESENÇA das duas probes já foi conferida acima, e")
+    print("\nNÃO CONFERIDO POR ESTE SCRIPT: exige abrir o projeto:")
+    print("  [2.2] obrigatório: a PRESENÇA das duas probes já foi conferida acima, e")
     print("        também se as duas testam a mesma coisa. Falta o que o YAML não diz: o")
     print("        endpoint existe na aplicação, e a liveness NÃO toca dependência externa?")
-    print("  [2.6] recomendado — terminationGracePeriodSeconds foi deliberado? O valor não")
+    print("  [2.6] recomendado: terminationGracePeriodSeconds foi deliberado? O valor não")
     print("        precisa ser diferente do default de 30s, precisa ser justificado. Sem")
     print("        registro no PR a regra fica PENDENTE, não conforme.")
     print("        Este script não vê o corpo do PR: leve a 2.6 para o bloco 2 do seu")
     print("        relatório, porque o rc acima NÃO reflete pendência de justificativa.")
-    print("  [3.2] obrigatório — os cinco campos foram conferidos acima. Falta só o que não")
+    print("  [3.2] obrigatório: os cinco campos foram conferidos acima. Falta só o que não")
     print("        está no YAML: se os emptyDir cobrem TODOS os caminhos em que a aplicação")
     print("        escreve. readOnlyRootFilesystem: true com caminho faltando não sobe.")
-    print("  [3.3] proibido — o script pega senha em URI e nome de variável sensível. Falta")
+    print("  [3.3] proibido: o script pega senha em URI e nome de variável sensível. Falta")
     print("        conferir se alguma variável de nome inocente carrega segredo.")
     print("\n  Quando o workload é imagem de terceiro (Postgres, Redis, nginx) não há projeto")
     print("  para abrir: a fonte são a documentação da imagem e o entrypoint dela. Registre")

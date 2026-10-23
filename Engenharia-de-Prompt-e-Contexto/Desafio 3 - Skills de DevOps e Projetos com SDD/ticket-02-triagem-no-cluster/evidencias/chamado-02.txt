@@ -1,4 +1,4 @@
-############ CHAMADO 2 — orion-stg: a loja parou depois de uma publicacao ############
+############ CHAMADO 2: orion-stg: a loja parou depois de uma publicacao ############
 
 ### passo 1: retrato
 NAME                             READY   UP-TO-DATE   AVAILABLE   AGE
@@ -16,7 +16,7 @@ pod orion-web-556748f4f8-npbl5  phase=Pending
   container web ready=False restartCount=0
   state: waiting -> reason=ImagePullBackOff
          message=Back-off pulling image "fabricioveronez/fake-shop:v1.14.2"
-  lastState: vazio — o container NUNCA rodou
+  lastState: vazio, o container NUNCA rodou
   image desejada: fabricioveronez/fake-shop:v1.14.2
   imageID real  : (vazio)
 

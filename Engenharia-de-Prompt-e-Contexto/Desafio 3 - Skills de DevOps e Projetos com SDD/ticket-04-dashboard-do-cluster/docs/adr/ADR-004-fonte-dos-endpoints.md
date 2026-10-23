@@ -1,4 +1,4 @@
-# ADR-004 — De onde vem a informação de endpoint
+# ADR-004: De onde vem a informação de endpoint
 
 **Status:** aceito
 **Contexto:** o RF-02 pede mostrar, para cada Service, **se ele tem endpoint**. A informação
@@ -30,7 +30,7 @@ medição mostra o tamanho do erro.**
 Três consequências, e nenhuma é cosmética:
 
 **1. `len(endpoints)` responde a pergunta errada.** Nos três namespaces quebrados o Service
-não entrega tráfego. Mas contar endpoints só acusa **um** deles — nos outros dois a lista
+não entrega tráfego. Mas contar endpoints só acusa **um** deles: nos outros dois a lista
 está cheia, de endereços que não servem. Quem escreve `if not subsets: "sem endpoint"`
 acerta o chamado 3 e **passa batido** nos chamados 1 e 2. A pergunta certa é
 `conditions.ready`.
@@ -42,12 +42,12 @@ código. É o tipo de bug que passa em teste e aparece no cliente.
 
 **3. Os dois tipos quebram de formas diferentes.** `Endpoints` **omite a chave**;
 `EndpointSlice` **entrega a chave com `null`**. `KeyError` num, `TypeError` no outro.
-`len(obj.get("endpoints") or [])` é a única forma que sobrevive aos dois — `get` com
+`len(obj.get("endpoints") or [])` é a única forma que sobrevive aos dois: `get` com
 `default` não salva do `null`, e `or []` sozinho não salva da ausência.
 
 ## Alternativas consideradas
 
-### A — só `Endpoints`
+### A: só `Endpoints`
 
 **O que se ganha:** funciona em qualquer cluster desde sempre, é 1:1 com o Service (mesmo
 nome, mesmo namespace), e é o que aparece em toda documentação antiga e em todo runbook que
@@ -64,7 +64,7 @@ o time já tem escrito. `kubectl get endpoints` ainda é o comando que a maioria
   gigante. Não dói neste cluster de 2 nós, mas é o motivo pelo qual o tipo está sendo
   trocado, e o parque da Metacortex tem cluster de cliente.
 
-### B — só `EndpointSlice`
+### B: só `EndpointSlice`
 
 **O que se ganha:** é o caminho para onde o Kubernetes foi, traz `conditions` com três
 campos (`ready`, `serving`, `terminating`) e `addressType`, que é o que permite responder
@@ -74,7 +74,7 @@ campos (`ready`, `serving`, `terminating`) e `addressType`, que é o que permite
 
 - **o grupo `discovery.k8s.io/v1` não existe em cluster antigo.** Num cluster onde ele não
   está disponível, a aplicação não degrada: ela não mostra endpoint nenhum. O parque da
-  Metacortex não é homogêneo, e a aplicação roda com o kubeconfig de quem está de plantão —
+  Metacortex não é homogêneo, e a aplicação roda com o kubeconfig de quem está de plantão,
   pode apontar para qualquer cluster de cliente.
 - **a relação com o Service não é por nome.** O slice se chama `<service>-<hash>`
   (`nyx-api-wszq8`), e a ligação vive no **label** `kubernetes.io/service-name`. Casar por
@@ -86,7 +86,7 @@ campos (`ready`, `serving`, `terminating`) e `addressType`, que é o que permite
   neste cluster ela nunca é exercitada com N > 1. **Está registrado como caminho não
   coberto pelo teste.**
 
-### C — primário com alternativa (escolhida)
+### C: primário com alternativa (escolhida)
 
 Tenta `EndpointSlice`. Se o tipo não existir no cluster, cai para `Endpoints` e **diz na
 tela qual fonte usou**.
@@ -103,7 +103,7 @@ tela qual fonte usou**.
 
 **O que se perde:**
 
-- **dois caminhos de leitura para manter**, e um deles — o de `Endpoints` — quase nunca
+- **dois caminhos de leitura para manter**, e um deles: o de `Endpoints`: quase nunca
   roda. Código que não roda é código que apodrece. Mitigação: a normalização converte os
   dois formatos para a **mesma estrutura interna** no ponto de entrada, então o resto da
   aplicação tem um só caminho. A duplicação fica confinada a uma função
@@ -117,7 +117,7 @@ tela qual fonte usou**.
 - a estrutura interna normalizada é `{servico: {prontos: N, total: M, fonte: str}}`. Em
   `Endpoints`, `prontos` vem de `addresses` e `total` de `addresses + notReadyAddresses`
 - **a coluna da tela é `prontos/total`, não um sim/não.** `0/3` num Service com 3 pods
-  quebrados conta uma história diferente de `0/0` num Service cujo selector não casa — e
+  quebrados conta uma história diferente de `0/0` num Service cujo selector não casa, e
   essa diferença é exatamente o que separa o chamado 1 do chamado 3
 - `len(x.get("endpoints") or [])` é o idioma obrigatório, nos dois tipos. Um `get` com
   `default=[]` passa no teste e quebra no `null`

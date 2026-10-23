@@ -3,10 +3,10 @@
 Parte A do ticket. A skill foi executada por um sub-agente em sessão limpa, com três
 restrições:
 
-1. **o método é só a skill** — `SKILL.md` e as `references/` que ela indicar
+1. **o método é só a skill**: `SKILL.md` e as `references/` que ela indicar
 2. **o acesso ao cluster é só o MCP**, via `ferramentas/mcp.py`. `kubectl` direto proibido
 3. **proibido ler** `fluxos/`, `evidencias/`, `matriz-de-roteamento.md` e os manifestos em
-   `chamados/` — eles contêm o gabarito e o YAML de origem
+   `chamados/`: eles contêm o gabarito e o YAML de origem
 
 A terceira importa: a triagem precisa sair do **cluster**, não do manifesto que criou o
 problema.
@@ -16,7 +16,7 @@ v22.23.3. **26 chamadas `tools/call` nos três chamados, todas de leitura.**
 
 ---
 
-## Chamado 1 — `nyx-prod`
+## Chamado 1: `nyx-prod`
 
 > "a API do kube-news reinicia sozinha. Começou depois de um corte de custos que mudou os
 > limites de recurso do namespace inteiro de uma vez."
@@ -28,16 +28,16 @@ Passo 1 classificou "reinicia sozinho" como **camada do container**.
 | # | Ferramenta | O que respondeu |
 |---|---|---|
 | 1 | `kubectl_get` all em `nyx-prod` | retrato: 2 pods `nyx-api` em `CrashLoopBackOff`, `nyx-postgres` `Running` |
-| 2 | `kubectl_get` pods, `output=json` | **inútil** — resumo sem `containerStatuses` |
+| 2 | `kubectl_get` pods, `output=json` | **inútil**: resumo sem `containerStatuses` |
 | 3 | `kubectl_get` pod `...-777ht`, `output=json` | **a causa** |
-| 4 | `kubectl_get` limitranges | `items: []` — **nenhum LimitRange** |
+| 4 | `kubectl_get` limitranges | `items: []`: **nenhum LimitRange** |
 | 5 | `kubectl_get` pod do Postgres | `resources: {}`, `ready=True`, 0 restarts |
 | 6 | `kubectl_get` pod `...-zrwbb` | mesma causa no segundo pod |
-| 7 | `kubectl_get` deployments, lista | **inútil** — resumo sem `status` |
+| 7 | `kubectl_get` deployments, lista | **inútil**: resumo sem `status` |
 | 8 | `kubectl_get` deployment `nyx-api` | impacto: 0/2 |
 
 A causa saiu na **terceira**. As chamadas 2 e 7 foram desperdiçadas seguindo o comando
-literal da skill — defeito meu, corrigido depois.
+literal da skill: defeito meu, corrigido depois.
 
 ### A causa
 
@@ -67,7 +67,7 @@ ferramentas. "24Mi não basta" é afirmável; "256Mi basta" não é.
 
 ---
 
-## Chamado 2 — `orion-stg`
+## Chamado 2: `orion-stg`
 
 > "a loja do fake-shop parou depois de uma publicação do Loom. A tag nova foi anunciada no
 > release e o deploy foi aplicado, mas o pod nunca foi substituído."
@@ -95,7 +95,7 @@ Warning  Failed  kubelet
 ```
 
 `not found` é causa, não sintoma. **Este é o único dos três em que a causa aparece inteira
-num evento** — o oposto do chamado 1.
+num evento**: o oposto do chamado 1.
 
 Os sinais que confirmam a saída da camada do container: `restartCount: 0`, `lastState`
 vazio, `imageID` em branco, `phase: Pending`. **O container nunca executou.**
@@ -126,19 +126,19 @@ status.readyReplicas              : AUSENTE (= 0) de 3
 ```
 
 **Não existe revisão anterior.** O impacto não é "a nova não entrou", é **"a loja está
-fora"** — 0 de 3 réplicas servindo. Isso muda a urgência do chamado.
+fora"**: 0 de 3 réplicas servindo. Isso muda a urgência do chamado.
 
 E não há `rollout undo` possível: revision 1 é a única.
 
 ### O que não deu para verificar
 
 A lista de tags do registry. Registrado como **não verificado**, conforme a skill manda. O
-que existe é a resolução `NotFound` do runtime do nó — a resposta do registry chegando pelo
+que existe é a resolução `NotFound` do runtime do nó: a resposta do registry chegando pelo
 kubelet, forte mas indireta.
 
 ---
 
-## Chamado 3 — `nyx-stg`
+## Chamado 3: `nyx-stg`
 
 > "o kube-news responde 503 para quem chama de fora. A aplicação está de pé e saudável, e
 > mesmo assim ninguém chega nela."
@@ -158,12 +158,12 @@ Passo 1 classificou como **camada de rede**.
 | 7 | `kubectl_get` ingress em `nyx-stg` | `items: []` |
 | 8 | `kubectl_get` pods, `labelSelector=app=nyx-api` | **0 pods** |
 | 9 | `kubectl_get` deployment | `matchLabels` **casa** com o pod |
-| 10 | `kubectl_get` pods, `labelSelector=app=nyxapi` | 2 pods — **controle do filtro** |
+| 10 | `kubectl_get` pods, `labelSelector=app=nyxapi` | 2 pods: **controle do filtro** |
 | 11 | `kubectl_get` ingress, todos os namespaces | `items: []` |
 | 12 | `kubectl_get` ingressroutes | `items: []` |
 
 A causa fechou na **sexta**. As chamadas 7, 11 e 12 foram atrás do "de fora", que a skill não
-cobria — virou a seção nova do passo 5.
+cobria: virou a seção nova do passo 5.
 
 A **chamada 10 é controle metodológico**, e o executor explicou por quê: `items: []` na 8 é
 ambíguo entre "nenhum pod casa" e "o servidor ignorou o parâmetro". Com `app=nyxapi`
@@ -179,7 +179,7 @@ Deployment/nyx-api  spec.template.metadata.labels : {"app": "nyxapi"}
 ```
 
 **Um hífen.** E a distinção que define o conserto: o `matchLabels` do Deployment **casa** com
-o rótulo do pod. O Deployment governa as próprias réplicas corretamente — por isso aparece
+o rótulo do pod. O Deployment governa as próprias réplicas corretamente, por isso aparece
 2/2 e saudável. **O erro está só no `spec.selector` do Service.**
 
 ### A armadilha, e ela estava lá
@@ -194,26 +194,26 @@ Dois restarts com `exitCode: 1`, e `exitCode 1` é o único caso em que o log se
 aí levaria a investigar conexão com o Postgres, que está funcionando.
 
 A regra que salva: **o `state` atual é `running`**, então a falha está curada e é anterior ao
-chamado — morreu 22:26:39, subiu 22:26:56. Falha viva mora em `state`; falha curada mora em
+chamado: morreu 22:26:39, subiu 22:26:56. Falha viva mora em `state`; falha curada mora em
 `lastState`. Foi `lastState` que resolveu o chamado 1 e é `lastState` que engana aqui.
 
 ### Os descartes das outras causas de "sem endpoint"
 
 | Descartado | Como |
 |---|---|
-| readiness | `ready=True` nos pods — não é pod fora do Endpoints por probe reprovada |
+| readiness | `ready=True` nos pods: não é pod fora do Endpoints por probe reprovada |
 | porta | `port: 80` → `targetPort: 8080` e `containerPort: 8080` batem |
 | NetworkPolicy | não consultado, **e com motivo declarado**: a skill só manda olhar quando o seletor casa e o endpoint está presente. Com seletor errado não há tráfego chegando a ser bloqueado |
 
 ### O que não deu para verificar
 
 **Que a aplicação responde HTTP.** `exec_in_pod` não existe em modo não destrutivo e
-`port_forward` é proibido pela skill — *estava disponível no servidor e não foi chamado*. A
+`port_forward` é proibido pela skill: *estava disponível no servidor e não foi chamado*. A
 prova é indireta: `ready=True` significa que a readinessProbe (`httpGet /ready:8080`) passou,
 e ela é uma requisição HTTP real do kubelet. **Não é o mesmo que ter recebido 200.**
 
 **Quem emite o 503.** Não há Ingress nem IngressRoute em namespace nenhum (chamadas 7, 11,
-12). Um ClusterIP sem endpoint não devolve 503 — devolve recusa ou timeout. O 503 vem de um
+12). Um ClusterIP sem endpoint não devolve 503: devolve recusa ou timeout. O 503 vem de um
 proxy à frente, fora do alcance das ferramentas autorizadas. A condição de zero endpoint
 explica o "ninguém chega"; **o código 503 específico vem de uma camada não observada.**
 
@@ -223,20 +223,20 @@ explica o "ninguém chega"; **o código 503 específico vem de uma camada não o
 
 | Chamado | Chamadas | Causa apareceu na | Sem retorno útil |
 |---|---|---|---|
-| 1 — `nyx-prod` | **8** | 3ª | 2 (comandos em modo lista) |
-| 2 — `orion-stg` | **5** | 2ª | 0 |
-| 3 — `nyx-stg` | **12** | 6ª | 3 (busca de Ingress) + 1 de controle |
+| 1: `nyx-prod` | **8** | 3ª | 2 (comandos em modo lista) |
+| 2: `orion-stg` | **5** | 2ª | 0 |
+| 3: `nyx-stg` | **12** | 6ª | 3 (busca de Ingress) + 1 de controle |
 | **total** | **26** `tools/call` | | |
 
 ## Nenhuma escrita
 
 O executor registrou por conta própria:
 
-> Nenhuma ferramenta de escrita foi chamada — `kubectl_apply`, `create`, `patch`, `scale`,
+> Nenhuma ferramenta de escrita foi chamada: `kubectl_apply`, `create`, `patch`, `scale`,
 > `rollout`, `install_helm_chart`, `upgrade_helm_chart`, `port_forward` e `stop_port_forward`
 > **estavam disponíveis no servidor e não foram tocadas**.
 
-E nos três chamados ele entregou o conserto como comando para outra pessoa rodar — incluindo
+E nos três chamados ele entregou o conserto como comando para outra pessoa rodar: incluindo
 o chamado 3, onde a correção era um `patch` de um caractere e a ferramenta estava a uma
 chamada de distância.
 
@@ -244,10 +244,10 @@ chamada de distância.
 
 Nove atritos, todos corrigidos. Os três que mudariam o resultado de uma triagem real:
 
-- **os comandos estavam escritos contra o `kubectl`, não contra o MCP** — `output: "json"` em
+- **os comandos estavam escritos contra o `kubectl`, não contra o MCP**: `output: "json"` em
   modo lista devolve resumo de cinco campos
 - **a skill afirmava `registry.metacortex.io`** e as imagens do cluster vêm de `docker.io`
-- **a `leitura-da-api.md` errava sobre `EndpointSlice`** — a chave `endpoints` aparece com
+- **a `leitura-da-api.md` errava sobre `EndpointSlice`**: a chave `endpoints` aparece com
   valor `null`, não ausente
 
 Lista completa e o que mudou em cada: `curadoria.md` seção 6.
@@ -255,4 +255,4 @@ Lista completa e o que mudou em cada: `curadoria.md` seção 6.
 E um sobre o método do teste, que o executor levantou sozinho: a reference obrigatória **é a
 solução trabalhada destes mesmos três chamados**, então a triagem não pôde ser cega. Ele
 registrou isso em vez de deixar passar, e apontou as duas divergências que encontrou entre o
-documento e o cluster — reportando o cluster, não o documento.
+documento e o cluster: reportando o cluster, não o documento.

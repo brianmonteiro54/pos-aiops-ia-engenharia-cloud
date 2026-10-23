@@ -65,7 +65,7 @@ Dá para apontar onde cada skill influenciou o Ticket 04:
 
 Mas **nenhuma dessas entradas é uma ativação de skill.** São eu lembrando do que escrevi.
 Se outra pessoa abrisse este repositório como workspace, as 2 skills carregariam e o
-comportamento poderia ser diferente — melhor ou pior. Eu não medi isso, e não posso
+comportamento poderia ser diferente: melhor ou pior. Eu não medi isso, e não posso
 afirmar nada sobre ele.
 
 ### 2. A divergência mais útil deste ticket veio de uma skill não ter sido consultada
@@ -82,7 +82,7 @@ que não é a declarada.
 Isso não é defeito de nenhuma das duas. É que "conformidade" significa coisas diferentes
 para quem lê arquivo e para quem lê cluster, e nenhuma das duas skills diz isso. **Está
 registrado aqui porque é o tipo de lacuna que só aparece quando as duas são usadas no mesmo
-trabalho** — e eu só percebi porque estava escrevendo as duas coisas, não porque alguma
+trabalho**: e eu só percebi porque estava escrevendo as duas coisas, não porque alguma
 skill avisou.
 
 ### 3. O OpenSpec foi conduzido pela CLI, não pelas skills que ele instalou
@@ -114,7 +114,7 @@ nenhuma das duas skills cobre:
 
 **1. `--request-timeout` do `kubectl` não limita o comando.** Medido: sem teto, travou além
 de 70s contra endereço não roteável; com `--request-timeout=5s`, levou 25s. A skill de
-triagem recomenda comandos de leitura e não diz nada sobre teto de tempo — e qualquer
+triagem recomenda comandos de leitura e não diz nada sobre teto de tempo, e qualquer
 ferramenta que chame `kubectl` de dentro de um handler HTTP precisa saber disso. **Candidato
 a entrar na skill de triagem.**
 
@@ -123,7 +123,7 @@ Token inválido, token expirado e certificado de cliente expirado são indisting
 A skill de triagem assume cluster acessível em todos os seus caminhos. **Candidato a uma
 seção nova: "quando o `kubectl` não fala com o cluster".**
 
-**3. A skill de triagem fazia a pergunta errada sobre endpoint — e eu errei duas vezes
+**3. A skill de triagem fazia a pergunta errada sobre endpoint, e eu errei duas vezes
 antes de chegar nisso.**
 
 Primeiro escrevi aqui que "a reference do Ticket 02 registrou a chave ausente e não a chave
@@ -137,12 +137,12 @@ A lacuna real é outra, e é no `SKILL.md`, não na reference. O Passo 5 dizia:
 > A pergunta é uma só: **o Service tem endpoint?**
 
 Sim-ou-não é a pergunta errada. Medido nos quatro estados do cluster: no `CrashLoopBackOff`
-e no `ImagePullBackOff` o Service **tem** endpoints — existem e não servem. `len()` devolve
+e no `ImagePullBackOff` o Service **tem** endpoints: existem e não servem. `len()` devolve
 2 e 3, e quem pergunta "tem endpoint?" ouve "sim" e segue adiante.
 
 A skill escapava disso por acidente: o Passo 5 só é alcançado quando os passos 3 e 4 não
 acusaram nada, ou seja, com pod pronto. Dentro do roteiro, a pergunta funciona. **Fora do
-roteiro, engana** — e foi exatamente o que me fez escrever `prontos/total` no dashboard em
+roteiro, engana**: e foi exatamente o que me fez escrever `prontos/total` no dashboard em
 vez de um sim/não.
 
 **Corrigido nos dois arquivos**, com a tabela de medição anexa: a pergunta passou a ser
@@ -163,8 +163,8 @@ dizer isso a inventar ativações.
 O que o ticket rendeu, e que vale mais que um relato fabricado:
 
 - **uma medição de onde skill é carregada e onde não é**, verificada dos dois lados
-- **uma lacuna real entre as duas skills** — conformidade de arquivo contra conformidade de
-  cluster — que só aparece usando as duas no mesmo trabalho
+- **uma lacuna real entre as duas skills**: conformidade de arquivo contra conformidade de
+  cluster, que só aparece usando as duas no mesmo trabalho
 - **três itens concretos para a próxima revisão das skills**, todos com medição anexa
 - **uma correção aplicada à skill do Ticket 02**: o Passo 5 perguntava "o Service tem
   endpoint?" e passou a perguntar "quantos prontos", com a tabela de medição

@@ -1,8 +1,8 @@
-# Checkpoint 04 — Estratégia de backpressure no Relay
+# Checkpoint 04: Estratégia de backpressure no Relay
 
 Quarto item do playbook, e o primeiro que não diagnostica nem transforma: **apoia decisão de arquitetura**.
 
-O Relay é o barramento por onde todo o telemetry dos clientes passa antes de chegar ao resto da plataforma. Quando um cliente grande dispara muito mais dado que o normal, o Relay recebe mais do que consegue entregar, a fila acumula, e o atraso empurra o Sentinel junto — o alerta que deveria sair na hora atrasa. O Tony Stark quer uma estratégia para segurar esse excesso.
+O Relay é o barramento por onde todo o telemetry dos clientes passa antes de chegar ao resto da plataforma. Quando um cliente grande dispara muito mais dado que o normal, o Relay recebe mais do que consegue entregar, a fila acumula, e o atraso empurra o Sentinel junto: o alerta que deveria sair na hora atrasa. O Tony Stark quer uma estratégia para segurar esse excesso.
 
 Não existe resposta única. Há vários caminhos defensáveis e cada um tem um preço, então o prompt tem que fazer a IA **comparar mais de um caminho antes de recomendar**, em vez de produzir uma recomendação única disfarçada de análise. Como a decisão é cara, o raciocínio vale tanto quanto a recomendação.
 
@@ -30,7 +30,7 @@ EXECUTE AS SEGUINTES ETAPAS DE RACIOCÍNIO (não as imprima, use-as para estrutu
    - Volume Acumulado = Déficit * Duração do pico.
    - Piso Físico de Drenagem = Volume Acumulado / Capacidade de entrega (assumindo dedicação total à drenagem e nenhuma chegada nova).
    Antes de usar qualquer resultado, confira a ordem de magnitude: um erro de fator 60 entre segundos e minutos, ou de fator mil entre unidade e milhar, invalida toda a análise seguinte.
-   REGRA ABSOLUTA: Se o piso físico calculado já viola um SLA temporal exigido, nenhuma estratégia de priorização, particionamento, descarte ou reordenação resolverá aquele SLA isoladamente — apenas a alteração de capacidade resolve. Declare isso imediatamente se ocorrer.
+   REGRA ABSOLUTA: Se o piso físico calculado já viola um SLA temporal exigido, nenhuma estratégia de priorização, particionamento, descarte ou reordenação resolverá aquele SLA isoladamente, apenas a alteração de capacidade resolve. Declare isso imediatamente se ocorrer.
    ASSIMETRIA DO PISO: o piso é limite inferior, não estimativa. Ele só serve para REPROVAR viabilidade, nunca para APROVAR. Piso acima do SLA prova inviabilidade. Piso abaixo do SLA não prova nada, porque na realidade eventos continuam chegando durante a drenagem e o tempo real é sempre maior. Se a taxa de chegada após o pico não estiver nos insumos, registre como lacuna e não use o piso como evidência de que o SLA é atingível.
 
 2. Distinção de Relógios: Identifique o que cada restrição mede. "Latência de processamento de um evento novo" é um relógio diferente de "Tempo de drenagem de um volume já acumulado". Comparar um SLA de latência com um tempo de drenagem produz conclusão errada com aparência de rigor.
@@ -48,7 +48,7 @@ EXECUTE AS SEGUINTES ETAPAS DE RACIOCÍNIO (não as imprima, use-as para estrutu
 6. Avaliação Cruzada: Julgue todas as opções contra todas as restrições. Nenhuma opção recebe "passe livre".
 
 7. Regra Anti-Espantalho: Para TODA opção, inclusive a recomendada, declare o que ela NÃO resolve e qual NOVO MODO DE FALHA ela introduz no ecossistema.
-   LIMITE DESTA REGRA: se a opção genuinamente não introduz novo modo de falha — tipicamente provisionamento direto de capacidade —, escreva "Nenhum novo modo de falha" e diga em troca qual recurso ela consome. Custo NÃO é modo de falha: não classifique gasto, orçamento ou esforço como falha técnica. Inventar pseudo-falha para preencher o campo é pior que declarar ausência, porque apaga a diferença entre opção que adiciona complexidade sistêmica e opção que é apenas força bruta segura.
+   LIMITE DESTA REGRA: se a opção genuinamente não introduz novo modo de falha, tipicamente provisionamento direto de capacidade, escreva "Nenhum novo modo de falha" e diga em troca qual recurso ela consome. Custo NÃO é modo de falha: não classifique gasto, orçamento ou esforço como falha técnica. Inventar pseudo-falha para preencher o campo é pior que declarar ausência, porque apaga a diferença entre opção que adiciona complexidade sistêmica e opção que é apenas força bruta segura.
 
 8. Recomendação: Escolha um caminho. Se for uma combinação, limite a no máximo três partes justificando a ordem. REGRA ABSOLUTA: Uma combinação que inclui tudo que foi listado não é decisão, é abdicação de decisão (especialmente sob restrição econômica).
 
@@ -238,35 +238,35 @@ Recalculei a aritmética e conferi cada exigência do prompt:
 
 | Verificação | Resultado |
 |---|---|
-| Déficit 320k − 180k | 140.000 msgs/s — correto |
-| Volume acumulado 140k × 1.500s | 210.000.000 msgs — correto |
-| Piso físico 210M ÷ 180k | 1.166,67s = 19,4min — correto |
+| Déficit 320k − 180k | 140.000 msgs/s: correto |
+| Volume acumulado 140k × 1.500s | 210.000.000 msgs: correto |
+| Piso físico 210M ÷ 180k | 1.166,67s = 19,4min: correto |
 | Veredito sobre o SLA do Forge | Correto e é a conclusão dura do cenário: o piso já viola os 15min, então só capacidade resolve |
 | Relógios separados | Sim: Sentinel mapeado como latência de evento novo, Forge como tempo de drenagem. Não comparou os 60s com tempo de drenagem |
-| Retenção de 4h usada na análise | **Não** — o dado não aparece em nenhuma seção. Ver defeito 3 adiante |
-| Vocabulário da matriz restrito a ATENDE/VIOLA/CONDICIONAL | **Não** — quatro células usam PENALIZA. Ver defeito 2 adiante |
+| Retenção de 4h usada na análise | **Não**: o dado não aparece em nenhuma seção. Ver defeito 3 adiante |
+| Vocabulário da matriz restrito a ATENDE/VIOLA/CONDICIONAL | **Não**: quatro células usam PENALIZA. Ver defeito 2 adiante |
 | Ambiguidade da capacidade levantada | Sim, e é a primeira lacuna listada |
 | Taxa de chegada pós-pico como lacuna | Sim, com a observação correta de que o tempo real será maior que o piso |
 | Quinta opção acrescentada | Sim: scale-up do próprio barramento |
-| `Nenhum novo modo de falha` usado corretamente | **Parcial** — usado duas vezes; numa delas o recurso nomeado em troca é o orçamento, e o prompt proíbe classificar custo como falha. Ver defeito 4 adiante |
-| Recomendação com ordem justificada | **Parcial** — a ordem entre priorização e scale-up tem fundamento temporal; o auto-scaling entra na combinação sem ordem nem papel justificados |
+| `Nenhum novo modo de falha` usado corretamente | **Parcial**: usado duas vezes; numa delas o recurso nomeado em troca é o orçamento, e o prompt proíbe classificar custo como falha. Ver defeito 4 adiante |
+| Recomendação com ordem justificada | **Parcial**: a ordem entre priorização e scale-up tem fundamento temporal; o auto-scaling entra na combinação sem ordem nem papel justificados |
 | Combinação dentro do teto de 3 partes | Sim, 3 partes |
 
 **Um defeito encontrado, e é de rigor lógico.** Na matriz, a linha `Scale-up do Barramento` recebe **ATENDE** no SLA do Forge, sem nenhuma conta que sustente. O prompt exige que toda quantificação mostre a conta, e a própria regra da assimetria do piso, que o output aplicou corretamente à capacidade atual, diz que piso abaixo do SLA não prova nada. Ao avaliar a correção, ele afirmou viabilidade sem aritmética.
 
-Calculando o que faltava: drenar 210M em 900s exige **233.333 msgs/s**, ou seja, um aumento de **29,6%** sobre os 180k — e isso no cenário utópico de zero chegada nova. Com chegada de 60k/s durante a drenagem seriam 293k/s, 1,63x a capacidade atual; com 100k/s, 333k/s, 1,85x. Ou seja, a opção pode ser válida, mas o "ATENDE" só se sustenta com um número que o output não produziu, e o tamanho do aumento necessário é exatamente o que decide se ela cabe num orçamento já 8% acima.
+Calculando o que faltava: drenar 210M em 900s exige **233.333 msgs/s**, ou seja, um aumento de **29,6%** sobre os 180k, e isso no cenário utópico de zero chegada nova. Com chegada de 60k/s durante a drenagem seriam 293k/s, 1,63x a capacidade atual; com 100k/s, 333k/s, 1,85x. Ou seja, a opção pode ser válida, mas o "ATENDE" só se sustenta com um número que o output não produziu, e o tamanho do aumento necessário é exatamente o que decide se ela cabe num orçamento já 8% acima.
 
 O padrão do defeito é instrutivo: o output **declarou duas lacunas críticas e depois preencheu células da matriz com ATENDE que dependem justamente dessas lacunas**. `Prioridade ao Sentinel → SLA Sentinel = ATENDE` tem o mesmo problema: se os 180k/s forem capacidade total do barramento, priorizar não faz o Sentinel acompanhar 320k/s de chegada, e a própria lacuna nº 1 admite não saber disso. Para as opções de particionamento e auto-scaling ele usou CONDICIONAL corretamente; para essas duas, não.
 
-Correção como **v1.0.1**: nenhuma célula da matriz pode receber ATENDE quando o veredito depender de lacuna declarada — nesse caso é CONDICIONAL, com a lacuna nomeada na célula. Não apliquei agora porque mudaria a saída e invalidaria a execução registrada.
+Correção como **v1.0.1**: nenhuma célula da matriz pode receber ATENDE quando o veredito depender de lacuna declarada, nesse caso é CONDICIONAL, com a lacuna nomeada na célula. Não apliquei agora porque mudaria a saída e invalidaria a execução registrada.
 
 **Mais cinco defeitos que a minha verificação acima deixou passar.** Reli a saída depois de fechar a tabela e achei estes. Registro todos porque o padrão importa: a tabela de verificação é uma lista de perguntas que eu escolhi fazer, e o que ela não pergunta não aparece.
 
-1. **A regra absoluta contradiz a própria matriz.** A seção `DIMENSAO DO PROBLEMA` declara que "nenhuma estratégia de priorização, isolamento ou reordenação resolverá o SLA do Forge — apenas o aumento de capacidade resolverá". Pelo próprio veredito, as células de `Dividir por cliente` e `Auto-scaling` na coluna do SLA do Forge deveriam ser **VIOLA**, e saíram **CONDICIONAL**. E eu afirmei acima que "para as opções de particionamento e auto-scaling ele usou CONDICIONAL corretamente" — peguei o erro na direção oposta (ATENDE onde cabia CONDICIONAL) e passei batido neste.
+1. **A regra absoluta contradiz a própria matriz.** A seção `DIMENSAO DO PROBLEMA` declara que "nenhuma estratégia de priorização, isolamento ou reordenação resolverá o SLA do Forge, apenas o aumento de capacidade resolverá". Pelo próprio veredito, as células de `Dividir por cliente` e `Auto-scaling` na coluna do SLA do Forge deveriam ser **VIOLA**, e saíram **CONDICIONAL**. E eu afirmei acima que "para as opções de particionamento e auto-scaling ele usou CONDICIONAL corretamente", peguei o erro na direção oposta (ATENDE onde cabia CONDICIONAL) e passei batido neste.
 
-2. **A matriz usa vocabulário que o prompt não permite.** Quatro células trazem **PENALIZA**, e o prompt fixa `ATENDE`, `VIOLA` ou `CONDICIONAL`. É o mesmo tipo de desvio que no Checkpoint 03 eu apontei e transformei em pendência v1.0.1 — lá o `HIPÓTESE` na coluna de papel. Rigor desigual entre os dois checkpoints, e a inconsistência é minha.
+2. **A matriz usa vocabulário que o prompt não permite.** Quatro células trazem **PENALIZA**, e o prompt fixa `ATENDE`, `VIOLA` ou `CONDICIONAL`. É o mesmo tipo de desvio que no Checkpoint 03 eu apontei e transformei em pendência v1.0.1: lá o `HIPÓTESE` na coluna de papel. Rigor desigual entre os dois checkpoints, e a inconsistência é minha.
 
-3. **A retenção de 4h, um dos quatro dados do insumo, não entra em lugar nenhum da análise.** As cinco células da coluna de perda de mensagem recebem ATENDE sem comparar os 19,4 minutos de drenagem com a janela de retenção — que é precisamente a comparação que torna a garantia de "sem perda" verificável. Com 4h de retenção contra 19,4min de drenagem a conclusão até se sustenta, mas por sorte e não por argumento.
+3. **A retenção de 4h, um dos quatro dados do insumo, não entra em lugar nenhum da análise.** As cinco células da coluna de perda de mensagem recebem ATENDE sem comparar os 19,4 minutos de drenagem com a janela de retenção, que é precisamente a comparação que torna a garantia de "sem perda" verificável. Com 4h de retenção contra 19,4min de drenagem a conclusão até se sustenta, mas por sorte e não por argumento.
 
 4. **Custo apresentado como modo de falha.** A opção de scale-up declara `Novo modo de falha: Nenhum novo modo de falha (consome Orçamento extra)`, e o prompt é explícito: "Custo NÃO é modo de falha: não classifique gasto, orçamento ou esforço como falha técnica". O recurso nomeado no campo tinha que ser técnico. Minha verificação afirmou o contrário na linha do `Nenhum novo modo de falha`.
 
@@ -280,9 +280,9 @@ Todos vão para a **v1.0.1** junto com a correção da matriz, e nenhum foi apli
 
 ## Curadoria
 
-**Técnica de criação: meta-prompting.** O meta-prompt trouxe o cenário real, o método em nove etapas e as oito seções de saída, com instrução explícita de não embutir a resposta — nem dizer qual opção vence, nem sugerir combinação vencedora. Pedi também, como nos checkpoints anteriores, a auditoria de overfitting e os pontos fracos; e desta vez incluí um pedido a mais: **um argumento contra uma regra que eu impus**. Foi a parte mais produtiva da resposta.
+**Técnica de criação: meta-prompting.** O meta-prompt trouxe o cenário real, o método em nove etapas e as oito seções de saída, com instrução explícita de não embutir a resposta, nem dizer qual opção vence, nem sugerir combinação vencedora. Pedi também, como nos checkpoints anteriores, a auditoria de overfitting e os pontos fracos; e desta vez incluí um pedido a mais: **um argumento contra uma regra que eu impus**. Foi a parte mais produtiva da resposta.
 
-**Framework: R-I-S-E.** O `Input` importa mais aqui do que parece, porque são dois blocos de natureza diferente — estado e restrições — e confundi-los é o erro que produz recomendação violando requisito não negociável. O `Steps` carrega a disciplina de comparação, que é o coração deste item: sem ordem imposta, o modelo escreve um ensaio com quatro opções e uma favorita. O `Expectation` fixa a matriz, e é a matriz que torna o espantalho visível — opção avaliada célula por célula contra toda restrição não sobrevive como palha.
+**Framework: R-I-S-E.** O `Input` importa mais aqui do que parece, porque são dois blocos de natureza diferente, estado e restrições, e confundi-los é o erro que produz recomendação violando requisito não negociável. O `Steps` carrega a disciplina de comparação, que é o coração deste item: sem ordem imposta, o modelo escreve um ensaio com quatro opções e uma favorita. O `Expectation` fixa a matriz, e é a matriz que torna o espantalho visível, opção avaliada célula por célula contra toda restrição não sobrevive como palha.
 
 T-A-G foi a alternativa considerada e perde por um motivo concreto: o `Goal` casaria bem, porque as restrições *são* o objetivo, mas T-A-G não tem componente de entrada, então estado e restrições cairiam ambos dentro da Task e a distinção entre "o que é" e "o que não pode ser violado" se dilui. Essa distinção é o que sustenta a etapa de classificação de restrições, que é o que permite eliminar opção por regra em vez de por preferência.
 
@@ -290,7 +290,7 @@ T-A-G foi a alternativa considerada e perde por um motivo concreto: o `Goal` cas
 
 1. **A assimetria do piso físico.** Ele apontou que o piso assume zero chegada nova, o que é utópico, e que basear viabilidade nele aprova arquitetura que falha. Está certo, e a formulação correta é uma assimetria lógica: o piso só serve para **reprovar**, nunca para **aprovar**. Piso acima do SLA prova inviabilidade com certeza. Piso abaixo do SLA não prova nada, porque o tempo real é sempre maior. Escrevi isso como regra explícita, e o efeito apareceu no output: a lacuna sobre a taxa de chegada pós-pico veio com a observação de que o tempo real será consideravelmente maior que os 19,4 minutos. Ironia registrada acima: ele aplicou a regra à capacidade atual e a violou ao avaliar o scale-up.
 
-2. **O limite da regra anti-espantalho.** Este foi o melhor argumento que recebi em quatro checkpoints. Ele mostrou que exigir "novo modo de falha" de toda opção faz o modelo fabricar pseudo-falhas quando a opção é força bruta segura — "aumentar servidores introduz o modo de falha de gastar dinheiro" é custo, não falha técnica —, e que isso polui a análise apagando a diferença entre uma opção que adiciona complexidade sistêmica real, como DLQ gerando processamento fora de ordem, e uma que só consome orçamento. A correção manteve a regra e removeu a coerção: permitir explicitamente "Nenhum novo modo de falha" com o recurso consumido em troca, e proibir classificar gasto como falha. No output isso funcionou exatamente como projetado: duas opções usaram a saída honesta, e nenhuma pseudo-falha apareceu.
+2. **O limite da regra anti-espantalho.** Este foi o melhor argumento que recebi em quatro checkpoints. Ele mostrou que exigir "novo modo de falha" de toda opção faz o modelo fabricar pseudo-falhas quando a opção é força bruta segura: "aumentar servidores introduz o modo de falha de gastar dinheiro" é custo, não falha técnica, e que isso polui a análise apagando a diferença entre uma opção que adiciona complexidade sistêmica real, como DLQ gerando processamento fora de ordem, e uma que só consome orçamento. A correção manteve a regra e removeu a coerção: permitir explicitamente "Nenhum novo modo de falha" com o recurso consumido em troca, e proibir classificar gasto como falha. No output isso funcionou exatamente como projetado: duas opções usaram a saída honesta, e nenhuma pseudo-falha apareceu.
 
 As outras três correções: exigir cada conta em linha separada com unidades e checagem de ordem de magnitude, porque ele tem razão de que LLM erra multiplicação longa e toda a análise pende dessa conta base; limitar a cinco opções e subir o teto de 80 para 90 linhas, porque ele calculou corretamente que as tabelas estouram o limite e o modo de falha seria cortar as últimas seções; e recolocar a regra que proíbe reproduzir os marcadores entre colchetes, que existia no Checkpoint 03 e ele deixou cair aqui.
 
@@ -304,8 +304,8 @@ A tentação é dizer que esses números não podem ser removidos, porque toda a
 piso = backlog / capacidade = ((pico − capacidade) × duração) / capacidade = (pico/capacidade − 1) × duração
 ```
 
-Ou seja, **o piso depende apenas da razão entre pico e capacidade, e da duração — não da escala absoluta.** Normalizando a capacidade para `1.0` e o pico para `1.78x`, com a duração de 25 minutos preservada, o resultado é idêntico: 1.167s, 19,4 minutos. Conferi com as três escalas (180k, 1.0 e 18k) e o piso não se move.
+Ou seja, **o piso depende apenas da razão entre pico e capacidade, e da duração: não da escala absoluta.** Normalizando a capacidade para `1.0` e o pico para `1.78x`, com a duração de 25 minutos preservada, o resultado é idêntico: 1.167s, 19,4 minutos. Conferi com as três escalas (180k, 1.0 e 18k) e o piso não se move.
 
-Então a política para este item é: **enviar razões e tempos, não taxas absolutas.** O throughput real nunca sai da empresa, os SLAs em segundos e minutos vão como estão porque são compromisso contratual e não revelam capacidade, e a análise sai idêntica. O custo é de leitura: a recomendação volta em unidades relativas e precisa ser reescalada localmente para virar plano de execução — o que é trabalho mecânico, não perda de informação.
+Então a política para este item é: **enviar razões e tempos, não taxas absolutas.** O throughput real nunca sai da empresa, os SLAs em segundos e minutos vão como estão porque são compromisso contratual e não revelam capacidade, e a análise sai idêntica. O custo é de leitura: a recomendação volta em unidades relativas e precisa ser reescalada localmente para virar plano de execução, o que é trabalho mecânico, não perda de informação.
 
 O que eu não normalizaria: a retenção de 4h e os SLAs. A retenção é o prazo duro antes de perder mensagem e precisa ser comparável em unidade real com o tempo de drenagem; e os SLAs, sem eles não existe critério de decisão.

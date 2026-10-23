@@ -1,4 +1,4 @@
-# Checkpoint 01 — Triagem de pods do Sentinel
+# Checkpoint 01: Triagem de pods do Sentinel
 
 Primeiro item do playbook de IA operacional da Aegis. Nasce de uma dor da SRE do Sam Wilson: triagem rápida e confiável da saúde dos pods no cluster onde roda o Sentinel, que qualquer plantonista possa rodar e confiar.
 
@@ -9,7 +9,7 @@ cria um script pra mim que olha os pods do meu cluster kubernetes e me
 fala quais estão com problema, tipo reiniciando muito ou sem subir
 ```
 
-O que entra na biblioteca é outra coisa: um prompt parametrizável que recebe um snapshot já coletado e devolve triagem com causa provável, evidência e próxima ação. Sem agente, sem tool — o snapshot é colado na entrada.
+O que entra na biblioteca é outra coisa: um prompt parametrizável que recebe um snapshot já coletado e devolve triagem com causa provável, evidência e próxima ação. Sem agente, sem tool, o snapshot é colado na entrada.
 
 ---
 
@@ -140,9 +140,9 @@ inputs:
 
 Escolhi o mesmo modelo nas duas etapas. Para a criação, a justificativa é direta: escrever o prompt é tarefa de raciocínio longo, feita uma vez, e um modelo forte ali é barato porque o custo não se repete. Para a execução, o critério foi manter uma linha de base única em todos os checkpoints que produzem prompt, de modo que diferença de output entre eles seja atribuível ao prompt e não ao modelo.
 
-Essa escolha tem uma consequência que precisa ficar registrada. O Checkpoint 08 vai submeter este prompt a um gate de 5 segundos de latência e US$ 0,01 por chamada, e vai rodá-lo em `openai:gpt-4o-mini` mais um segundo provider. Raciocínio estendido não sobrevive ao limite de latência: o modelo registrado nesta execução não é o que vai ser testado. A triagem em si não depende de raciocínio longo — é classificação sobre texto colado —, então a expectativa é que um modelo rápido produza a mesma saída. Essa hipótese será verificada no Checkpoint 08, e o resultado de lá é o que decide qual modelo entra como recomendado no README do prompt.
+Essa escolha tem uma consequência que precisa ficar registrada. O Checkpoint 08 vai submeter este prompt a um gate de 5 segundos de latência e US$ 0,01 por chamada, e vai rodá-lo em `openai:gpt-4o-mini` mais um segundo provider. Raciocínio estendido não sobrevive ao limite de latência: o modelo registrado nesta execução não é o que vai ser testado. A triagem em si não depende de raciocínio longo (é classificação sobre texto colado), então a expectativa é que um modelo rápido produza a mesma saída. Essa hipótese será verificada no Checkpoint 08, e o resultado de lá é o que decide qual modelo entra como recomendado no README do prompt.
 
-### Execução 1 — snapshot com pod reiniciando
+### Execução 1: snapshot com pod reiniciando
 
 ```
 VEREDITO: 1 POD(S) PROBLEMATICO(S)
@@ -157,7 +157,7 @@ CONFIANCA: ALTA - dados completos
 
 Chegou na causa, não no sintoma: `CrashLoopBackOff` foi para SINTOMA e `OOMKilled` para CAUSA_RAIZ, com a evidência cruzando o `Last State` do describe com a linha `[FATAL] out of memory` do log. Severidade ALTA porque o serviço `sentinel-api` tem a réplica `2xk9p` saudável.
 
-### Execução 2 — snapshot com pods que não sobem
+### Execução 2: snapshot com pods que não sobem
 
 ```
 VEREDITO: 2 POD(S) PROBLEMATICO(S)
@@ -180,7 +180,7 @@ CONFIANCA: ALTA - dados completos
 
 A ordenação é o resultado mais relevante desta execução: o `sentinel-ingest` veio primeiro e como CRITICA porque é o único pod do serviço e está `Pending`, ou seja, o ingest está inteiro fora. O `sentinel-api` em `ImagePullBackOff` veio depois, como ALTA, porque tem réplica servindo. A regra de severidade da seção 2 do prompt produziu essa ordem sem julgamento subjetivo.
 
-### Execução 3 — snapshot saudável
+### Execução 3: snapshot saudável
 
 ```
 VEREDITO: NENHUM POD PROBLEMATICO
@@ -197,8 +197,8 @@ Conferido por script antes de registrar:
 |---|---|
 | Teto de 24 linhas | 8, 16 e 2 linhas |
 | Teto de 7 linhas por pod | 7 em todos os blocos |
-| Ordenação por severidade | `['ALTA']` e `['CRITICA', 'ALTA']` — correta |
-| Rótulos da REGRA B no caso saudável | 0 de 7 — ausentes como especificado |
+| Ordenação por severidade | `['ALTA']` e `['CRITICA', 'ALTA']`: correta |
+| Rótulos da REGRA B no caso saudável | 0 de 7: ausentes como especificado |
 | Nome exato do pod na entrada 1 | `sentinel-api-7d9c8b6f4-h4m2t` presente |
 | Termos canônicos | `OOMKilled`, `manifest unknown` + `2.9.2`, `Insufficient cpu` presentes |
 | Veredito de ausência na entrada 3 | `NENHUM POD PROBLEMATICO` presente |
@@ -209,14 +209,14 @@ Os sete asserts que o Checkpoint 08 vai exigir sobre este prompt passariam contr
 
 ## Curadoria
 
-**Técnica de criação: meta-prompting.** O prompt não foi redigido à mão. Escrevi um meta-prompt que descreve a tarefa, o parâmetro, os três snapshots reais, os comportamentos obrigatórios e — o ponto que mais importou — as restrições de formato que decorrem do fato de este prompt vir a ser testado automaticamente depois. O meta-prompt também pedia explicitamente que o modelo listasse os pontos fracos da própria saída, o que gerou o material da revisão. Rodei no Gemini Pro com raciocínio estendido.
+**Técnica de criação: meta-prompting.** O prompt não foi redigido à mão. Escrevi um meta-prompt que descreve a tarefa, o parâmetro, os três snapshots reais, os comportamentos obrigatórios e (o ponto que mais importou) as restrições de formato que decorrem do fato de este prompt vir a ser testado automaticamente depois. O meta-prompt também pedia explicitamente que o modelo listasse os pontos fracos da própria saída, o que gerou o material da revisão. Rodei no Gemini Pro com raciocínio estendido.
 
-**Framework escolhido: R-I-S-E.** `Role` (SRE de plantão) define a postura; `Input` isola o snapshot como parâmetro único; `Steps` é o componente que carrega o peso aqui, porque o requisito central do checkpoint é *não repetir o STATUS* — sem uma sequência que obrigue o cruzamento das três camadas (listagem, describe, log), o modelo devolve a coluna STATUS reescrita; `Expectation` fixa o formato rígido. Descartei R-T-F porque `Task` e `Format` sozinhos não impõem o método de raciocínio, e é o método que diferencia triagem de transcrição.
+**Framework escolhido: R-I-S-E.** `Role` (SRE de plantão) define a postura; `Input` isola o snapshot como parâmetro único; `Steps` é o componente que carrega o peso aqui, porque o requisito central do checkpoint é *não repetir o STATUS*, sem uma sequência que obrigue o cruzamento das três camadas (listagem, describe, log), o modelo devolve a coluna STATUS reescrita; `Expectation` fixa o formato rígido. Descartei R-T-F porque `Task` e `Format` sozinhos não impõem o método de raciocínio, e é o método que diferencia triagem de transcrição.
 
 **O que precisou refinar do v1 para o v1.0.0.** Três correções substantivas:
 
-1. **Falso negativo no critério de restart.** O v1 só considerava restart recente como problema quando "atrelado a um STATUS de falha". Um pod `Running 1/1` com `RESTARTS 14 (90s ago)` está em loop e estava de pé por acaso no instante do snapshot — seria classificado como saudável. Tornei a recência do restart um critério independente (regra 1c), com severidade MEDIA própria.
-2. **Severidade sem regra de decisão.** O v1 pedia `CRITICA | ALTA | MEDIA` e ordenação por severidade, sem dizer como escolher, o que deixa a saída irreprodutível — e reprodutibilidade é exatamente o que o gate do Checkpoint 08 mede. Amarrei a severidade à sobrevivência do serviço, inferindo o serviço do prefixo do nome do pod. O efeito prático apareceu na execução 2: o ingest passou a vir antes do api, que é a triagem correta.
+1. **Falso negativo no critério de restart.** O v1 só considerava restart recente como problema quando "atrelado a um STATUS de falha". Um pod `Running 1/1` com `RESTARTS 14 (90s ago)` está em loop e estava de pé por acaso no instante do snapshot: seria classificado como saudável. Tornei a recência do restart um critério independente (regra 1c), com severidade MEDIA própria.
+2. **Severidade sem regra de decisão.** O v1 pedia `CRITICA | ALTA | MEDIA` e ordenação por severidade, sem dizer como escolher, o que deixa a saída irreprodutível, e reprodutibilidade é exatamente o que o gate do Checkpoint 08 mede. Amarrei a severidade à sobrevivência do serviço, inferindo o serviço do prefixo do nome do pod. O efeito prático apareceu na execução 2: o ingest passou a vir antes do api, que é a triagem correta.
 3. **O caso saudável descartava sinal.** A regra do v1 exigia que a saída fosse *exatamente* uma string fixa, sem nenhuma outra palavra. Isso é ótimo para teste e ruim para o plantonista, porque joga fora o restart de 3 dias do worker. Abri o canal `OBSERVACOES:` com teto de 2 linhas e proibição de usar os rótulos de diagnóstico. Foi a única troca em que aceitei mais variância na saída, e ela sobrevive ao teste porque o assert do caso saudável é por ausência de `CAUSA_RAIZ:`, não por igualdade exata.
 
 Também adicionei a regra de consistência temporal da seção 4, que endereça o terceiro ponto fraco apontado pelo próprio modelo (cegueira a timestamps: culpar um `OOMKilled` antigo por um `CrashLoopBackOff` atual), e mantive os rótulos sem acento. Este último não é estética: assert com caractere acentuado é fonte de falha silenciosa por normalização Unicode, e o rótulo `HIPÓTESE INICIAL:` do Checkpoint 02 já vai ser uma exceção obrigatória a essa regra porque o padrão da nota é ditado pelo enunciado.

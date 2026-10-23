@@ -8,8 +8,8 @@ description: >-
   campo inválido, ou quando alguém diz "esse manifesto não sobe" e o erro é do YAML. Serve
   para gerar manifesto de um projeto que ainda não tem nenhum: peça o repositório antes,
   porque porta, probe e variável se descobrem lendo o código. NÃO use quando o objeto já
-  está no cluster e o problema é de execução — pod que não sobe, CrashLoopBackOff,
-  OOMKilled, ImagePullBackOff, Service sem endpoint, 503 — isso é triagem de cluster, outra
+  está no cluster e o problema é de execução (pod que não sobe, CrashLoopBackOff,
+  OOMKilled, ImagePullBackOff, Service sem endpoint, 503) isso é triagem de cluster, outra
   skill. Nem para explicar conceito de Kubernetes. O limite é a fonte da verdade: esta
   skill lê arquivo YAML e código-fonte, nunca o estado do cluster.
 compatibility: >-
@@ -29,7 +29,7 @@ O padrão tem **19 regras acionáveis** em três seções: nomenclatura e rótul
 disponibilidade e recursos (2.x), segurança (3.x). O texto completo, com a obrigatoriedade
 de cada uma, está em `references/padrao-completo.md`. Leia esse arquivo quando precisar
 citar uma regra no relatório ou decidir se algo é `obrigatório`, `recomendado` ou
-`proibido` — a diferença decide se o deploy barra ou só exige justificativa no PR.
+`proibido`: a diferença decide se o deploy barra ou só exige justificativa no PR.
 
 ## Os dois modos
 
@@ -43,7 +43,7 @@ com o que o Trivy diz de graça.
 
 ## Modo conferência
 
-### Passo 1 — Trivy primeiro, sempre
+### Passo 1: Trivy primeiro, sempre
 
 ```bash
 trivy config <arquivo-ou-diretorio>
@@ -54,7 +54,7 @@ Rode isto **antes** de ler o YAML regra por regra. O Trivy cobre por inteiro as 
 privileged), e cobre em parte a **3.2** (securityContext).
 
 **Rode este comando uma vez, na primeira conferência de um conjunto de manifests, para ver
-a saída crua.** Nas conferências seguintes o passo 2 já faz esta chamada por você — não é
+a saída crua.** Nas conferências seguintes o passo 2 já faz esta chamada por você: não é
 preciso repetir. Vale voltar aqui quando alguém contestar o relatório dizendo "mas o Trivy
 passou", porque a saída crua é a evidência.
 
@@ -67,12 +67,12 @@ Três armadilhas na saída crua, e as três já estão tratadas pelo script do p
   regras separadas, com severidades de LOW a HIGH, e não tem o conceito do bloco inteiro
   que a casa exige. Por isso a 3.2 é julgada pelo script.
 - **O Trivy tem regras que o padrão não adota**, e elas saem no bloco informativo:
-  `KSV020`/`KSV021` (UID/GID <= 10000 — **o padrão não estabelece piso de UID**),
-  `KSV008` (hostIPC — a regra 3.6 proíbe três campos e não inclui este), `KSV030`,
+  `KSV020`/`KSV021` (UID/GID <= 10000 (**o padrão não estabelece piso de UID**),
+  `KSV008` (hostIPC) a regra 3.6 proíbe três campos e não inclui este), `KSV030`,
   `KSV104`, `KSV117`. E tem o `AVD-KSV-01010`, cujo nome sugere que cobre a regra 3.3 e
   que **não cobre**.
 
-### Passo 2 — o script, que julga 15 das 19 regras
+### Passo 2: o script, que julga 15 das 19 regras
 
 ```bash
 python3 scripts/conferir_manifesto.py <arquivo-ou-diretorio>
@@ -95,7 +95,7 @@ Divisão de trabalho, somando 19:
 | **Trivy**, traduzido pelo script | 2.1, 3.1, 3.6 | 3 |
 | **só leitura** | 2.6 | 1 |
 
-O script cobre o que se verifica olhando só o YAML — parsing, comparação de string,
+O script cobre o que se verifica olhando só o YAML: parsing, comparação de string,
 presença de campo, igualdade entre dois campos. É onde leitura humana erra e script não
 erra. Três regras ficam **parcialmente** com ele e exigem o passo 3 para fechar: 2.2 (ele
 confere que as duas probes existem e se testam a mesma coisa, não o que elas tocam), 3.2
@@ -115,14 +115,14 @@ Cinco comportamentos do script que vale conhecer antes de confiar no relatório:
 - **Na regra 3.2, entende a herança pod → container.** `runAsNonRoot` e `runAsUser`
   declarados no pod satisfazem a regra. Os outros três requisitos não existem no nível do
   pod, e o relatório avisa quando alguém os declarou ali por engano. **Não há piso de
-  UID** — o padrão exige `runAsUser` declarado e não-root, nada além disso.
+  UID**: o padrão exige `runAsUser` declarado e não-root, nada além disso.
 - **Na regra 2.4, qualquer `strategy.type` diferente de `RollingUpdate` barra em prod.**
   O padrão não prevê `Recreate`. Banco com volume único é caso legítimo, e o caminho é a
   exceção formal.
 - **Na regra 2.2, não exige probe de `Job`, `CronJob` nem `initContainer`.** Container que
   roda e termina não tem o que sondar. Probe ausente ali não é achado.
 
-### Passo 3 — abra o projeto para as quatro regras que o YAML não responde
+### Passo 3: abra o projeto para as quatro regras que o YAML não responde
 
 Nenhuma ferramenta e nenhum script decide estas. A resposta está no código da aplicação:
 
@@ -138,7 +138,7 @@ mão é comum, e aí nada do passo 3 se confirma. Não barre por isso, e não de
 
 | Situação | Veredito |
 |---|---|
-| o script achou violação mecânica (probe faltando, campo da 3.2 ausente, senha em URI) | **barra** — isso não depende do projeto |
+| o script achou violação mecânica (probe faltando, campo da 3.2 ausente, senha em URI) | **barra**: isso não depende do projeto |
 | o script não achou nada e você não pode abrir o projeto | **pendente**, bloco 3, dizendo qual insumo falta |
 | você abriu o projeto e confirmou o problema | **barra** |
 
@@ -146,17 +146,17 @@ mão é comum, e aí nada do passo 3 se confirma. Não barre por isso, e não de
 manifesto, não para quando o insumo não foi fornecido. Bloquear um PR por falta de acesso
 ao repositório é transferir para o autor um problema que é seu.
 
-**Quando o workload é imagem de terceiro** — Postgres, Redis, nginx, RabbitMQ — não existe
+**Quando o workload é imagem de terceiro** (Postgres, Redis, nginx, RabbitMQ) não existe
 "código da aplicação" para abrir, e isso é comum, não exceção: a regra 3.7 obriga tudo a
 passar pelo registry interno, inclusive componente de prateleira. Nesse caso a fonte muda:
 
 - **probes**: use o teste nativo do componente (`pg_isready`, `redis-cli ping`) na
   **readiness**. Veja se o binário existe na variante da imagem e **se há autenticação
-  ligada** — um `redis-cli ping` contra Redis com `requirepass` responde `NOAUTH` e a
+  ligada**: um `redis-cli ping` contra Redis com `requirepass` responde `NOAUTH` e a
   readiness nunca fica pronta.
   Para a **liveness** de componente de prateleira, `tcpSocket` é aceitável e muitas vezes
   é a escolha certa: o teste nativo costuma ser a própria dependência, e liveness que
-  falha reinicia o container. A troca é consciente — `tcpSocket` não detecta processo vivo
+  falha reinicia o container. A troca é consciente: `tcpSocket` não detecta processo vivo
   mas travado. Quando o componente tem um teste de vida que **não** toca o armazenamento,
   prefira ele; quando não tem, registre a escolha no `DECISOES.md`
 - **caminhos de escrita**: o `VOLUME` do Dockerfile upstream e a documentação da imagem
@@ -170,22 +170,22 @@ A regra 2.2 tem uma armadilha que o próprio padrão descreve: apontar readiness
 liveness para o mesmo endpoint que checa banco derruba a aplicação quando o banco fica
 lento. O critério é a divisão:
 
-- **readiness** pode tocar a dependência — falhar tira o pod do Service, o que é correto
-- **liveness** não deve tocar a dependência — falhar **reinicia o container**, e reiniciar
+- **readiness** pode tocar a dependência: falhar tira o pod do Service, o que é correto
+- **liveness** não deve tocar a dependência: falhar **reinicia o container**, e reiniciar
   não traz o banco de volta
 
 Evite `tcpSocket` para readiness de aplicação web: a porta aceita conexão antes de o
 servidor estar pronto para responder.
 
-### Passo 4 — relatório
+### Passo 4: relatório
 
 Agrupe em três blocos, nesta ordem, e **cite objeto e campo** em cada achado:
 
-1. **BARRA A REVISÃO** — violação de regra `obrigatório` ou `proibido`
-2. **EXIGE JUSTIFICATIVA NO PR** — regra `recomendado`, e também regra `recomendado` que
+1. **BARRA A REVISÃO**: violação de regra `obrigatório` ou `proibido`
+2. **EXIGE JUSTIFICATIVA NO PR**: regra `recomendado`, e também regra `recomendado` que
    você confirmou estar tecnicamente correta mas **sem registro escrito**. É o bloco do
    "pendente": não barra, não é conforme, e o que falta é o texto no PR
-3. **NÃO CONFERIDO** — o que exige abrir o projeto, com o que falta descobrir e o nível da
+3. **NÃO CONFERIDO**: o que exige abrir o projeto, com o que falta descobrir e o nível da
    regra, para o revisor saber se o veredito pendente barra ou não
 
 Uma regra pode aparecer no bloco 2 **e** no 3, e isso não é inconsistência: no 3 você diz
@@ -193,7 +193,7 @@ o que falta descobrir, no 2 você dá o veredito. A 2.6 é o caso típico.
 
 **Quando o insumo não veio, diga isso em vez de assumir.** Se você recebeu só o YAML, o
 corpo do PR e o `DECISOES.md` não estão na sua mão, e "não existe justificativa" é
-diferente de "não me deram a justificativa". Escreva `pendente — não foi fornecido o
+diferente de "não me deram a justificativa". Escreva `pendente: não foi fornecido o
 DECISOES.md nem o corpo do PR`, e siga. Inventar um veredito sobre insumo que você não
 viu é o jeito mais rápido de o relatório perder credibilidade.
 
@@ -202,7 +202,7 @@ spec.selector: diz 'app: nyx-api' e o rótulo do pod é 'app: nyxapi'` diz.
 
 Para cada violação, inclua **a consequência operacional**, não só o nome da regra. O
 revisor precisa saber que um seletor com um hífen de diferença faz o Service subir
-saudável e ficar sem endpoint para sempre — é isso que explica o "subiu mas não responde"
+saudável e ficar sem endpoint para sempre: é isso que explica o "subiu mas não responde"
 que o cliente relatou.
 
 ## Modo escrita
@@ -210,7 +210,7 @@ que o cliente relatou.
 A ordem é obrigatória: **ler o projeto antes de escrever YAML**, porque três decisões do
 manifesto não têm default seguro.
 
-### Passo 1 — levantar no repositório
+### Passo 1: levantar no repositório
 
 - porta em que a aplicação escuta
 - endpoints de saúde, e o que cada um toca (se não houver, quais rotas de negócio servem)
@@ -221,10 +221,10 @@ manifesto não têm default seguro.
 Esse último item decide a arquitetura do manifesto. Migração num entrypoint com duas
 réplicas em prod são duas migrações concorrentes; se existe comando separado, extraia para
 um `Job`. `initContainer` **não** resolve, porque roda uma vez por pod. Se a migração está
-dentro do código da aplicação, não há como extrair sem mudar o código — e então
+dentro do código da aplicação, não há como extrair sem mudar o código, e então
 `replicas: 1` deixa de ser default de dev e passa a ser requisito.
 
-### Passo 2 — escrever
+### Passo 2: escrever
 
 Comece pelo namespace, porque ele decide quais regras valem. Depois Secret, ServiceAccount
 e ConfigMap, depois o workload, depois Service e PDB.
@@ -243,7 +243,7 @@ Três erros que o padrão pega e que são fáceis de cometer:
 - **`readOnlyRootFilesystem: true` sem o volume certo não sobe.** Ligue a flag e monte
   `emptyDir` nos caminhos que você descobriu no passo 1.
 
-### Passo 3 — validar antes de entregar
+### Passo 3: validar antes de entregar
 
 ```bash
 python3 scripts/conferir_manifesto.py <diretorio>        # deve sair com rc=0
@@ -262,26 +262,26 @@ Quando o padrão não pode ser cumprido, o padrão exige exceção com aprovaç�
 Segurança & Compliance no PR e prazo de validade.
 
 **Enquanto a aprovação não existe, reporte como violação, não como conforme.** Um
-`replicas: 1` em prod com um comentário explicando o motivo continua barrando a revisão —
+`replicas: 1` em prod com um comentário explicando o motivo continua barrando a revisão,
 o comentário é insumo para a aprovação, não a aprovação. Marcar como conforme porque está
 justificado transforma a skill em carimbo.
 
 O mesmo vale ao gerar: se você escreveu um desvio consciente, o relatório da sua própria
 skill deve continuar apontando. Foi assim que o `replicas: 1` e o `Recreate` do Postgres
-em `orion-prod` continuaram visíveis — os dois são casos legítimos de banco com volume
+em `orion-prod` continuaram visíveis: os dois são casos legítimos de banco com volume
 único, e os dois seguem barrando até existir aprovação escrita.
 
 **E não invente regra para fechar o raciocínio.** Três exigências desta skill não existiam
 no padrão e foram removidas quando confrontadas com o wiki: piso de UID na 3.2, `Recreate`
 como alternativa aceitável na 2.4, e `hostIPC` na 3.6. Quando a regra parecer incompleta,
-abra `references/padrao-completo.md` em vez de completar de cabeça — o que está marcado
+abra `references/padrao-completo.md` em vez de completar de cabeça, o que está marcado
 `INTERPRETAÇÃO DA SKILL` é interpretação, o resto é texto da casa.
 
 ## Referências
 
-- `references/padrao-completo.md` — as 19 regras com obrigatoriedade e o processo de
+- `references/padrao-completo.md`: as 19 regras com obrigatoriedade e o processo de
   exceção. Consulte para citar regra ou decidir se barra.
-- `references/cobertura-do-trivy.md` — o mapa de cobertura verificado por experimento,
+- `references/cobertura-do-trivy.md`: o mapa de cobertura verificado por experimento,
   o motivo do falso positivo de `KSV020`/`KSV021`, e a demonstração de que o Trivy **não
   detecta senha dentro de string de conexão**. Consulte quando alguém disser "o Trivy
   passou, então está certo".

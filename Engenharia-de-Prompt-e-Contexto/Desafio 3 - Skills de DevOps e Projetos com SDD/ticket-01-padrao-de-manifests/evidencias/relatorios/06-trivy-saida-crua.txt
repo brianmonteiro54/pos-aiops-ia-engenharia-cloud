@@ -1,4 +1,4 @@
-# trivy config / trivy fs, saida crua — a evidencia do mapa de cobertura
+# trivy config / trivy fs, saida crua: a evidencia do mapa de cobertura
 # Trivy 0.52.2 | 2026-10-22T21:08:37Z
 # Reproduzir: rodar os mesmos comandos a partir desta pasta.
 
@@ -66,4 +66,4 @@
     ^ alcanca 1 lugar de 3, e casou com o esquema da URI, nao com a senha
 
 ### trivy fs --scanners secret evidencias/sondas/trivy-senha-em-tres-lugares.yaml
-    0 achado(s) — zero dos 3 lugares
+    0 achado(s): zero dos 3 lugares

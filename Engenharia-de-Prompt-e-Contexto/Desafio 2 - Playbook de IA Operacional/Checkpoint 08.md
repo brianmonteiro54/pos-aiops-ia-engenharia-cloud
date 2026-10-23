@@ -1,16 +1,16 @@
-# Checkpoint 08 — A biblioteca passa a ser testada
+# Checkpoint 08: A biblioteca passa a ser testada
 
 O Checkpoint 07 transformou o playbook em repositório. Isso resolve versionamento e descoberta, e não resolve a pergunta que o Nick Fury vai fazer na primeira vez que um prompt der resposta errada em produção: *como vocês sabem que ele ainda funciona?*
 
 Este checkpoint responde com teste automatizado. Três prompts do catálogo ganharam suíte de avaliação em [promptfoo](https://www.promptfoo.dev/), executada de verdade contra dois fornecedores de modelo, com os números registrados abaixo. Nenhum resultado deste arquivo é estimado.
 
-O que a suíte encontrou foi mais interessante que um selo verde: **quatro defeitos reais de prompt** — três em `triagem-de-pods` e um em `networkpolicy-sentinel` —, **quatro bugs no meu próprio código de teste**, **dois limites que eu mesmo havia copiado sem medir** e **quatro comportamentos de plataforma que quebram pipeline sem ninguém tocar em prompt nenhum**. Está tudo documentado, incluindo os meus erros.
+O que a suíte encontrou foi mais interessante que um selo verde: **quatro defeitos reais de prompt** (três em `triagem-de-pods` e um em `networkpolicy-sentinel`), **quatro bugs no meu próprio código de teste**, **dois limites que eu mesmo havia copiado sem medir** e **quatro comportamentos de plataforma que quebram pipeline sem ninguém tocar em prompt nenhum**. Está tudo documentado, incluindo os meus erros.
 
 ---
 
 ## Por que promptfoo, e por que só três prompts
 
-A ferramenta foi escolhida por uma característica específica: a suíte é **arquivo versionado ao lado do prompt**, não configuração em interface. Isso é pré-requisito do Checkpoint 10 — sem o teste no repositório, não existe pipeline que barre regressão no momento do pull request.
+A ferramenta foi escolhida por uma característica específica: a suíte é **arquivo versionado ao lado do prompt**, não configuração em interface. Isso é pré-requisito do Checkpoint 10, sem o teste no repositório, não existe pipeline que barre regressão no momento do pull request.
 
 Dos nove prompts do catálogo, três entraram nesta rodada. O critério foi **testabilidade por asserção determinística**:
 
@@ -39,7 +39,7 @@ prompt-registry/
     │   ├── prompt.js             # carregador (ver adiante)
     │   └── promptfooconfig.yaml  # a suíte
     ├── triagem-de-pods/
-    │   ├── prompt.md             # v1.0.1 — três correções vindas da suíte
+    │   ├── prompt.md             # v1.0.1: três correções vindas da suíte
     │   ├── README.md             # v1.0.1 + histórico de versões
     │   ├── prompt.js
     │   └── promptfooconfig.yaml
@@ -102,13 +102,13 @@ module.exports = async function ({ vars }) {
 
 **Decisão registrada: ler o `prompt.md` real em vez de copiar o texto para dentro do config.**
 
-A alternativa — declarar o prompt inline no YAML da suíte — foi rejeitada porque anularia o propósito. Se o texto do prompt vive em dois lugares, alterar `prompt.md` não dispara o teste, e a suíte passa a certificar uma cópia congelada enquanto o arquivo que as pessoas usam segue à deriva. O Checkpoint 10 depende exatamente disso: mudou o prompt, roda o teste.
+A alternativa (declarar o prompt inline no YAML da suíte) foi rejeitada porque anularia o propósito. Se o texto do prompt vive em dois lugares, alterar `prompt.md` não dispara o teste, e a suíte passa a certificar uma cópia congelada enquanto o arquivo que as pessoas usam segue à deriva. O Checkpoint 10 depende exatamente disso: mudou o prompt, roda o teste.
 
-O placeholder ausente virar string vazia também é deliberado. `nota-de-triagem` tem o parâmetro opcional `mapa_escalacao`, e os três casos de teste o omitem de propósito para exercitar o caminho de fallback ao mapa padrão declarado no corpo do prompt — que é o caminho que o plantão vai usar de fato.
+O placeholder ausente virar string vazia também é deliberado. `nota-de-triagem` tem o parâmetro opcional `mapa_escalacao`, e os três casos de teste o omitem de propósito para exercitar o caminho de fallback ao mapa padrão declarado no corpo do prompt, que é o caminho que o plantão vai usar de fato.
 
 ---
 
-## Suíte 1 — `nota-de-triagem`
+## Suíte 1: `nota-de-triagem`
 
 Saída de formato fixo, então os asserts são quase todos de string. O valor aqui está menos nos asserts e mais em **dois casos-armadilha**.
 
@@ -272,9 +272,9 @@ Um número que vale reter: o `gemini-3.5-flash` responde mais rápido e custa **
 
 ---
 
-## Suíte 2 — `triagem-de-pods`
+## Suíte 2: `triagem-de-pods`
 
-Aqui os asserts deixam de verificar formato e passam a verificar **regra de negócio derivada do insumo**. A regra de severidade do prompt diz: `CRITICA` quando nenhum pod do mesmo serviço está saudável, `ALTA` quando existe réplica atendendo. Isso não é formato — é contagem sobre o snapshot, e é o que separa um triador útil de um formatador de texto.
+Aqui os asserts deixam de verificar formato e passam a verificar **regra de negócio derivada do insumo**. A regra de severidade do prompt diz: `CRITICA` quando nenhum pod do mesmo serviço está saudável, `ALTA` quando existe réplica atendendo. Isso não é formato, é contagem sobre o snapshot, e é o que separa um triador útil de um formatador de texto.
 
 Os três casos, com os asserts que importam:
 
@@ -326,7 +326,7 @@ Os três casos, com os asserts que importam:
         value: 'CRITICA'
 ```
 
-O snapshot foi montado para que a regra tenha consequência visível. `sentinel-api` tem um pod saudável e um quebrado, então o quebrado é `ALTA`. `sentinel-ingest` tem **um único pod, e ele está `Pending`** — o serviço está inteiro fora, então é `CRITICA`, e tem que vir primeiro na saída. Um modelo que ignora a regra classifica os dois como `ALTA` e emite na ordem em que aparecem no `kubectl get pods`.
+O snapshot foi montado para que a regra tenha consequência visível. `sentinel-api` tem um pod saudável e um quebrado, então o quebrado é `ALTA`. `sentinel-ingest` tem **um único pod, e ele está `Pending`**: o serviço está inteiro fora, então é `CRITICA`, e tem que vir primeiro na saída. Um modelo que ignora a regra classifica os dois como `ALTA` e emite na ordem em que aparecem no `kubectl get pods`.
 
 O terceiro caso é o oposto: **cluster saudável**. Ele testa que o prompt não força diagnóstico quando não há problema, e testa por ausência:
 
@@ -365,12 +365,12 @@ Duration: 12s (concurrency: 1)
 
 | Caso | Provider | Asserts | Latência | Custo |
 |---|---|---|---|---|
-| 1 — OOMKilled | `gpt-4o-mini` | 8/8 | 2275ms | US$0,000396 |
-| 1 — OOMKilled | `gemini-3.5-flash` | 8/8 | 1656ms | US$0,004578 |
-| 2 — dois pods, causas diferentes | `gpt-4o-mini` | **9/11** | 2559ms | US$0,000380 |
-| 2 — dois pods, causas diferentes | `gemini-3.5-flash` | 11/11 | 2051ms | US$0,005461 |
-| 3 — cluster saudável | `gpt-4o-mini` | 9/9 | 1741ms | US$0,000229 |
-| 3 — cluster saudável | `gemini-3.5-flash` | 9/9 | 1073ms | US$0,003431 |
+| 1: OOMKilled | `gpt-4o-mini` | 8/8 | 2275ms | US$0,000396 |
+| 1: OOMKilled | `gemini-3.5-flash` | 8/8 | 1656ms | US$0,004578 |
+| 2: dois pods, causas diferentes | `gpt-4o-mini` | **9/11** | 2559ms | US$0,000380 |
+| 2: dois pods, causas diferentes | `gemini-3.5-flash` | 11/11 | 2051ms | US$0,005461 |
+| 3: cluster saudável | `gpt-4o-mini` | 9/9 | 1741ms | US$0,000229 |
+| 3: cluster saudável | `gemini-3.5-flash` | 9/9 | 1073ms | US$0,003431 |
 
 As duas falhas, ambas no caso 2 e ambas no `gpt-4o-mini`:
 
@@ -397,9 +397,9 @@ O `gemini-3.5-flash` acerta os 11 asserts, incluindo a ordenação e o `CRITICA`
 
 ---
 
-## Suíte 3 — `networkpolicy-sentinel`
+## Suíte 3: `networkpolicy-sentinel`
 
-Esta é a suíte que justifica o esforço. As outras duas verificam texto; esta **parseia o YAML e verifica o efeito da política**. A diferença não é acadêmica: `contains: "5432"` passa se o número aparecer em qualquer lugar da saída, inclusive num item de regra que libera aquela porta para o destino errado — que foi exatamente o defeito bloqueador encontrado na revisão manual do Checkpoint 06.
+Esta é a suíte que justifica o esforço. As outras duas verificam texto; esta **parseia o YAML e verifica o efeito da política**. A diferença não é acadêmica: `contains: "5432"` passa se o número aparecer em qualquer lugar da saída, inclusive num item de regra que libera aquela porta para o destino errado, que foi exatamente o defeito bloqueador encontrado na revisão manual do Checkpoint 06.
 
 Os asserts semânticos ficam em `asserts.js`, por um motivo técnico e um de projeto.
 
@@ -580,7 +580,7 @@ O `gemini-3.5-flash` passou os 15. A saída dele acerta tudo o que o prompt foi 
 
 Registro porque cada um deles produz um modo de falha diferente, e três seriam invisíveis num teste que só olha o verde/vermelho final.
 
-**1.1 — Assert JS devolvendo string.** A primeira versão do assert de ordenação devolvia a mensagem de erro direto:
+**1.1: Assert JS devolvendo string.** A primeira versão do assert de ordenação devolvia a mensagem de erro direto:
 
 ```
 Custom function threw error: Custom function must return a boolean, number, or
@@ -590,17 +590,17 @@ deveria vir antes do pod de api"
 
 O caso reprovava, mas por motivo errado: o relatório dizia que a função de teste estava quebrada, e não que a política de severidade não foi aplicada. Assert precisa devolver `{ pass, score, reason }`.
 
-**1.2 — `require is not defined` em assert inline.** Asserts JS embutidos no YAML são avaliados num contexto sem `require`, então não dá para carregar um parser de YAML. Foi o que forçou o `asserts.js` externo, referenciado como `file://asserts.js:nomeDaFuncao`. O que começou como contorno virou decisão melhor: os asserts semânticos ficam testáveis e documentados isoladamente.
+**1.2: `require is not defined` em assert inline.** Asserts JS embutidos no YAML são avaliados num contexto sem `require`, então não dá para carregar um parser de YAML. Foi o que forçou o `asserts.js` externo, referenciado como `file://asserts.js:nomeDaFuncao`. O que começou como contorno virou decisão melhor: os asserts semânticos ficam testáveis e documentados isoladamente.
 
-**1.3 — Assert que lança exceção aborta a avaliação inteira.** A primeira versão do parser deixava o `yaml.loadAll` lançar. Resultado: `Provider call failed during eval` e a suíte inteira parava. **Erro informa menos que falha**, porque não diz qual requisito não foi cumprido. Daí a função `politicas()` devolver `{ docs, erro }` e nunca lançar.
+**1.3: Assert que lança exceção aborta a avaliação inteira.** A primeira versão do parser deixava o `yaml.loadAll` lançar. Resultado: `Provider call failed during eval` e a suíte inteira parava. **Erro informa menos que falha**, porque não diz qual requisito não foi cumprido. Daí a função `politicas()` devolver `{ docs, erro }` e nunca lançar.
 
-**1.4 — O frontmatter ia para o modelo.** Já descrito acima. Foi o que gerou o `prompt.js`.
+**1.4: O frontmatter ia para o modelo.** Já descrito acima. Foi o que gerou o `prompt.js`.
 
 ### 2. A cerca de bloco de código mascara defeito semântico
 
 Este é o achado que mais muda como eu leio um relatório de suíte.
 
-Das cinco falhas do `gpt-4o-mini`, **quatro dizem a mesma coisa**: `saida nao parseia como YAML`. É uma causa única com quatro sintomas. Só que a mensagem é enganosa — ela sugere que não há informação sobre o conteúdo, quando na verdade o conteúdo tem defeito próprio.
+Das cinco falhas do `gpt-4o-mini`, **quatro dizem a mesma coisa**: `saida nao parseia como YAML`. É uma causa única com quatro sintomas. Só que a mensagem é enganosa, ela sugere que não há informação sobre o conteúdo, quando na verdade o conteúdo tem defeito próprio.
 
 Verifiquei removendo a cerca da saída registrada e rodando os mesmos asserts contra o texto resultante:
 
@@ -634,7 +634,7 @@ Sem a cerca, dois asserts continuam reprovando, **por defeito real**. O YAML do 
 Duas consequências práticas:
 
 - **A ordem em que os asserts falham não é a ordem de gravidade.** A cerca é trivial de corrigir; o `ports` no nível errado é falha de segurança. O relatório mostra os dois com o mesmo peso, e a cerca aparece primeiro.
-- **Rejeitei usar `transform` para remover a cerca antes dos asserts.** Isso deixaria o relatório mais informativo e apagaria um defeito real — o prompt promete YAML colável e a entrega não é colável. A cerca fica como falha.
+- **Rejeitei usar `transform` para remover a cerca antes dos asserts.** Isso deixaria o relatório mais informativo e apagaria um defeito real: o prompt promete YAML colável e a entrega não é colável. A cerca fica como falha.
 
 ### 3. O assert de latência mede condição do provedor, não qualidade do prompt
 
@@ -642,7 +642,7 @@ Este limite quase entrou errado na suíte.
 
 Com a concorrência padrão do promptfoo, o mesmo caso de `nota-de-triagem` mediu **21744ms**. Com `maxConcurrency: 1`, o mesmo caso, mesmo prompt, mesmo modelo: **1005ms**. A diferença é fila do lado do provedor, e reprovaria o build por carga de API.
 
-A dispersão é maior que isso. O caso 3 de `triagem-de-pods`, mesmo provider e mesmo config, mediu **989ms** numa execução e **122881ms** em outra. Com concorrência 1 a faixa cai para 1073ms–2051ms nesse mesmo provider, que é utilizável como limite.
+A dispersão é maior que isso. O caso 3 de `triagem-de-pods`, mesmo provider e mesmo config, mediu **989ms** numa execução e **122881ms** em outra. Com concorrência 1 a faixa cai para 1073ms-2051ms nesse mesmo provider, que é utilizável como limite.
 
 Por isso `maxConcurrency: 1` está **no arquivo de teste**, e não na linha de comando: garantia que depende de quem executa não é garantia. Alternativas rejeitadas: subir o limite (anula o assert), aceitar a instabilidade (quebra o Checkpoint 10), remover o assert de latência (latência é requisito real de item de plantão).
 
@@ -654,7 +654,7 @@ Medido depois em três execuções, o modelo que acerta **100% do conteúdo** en
 
 Limite que já está vermelho no baseline não detecta regressão nenhuma, só ensina o time a ignorar a suíte. Corrigi com números vindos da medição: `latency: 10000` (cerca de 70% acima do pior tempo medido) e `cost: 0.03` (cerca de 2x o pior custo medido). Folga para variação normal, aperto suficiente para pegar o dobro.
 
-A alternativa considerada foi manter 5000ms e US$0,01 e registrar a reprovação como dívida. Rejeitada porque aqui o artefato novo é a própria suíte — não há execução anterior dela para preservar — e porque dois alarmes falsos permanentes esconderiam os alarmes verdadeiros que a suíte de fato encontrou. Depois da correção, o `gemini-3.5-flash` fica 15/15 e o `gpt-4o-mini` segue vermelho **pelo motivo certo**: a cerca de código.
+A alternativa considerada foi manter 5000ms e US$0,01 e registrar a reprovação como dívida. Rejeitada porque aqui o artefato novo é a própria suíte: não há execução anterior dela para preservar, e porque dois alarmes falsos permanentes esconderiam os alarmes verdadeiros que a suíte de fato encontrou. Depois da correção, o `gemini-3.5-flash` fica 15/15 e o `gpt-4o-mini` segue vermelho **pelo motivo certo**: a cerca de código.
 
 Este é o único item em que eu mudei um número para o teste passar, e é por isso que ele está registrado com a medição ao lado.
 
@@ -662,9 +662,9 @@ Este é o único item em que eu mudei um número para o teste passar, e é por i
 
 A suíte encontrou três defeitos no prompt. Todos corrigidos, com versão subida para `1.0.1`.
 
-**5.1 — O literal `POD(S) PROBLEMATICO(S)` não era declarado como literal.** Na primeira execução o `gpt-4o-mini` emitiu `VEREDITO: 1 POD PROBLEMATICO` — ele "corrigiu" a concordância para o singular. A saída é lida por ferramenta antes de ser lida por pessoa, e concordância corrigida quebra o parse. O prompt passou a declarar o trecho como literal e não ajustável.
+**5.1: O literal `POD(S) PROBLEMATICO(S)` não era declarado como literal.** Na primeira execução o `gpt-4o-mini` emitiu `VEREDITO: 1 POD PROBLEMATICO`: ele "corrigiu" a concordância para o singular. A saída é lida por ferramenta antes de ser lida por pessoa, e concordância corrigida quebra o parse. O prompt passou a declarar o trecho como literal e não ajustável.
 
-**5.2 — A contagem de réplicas vazava para a classificação.** A primeira tentativa de reforçar a regra de severidade produziu um efeito colateral: o `gpt-4o-mini` passou a incluir um pod **saudável** no resultado, com `CAUSA_RAIZ: Dados ausentes`:
+**5.2: A contagem de réplicas vazava para a classificação.** A primeira tentativa de reforçar a regra de severidade produziu um efeito colateral: o `gpt-4o-mini` passou a incluir um pod **saudável** no resultado, com `CAUSA_RAIZ: Dados ausentes`:
 
 ```text
 VEREDITO: 3 POD(S) PROBLEMATICO(S)
@@ -677,9 +677,9 @@ CAUSA_RAIZ: Dados ausentes
 
 A instrução de contar réplicas por serviço foi interpretada como autorização para reavaliar quais pods entram. A correção restringe a contagem explicitamente à **atribuição de severidade**: a seção anterior já decidiu quais pods são problemáticos e esta não altera a lista.
 
-**5.3 — A ordenação valia para a análise, não para a saída.** O prompt mandava ordenar por severidade, e o modelo ordenava internamente e emitia na ordem do snapshot. A correção diz que a ordenação vale para a emissão, mesmo quando diferente da ordem da listagem.
+**5.3: A ordenação valia para a análise, não para a saída.** O prompt mandava ordenar por severidade, e o modelo ordenava internamente e emitia na ordem do snapshot. A correção diz que a ordenação vale para a emissão, mesmo quando diferente da ordem da listagem.
 
-Depois das três, o literal do veredito parou de reprovar e o pod fantasma não voltou a aparecer. O caso 2 no `gpt-4o-mini`, que antes oscilava entre 8/11 e 9/11, passou a oscilar entre 9/11 e 10/11 — a falha que sobra é a regra de severidade em si, e ela é reprodutível em todas as execuções registradas.
+Depois das três, o literal do veredito parou de reprovar e o pod fantasma não voltou a aparecer. O caso 2 no `gpt-4o-mini`, que antes oscilava entre 8/11 e 9/11, passou a oscilar entre 9/11 e 10/11: a falha que sobra é a regra de severidade em si, e ela é reprodutível em todas as execuções registradas.
 
 **Onde eu parei, e por quê.** A tentação era continuar ajustando o prompt até o `gpt-4o-mini` passar. Rejeitei: seria **sobreajuste do prompt a um modelo fraco**. A regra de severidade está expressa em linguagem direta, com o critério de decisão explícito; o `gemini-3.5-flash` a executa sem dificuldade. Continuar reescrevendo pioraria o prompt para o modelo bom em troca de fazer o modelo ruim passar num caso.
 
@@ -692,11 +692,11 @@ O enunciado pede o trade-off explícito. Ele apareceu nos três níveis de rigor
 | `nota-de-triagem` (formato) | todos os asserts em todos os 3 casos | idem |
 | `triagem-de-pods` (regra derivada) | 9/11 no caso com regra de severidade | 11/11 |
 | `networkpolicy-sentinel` (artefato executável) | 10/15 | 15/15 |
-| Custo por chamada | US$0,000175 – US$0,000596 | US$0,003431 – US$0,015155 |
+| Custo por chamada | US$0,000175, US$0,000596 | US$0,003431, US$0,015155 |
 
 A leitura: **quanto mais o prompt exige do modelo, mais o modelo barato custa em outra moeda.** Em formato simples os dois empatam e o barato ganha por preço. Em regra de negócio derivada o barato já erra. Em artefato executável ele entrega YAML que não cola e política com `ports` no nível errado.
 
-Do outro lado, o modelo que acerta tudo custa de **cerca de 12x a 25x mais** por chamada, dependendo do caso e é o que pressiona o limite de latência — em `networkpolicy-sentinel` ele gasta 5982ms e US$0,0152, o que só cabe porque os limites foram recalibrados com medição.
+Do outro lado, o modelo que acerta tudo custa de **cerca de 12x a 25x mais** por chamada, dependendo do caso e é o que pressiona o limite de latência, em `networkpolicy-sentinel` ele gasta 5982ms e US$0,0152, o que só cabe porque os limites foram recalibrados com medição.
 
 A recomendação foi registrada no README de `triagem-de-pods`, junto ao prompt, e não neste arquivo: quem for usar o item precisa da informação no ponto de uso.
 
@@ -704,7 +704,7 @@ A recomendação foi registrada no README de `triagem-de-pods`, junto ao prompt,
 
 Todos encontrados durante a execução desta suíte, e todos relevantes para o Checkpoint 10.
 
-**7.1 — Modelo fixado em config tem prazo de validade.** A suíte rodou primeiro em `gemini-2.5-flash`. Durante o próprio desenvolvimento, esse id passou a devolver 404 para projeto novo:
+**7.1: Modelo fixado em config tem prazo de validade.** A suíte rodou primeiro em `gemini-2.5-flash`. Durante o próprio desenvolvimento, esse id passou a devolver 404 para projeto novo:
 
 ```
 404 This model models/gemini-2.5-flash is no longer available to new users.
@@ -713,7 +713,7 @@ Please update your code to use models/gemini-3.8-flash
 
 O projeto antigo seguia funcionando por antiguidade; um projeto criado depois não. Em pipeline isso é o pior tipo de quebra: **o build falha sem ninguém ter tocado no prompt, e a falha não se parece com falha de qualidade.**
 
-**7.2 — O substituto sugerido pelo Google descarta silenciosamente o `temperature`.** O caminho óbvio era migrar para `gemini-3.8-flash`, como a mensagem indica. Rejeitei depois de ler o código do promptfoo 0.123.1. A função `removeDeprecatedGeminiGenerationParams` apaga `temperature`, `topP` e `topK` do corpo da requisição para essa família de modelos, e o provider monta o corpo assim:
+**7.2: O substituto sugerido pelo Google descarta silenciosamente o `temperature`.** O caminho óbvio era migrar para `gemini-3.8-flash`, como a mensagem indica. Rejeitei depois de ler o código do promptfoo 0.123.1. A função `removeDeprecatedGeminiGenerationParams` apaga `temperature`, `topP` e `topK` do corpo da requisição para essa família de modelos, e o provider monta o corpo assim:
 
 ```javascript
 generationConfig: {
@@ -725,7 +725,7 @@ body.generationConfig = removeDeprecatedGeminiGenerationParams(this.modelName, b
 
 Declarar `temperature: 0` seria **aceito pelo schema do config e descartado antes do envio**. O arquivo de teste ficaria afirmando um controle que não existe, o que é pior que não ter o controle.
 
-**7.3 — E recusa desligar o raciocínio.** O mesmo modelo rejeita `thinkingBudget` e aceita só `thinkingLevel`, com mínimo `LOW`:
+**7.3, E recusa desligar o raciocínio.** O mesmo modelo rejeita `thinkingBudget` e aceita só `thinkingLevel`, com mínimo `LOW`:
 
 ```
 Error: gemini-3.8-flash does not support thinkingBudget. Use thinkingLevel (LOW, MEDIUM, or HIGH).
@@ -735,14 +735,14 @@ Não há como zerar o raciocínio, então o orçamento de latência passaria a i
 
 Por isso a escolha final foi **`gemini-3.5-flash`**, que fica fora daquela lista: preserva temperatura e aceita `thinkingBudget: 0`. Os dois controles de que a suíte precisa continuam existindo. A justificativa está escrita no config, não só aqui.
 
-**7.4 — A camada de teste mascara o erro do provedor.** Três execuções falharam com:
+**7.4: A camada de teste mascara o erro do provedor.** Três execuções falharam com:
 
 ```
 Error: No candidates returned in API response.
 Got response: {"error":{"code":503,"message":"This model is currently experiencing high demand..."}}
 ```
 
-O promptfoo reporta como "sem candidatos na resposta", quando é um **503 de capacidade** — transitório, e que deveria ser tentado de novo, não tratado como falha de conteúdo. O mesmo prompt passou na execução seguinte sem alteração alguma. Num gate de CI isso é reprovação falsa, e a mensagem não ajuda a diagnosticar.
+O promptfoo reporta como "sem candidatos na resposta", quando é um **503 de capacidade**: transitório, e que deveria ser tentado de novo, não tratado como falha de conteúdo. O mesmo prompt passou na execução seguinte sem alteração alguma. Num gate de CI isso é reprovação falsa, e a mensagem não ajuda a diagnosticar.
 
 ### 8. A cota do provedor virou o fator que mais travou a execução, e não era limite técnico
 
@@ -756,7 +756,7 @@ metric : generativelanguage.googleapis.com/generate_content_free_tier_requests
 value  : 20 {'model': 'gemini-3.5-flash', 'location': 'global'}
 ```
 
-**20 requisições por dia, por projeto, por modelo.** As três suítes juntas consomem 7 chamadas no provider Google por execução completa, então isso dava menos de três execuções por dia — e a cota é compartilhada com qualquer desenvolvimento local no mesmo projeto.
+**20 requisições por dia, por projeto, por modelo.** As três suítes juntas consomem 7 chamadas no provider Google por execução completa, então isso dava menos de três execuções por dia, e a cota é compartilhada com qualquer desenvolvimento local no mesmo projeto.
 
 Chequei em dois projetos diferentes e os dois respondiam `-FreeTier`, mesmo depois de a conta ter faturamento. Minha leitura na hora foi que habilitar faturamento na conta não migra o projeto da chave, e que o pipeline do Checkpoint 10 teria que caber em 20 chamadas diárias.
 
@@ -768,15 +768,15 @@ O que sobrevive da investigação, e que vale para o Checkpoint 10:
 - **Um pipeline que só funciona no projeto certo não é um pipeline confiável.** Fork do repositório, contribuidor novo ou rotação de chave para outro projeto reproduzem o 429 sem nenhuma alteração de prompt. O gate precisa distinguir "reprovou o teste" de "não conseguiu executar o teste", e a mensagem do promptfoo não faz essa distinção sozinha (ver item 7.4).
 - **O limite era por modelo**, então trocar de modelo renovava a cota. Usei isso como contorno para conseguir medir, e não serve como desenho: CI que troca de modelo para não bater na cota deixa de testar o que está em produção.
 
-Com tier pago, o Checkpoint 10 pode rodar a suíte completa. A decisão de gate seletivo — rodar só o prompt alterado — passa a ser sobre tempo de feedback e custo por pull request, não sobre teto de requisições.
+Com tier pago, o Checkpoint 10 pode rodar a suíte completa. A decisão de gate seletivo: rodar só o prompt alterado, passa a ser sobre tempo de feedback e custo por pull request, não sobre teto de requisições.
 
 ### 9. Divergência entre o prompt e a própria suíte
 
 Achado que só apareceu porque escrevi as duas coisas.
 
-O prompt de `networkpolicy-sentinel` proíbe chaves em **qualquer lugar** da saída, inclusive em comentário, e justifica dizendo que um teste automatizado procura essa sequência. O teste que eu escrevi depois é mais estreito: procura a string exata `- {}`, pela razão da seção do assert acima — `podSelector: {}` é forma legítima e documentada.
+O prompt de `networkpolicy-sentinel` proíbe chaves em **qualquer lugar** da saída, inclusive em comentário, e justifica dizendo que um teste automatizado procura essa sequência. O teste que eu escrevi depois é mais estreito: procura a string exata `- {}`, pela razão da seção do assert acima, `podSelector: {}` é forma legítima e documentada.
 
-Ou seja: **o prompt está mais restrito do que o teste que existe.** A proibição total empurra o modelo para longe do idioma documentado do Kubernetes. Deu para ver no efeito: o `gemini-3.5-flash` produziu `podSelector:` com `matchLabels:` sem valor em vez de `podSelector: {}`. Funciona — um seletor de label sem `matchLabels` e sem `matchExpressions` casa todos os pods — mas é forma menos idiomática, escolhida para atender uma regra do prompt que o teste não exige mais.
+Ou seja: **o prompt está mais restrito do que o teste que existe.** A proibição total empurra o modelo para longe do idioma documentado do Kubernetes. Deu para ver no efeito: o `gemini-3.5-flash` produziu `podSelector:` com `matchLabels:` sem valor em vez de `podSelector: {}`. Funciona, um seletor de label sem `matchLabels` e sem `matchExpressions` casa todos os pods, mas é forma menos idiomática, escolhida para atender uma regra do prompt que o teste não exige mais.
 
 Vira pendência v1.0.1 de `networkpolicy-sentinel`, documentada e não aplicada, pela mesma razão dos checkpoints anteriores: alterar o prompt agora invalidaria as execuções registradas acima.
 
@@ -784,7 +784,7 @@ Vira pendência v1.0.1 de `networkpolicy-sentinel`, documentada e não aplicada,
 
 Os três `prompt.js` têm o mesmo hash (`062d29bd259ac191115548523146b7c9`). É duplicação consciente.
 
-Um carregador compartilhado precisaria saber qual `prompt.md` ler, e o promptfoo resolve `file://prompt.js` relativo ao diretório do config, o que faz `__dirname` apontar para a pasta do prompt — que é exatamente o mecanismo usado para achar o `prompt.md` correto. Um módulo único em `scripts/` perderia essa referência e precisaria receber o caminho por configuração, movendo informação do código para o YAML.
+Um carregador compartilhado precisaria saber qual `prompt.md` ler, e o promptfoo resolve `file://prompt.js` relativo ao diretório do config, o que faz `__dirname` apontar para a pasta do prompt, que é exatamente o mecanismo usado para achar o `prompt.md` correto. Um módulo único em `scripts/` perderia essa referência e precisaria receber o caminho por configuração, movendo informação do código para o YAML.
 
 Mantive a duplicação nesta rodada e registro a decisão como ponto a revisitar no Checkpoint 10, quando os nove prompts tiverem suíte e a duplicação passar de três para nove cópias. Aí o custo muda de lado.
 
@@ -794,11 +794,11 @@ Mantive a duplicação nesta rodada e registro a decisão como ponto a revisitar
 
 | Suíte | Casos × providers | Passa | Falha | Motivo das falhas |
 |---|---|---|---|---|
-| `nota-de-triagem` | 6 | 6 | 0 | — |
+| `nota-de-triagem` | 6 | 6 | 0 | n/d |
 | `triagem-de-pods` | 6 | 5 | 1 | `gpt-4o-mini` não aplica a regra de severidade |
 | `networkpolicy-sentinel` | 2 | 1 | 1 | `gpt-4o-mini` embrulha a saída em cerca de código |
 
-**12 de 14 combinações passam. As duas falhas são defeitos reais e reproduzíveis**, confirmados em execuções independentes, e estão registradas como tal — não foram contornadas por ajuste de assert.
+**12 de 14 combinações passam. As duas falhas são defeitos reais e reproduzíveis**, confirmados em execuções independentes, e estão registradas como tal: não foram contornadas por ajuste de assert.
 
 Uma suíte que passasse 14 de 14 na primeira tentativa diria que os asserts são frouxos. Estes encontraram, no total: uma política de rede que não cola e libera portas demais, uma triagem que esconde o pior caso no fim da lista, um prompt que perdia a concordância do veredito, um prompt que inventava pod problemático, quatro erros no meu código de teste e dois limites que eu havia copiado sem medir.
 
@@ -807,6 +807,6 @@ Uma suíte que passasse 14 de 14 na primeira tentativa diria que os asserts são
 ## Pendências registradas (v1.0.1, documentadas e não aplicadas)
 
 - **`networkpolicy-sentinel`**: a proibição total de chaves na saída ficou mais restrita que o teste que existe, e empurra o modelo para longe de `podSelector: {}`. Relaxar para proibir apenas o item de regra vazio.
-- **`triagem-de-pods`**: a regra da tag `[AVISO DE IMPACTO]` enumera exemplos de ação destrutiva e reverter imagem de deployment não está entre eles — pendência herdada do Checkpoint 01, ainda aberta.
+- **`triagem-de-pods`**: a regra da tag `[AVISO DE IMPACTO]` enumera exemplos de ação destrutiva e reverter imagem de deployment não está entre eles, pendência herdada do Checkpoint 01, ainda aberta.
 - **Suíte**: `egressPorParDestinoPorta` reporta "falta egress para forge na 5432" quando a porta existe no nível errado do YAML. A mensagem subdescreve o defeito. Distinguir "ausente" de "presente no nível errado".
 - **Repositório**: as três cópias de `prompt.js` viram nove quando a cobertura completar. Revisitar no Checkpoint 10.

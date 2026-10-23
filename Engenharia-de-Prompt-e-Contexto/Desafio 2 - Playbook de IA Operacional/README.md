@@ -1,17 +1,17 @@
-# Desafio 2 — Playbook de IA Operacional da Aegis
+# Desafio 2: Playbook de IA Operacional da Aegis
 
 Desafio prático da pós-graduação **AIOps e IA na Engenharia de Cloud**, no capítulo de Engenharia de Prompt e Contexto.
 
-A proposta: a Aegis decidiu que o uso de IA pelo time de engenharia não pode mais ser ad-hoc — cada um com seu prompt solto no histórico do chat. O Nick Fury quer um **playbook de IA operacional**: uma biblioteca de prompts versionada, testada e tratada como código, que qualquer engenheiro possa pegar e confiar.
+A proposta: a Aegis decidiu que o uso de IA pelo time de engenharia não pode mais ser ad-hoc, cada um com seu prompt solto no histórico do chat. O Nick Fury quer um **playbook de IA operacional**: uma biblioteca de prompts versionada, testada e tratada como código, que qualquer engenheiro possa pegar e confiar.
 
 São 10 checkpoints em que a biblioteca nasce, amadurece e termina como **repositório testado em pipeline**. A complexidade cresce: os primeiros produzem um prompt cada, o sétimo transforma a coleção em repositório, e os três últimos cobram engenharia de teste e decisão de design.
 
 Duas regras de método valem para o desafio inteiro:
 
-- **Todo prompt é parametrizável** — recebe os dados variáveis por parâmetro, para ser reusável, e não serve a um caso só.
-- **A criação é por meta-prompting** — a IA é dirigida para gerar e refinar o prompt, em vez de o texto ser redigido na mão. O meta-prompt não é entregável; o que entra na biblioteca é o prompt final, com curadoria.
+- **Todo prompt é parametrizável**: recebe os dados variáveis por parâmetro, para ser reusável, e não serve a um caso só.
+- **A criação é por meta-prompting**: a IA é dirigida para gerar e refinar o prompt, em vez de o texto ser redigido na mão. O meta-prompt não é entregável; o que entra na biblioteca é o prompt final, com curadoria.
 
-> Todos os dados, sistemas e pessoas do cenário são fictícios. Nada aqui vem de ambiente real. As decisões de sanitização, ainda assim, foram tomadas como se os dados fossem de produção — está registrado no Checkpoint 03.
+> Todos os dados, sistemas e pessoas do cenário são fictícios. Nada aqui vem de ambiente real. As decisões de sanitização, ainda assim, foram tomadas como se os dados fossem de produção: está registrado no Checkpoint 03.
 
 ---
 
@@ -57,10 +57,10 @@ Tony Stark (CTO), Pepper Potts (CEO, lê tudo pela ótica de custo), Carol Danve
 
 | # | Checkpoint | Entrega |
 |---|---|---|
-| [01](./Checkpoint%2001.md) | O primeiro prompt do playbook | `triagem-de-pods` — triagem de saúde de pods a partir de snapshot de `kubectl` |
-| [02](./Checkpoint%2002.md) | Padronizando as notas de triagem | `nota-de-triagem` — alerta cru vira nota padronizada de 5 rótulos |
-| [03](./Checkpoint%2003.md) | Causa-raiz da degradação no Cerebro | `causa-raiz` — cruza config, métricas e logs até a causa |
-| [04](./Checkpoint%2004.md) | Segurando a sobrecarga do Relay | `estrategia-backpressure` — compara caminhos antes de recomendar |
+| [01](./Checkpoint%2001.md) | O primeiro prompt do playbook | `triagem-de-pods`: triagem de saúde de pods a partir de snapshot de `kubectl` |
+| [02](./Checkpoint%2002.md) | Padronizando as notas de triagem | `nota-de-triagem`: alerta cru vira nota padronizada de 5 rótulos |
+| [03](./Checkpoint%2003.md) | Causa-raiz da degradação no Cerebro | `causa-raiz`: cruza config, métricas e logs até a causa |
+| [04](./Checkpoint%2004.md) | Segurando a sobrecarga do Relay | `estrategia-backpressure`: compara caminhos antes de recomendar |
 | [05](./Checkpoint%2005.md) | Migrando o Forge de lote para tempo real | **cadeia de 3 prompts**, cada elo recebendo a saída do anterior |
 | [06](./Checkpoint%2006.md) | Endurecendo a NetworkPolicy do Sentinel | **par gerador/revisor** com 4 rodadas de verificação e refino |
 | [07](./Checkpoint%2007.md) | A biblioteca vira código | repositório a partir do template, 9 prompts migrados |
@@ -121,7 +121,7 @@ Uma execução completa custa **US$ 0,269** e leva **3,4 minutos**. O gate repro
 | CP08 a CP10, execução | `openai:gpt-4o-mini` e `google:gemini-3.5-flash` | dois fornecedores de propósito: divergência entre eles é sinal de prompt frágil |
 | CP09, juiz | `google:gemini-3.5-flash` com raciocínio ligado | escolhido por medição entre três candidatos, dois reprovados na calibração |
 
-> Nos checkpoints 01 a 06 o identificador é o nome do produto como exposto na interface, não um id versionado de API — a execução foi por chat. Do 08 em diante é por API e os identificadores são versionados e reproduzíveis.
+> Nos checkpoints 01 a 06 o identificador é o nome do produto como exposto na interface, não um id versionado de API: a execução foi por chat. Do 08 em diante é por API e os identificadores são versionados e reproduzíveis.
 
 ---
 
@@ -135,7 +135,7 @@ Os três últimos checkpoints não produziram selo verde, produziram achados. Os
 
 **Comportamentos de plataforma que quebram pipeline sem ninguém tocar em prompt**: modelo descontinuado no meio do trabalho, `temperature` descartada em silêncio por uma família de modelos, raciocínio que não pode ser desligado, 503 mascarado como erro de conteúdo, e cota de free tier como limite real do CI.
 
-**O achado mais útil foi contra mim.** Na calibração do Checkpoint 09 o juiz discordou da minha nota, fui conferir o texto e **o juiz estava certo** — eu havia sido leniente. Corrigir a referência humana inverteu o ranking dos juízes: o modelo que parecia perfeito só concordava comigo porque repetia a minha leniência.
+**O achado mais útil foi contra mim.** Na calibração do Checkpoint 09 o juiz discordou da minha nota, fui conferir o texto e **o juiz estava certo**: eu havia sido leniente. Corrigir a referência humana inverteu o ranking dos juízes: o modelo que parecia perfeito só concordava comigo porque repetia a minha leniência.
 
 ---
 

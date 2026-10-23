@@ -1,4 +1,4 @@
-# PostgreSQL do kube-news (cliente nyx) — namespace nyx-dev
+# PostgreSQL do kube-news (cliente nyx): namespace nyx-dev
 #
 # O padrão vale para todo objeto que entra no cluster, e o banco não é exceção.
 # Diferença relevante em relação ao Postgres do orion-prod: aqui o namespace é `dev`,
@@ -52,7 +52,7 @@ spec:
     spec:
       serviceAccountName: nyx-postgres
       automountServiceAccountToken: false
-      # 2.6 — Postgres faz checkpoint no shutdown; 60s evita recuperação no próximo start.
+      # 2.6: Postgres faz checkpoint no shutdown; 60s evita recuperação no próximo start.
       terminationGracePeriodSeconds: 60
       securityContext:
         fsGroup: 70
@@ -71,7 +71,7 @@ spec:
               valueFrom:
                 secretKeyRef: {name: nyx-db, key: password}
             - {name: PGDATA, value: /var/lib/postgresql/data/pgdata}
-          # 2.2 — `pg_isready` é o teste nativo. Aqui o banco É a dependência: não há
+          # 2.2: `pg_isready` é o teste nativo. Aqui o banco É a dependência: não há
           # como checar vida sem falar com ele, então as duas probes usam o mesmo
           # comando com janelas diferentes (liveness mais larga, para não reiniciar
           # durante uma recuperação legítima).

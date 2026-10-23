@@ -1,7 +1,7 @@
-# ADR-002 — O que acontece quando um dado não pode ser coletado
+# ADR-002: O que acontece quando um dado não pode ser coletado
 
 **Status:** aceito
-**Contexto:** a coleta entra com usuário comum. Parte dos dados exige privilégio — o caso
+**Contexto:** a coleta entra com usuário comum. Parte dos dados exige privilégio: o caso
 concreto é `sshd -T`, que responde a configuração efetiva do SSH e precisa de root.
 
 ## Decisão
@@ -9,12 +9,12 @@ concreto é `sshd -T`, que responde a configuração efetiva do SSH e precisa de
 **Um terceiro veredito, `nao_verificado`, com o motivo, na mesma lista dos outros. A falha
 de um coletor não derruba os outros, e a execução segue até o fim.**
 
-E a consequência de projeto: `nao_verificado` **não conta como conforme em nenhum lugar** —
+E a consequência de projeto: `nao_verificado` **não conta como conforme em nenhum lugar**,
 nem no resumo, nem no código de saída, nem na seção de conformes do Markdown.
 
 ## Alternativas consideradas
 
-### A — abortar a execução inteira
+### A: abortar a execução inteira
 
 **O que se ganha:** a saída nunca é parcial. Ou se audita o host todo, ou não se audita.
 Honesto por construção, e simples de implementar.
@@ -25,18 +25,18 @@ a ferramenta parou em `sshd -T`. Dez dados coletáveis perdidos por um que não 
 
 O ticket diz isso com precisão: *abortar a execução inteira não ajudaria ninguém.*
 
-### B — reportar como `conforme`
+### B: reportar como `conforme`
 
 **O que se ganha:** nada. Está aqui porque é o default acidental de quem escreve
 `if deu_erro: pass`.
 
 **O que se perde:** é mentira, e é a pior das três. Uma auditoria que diz "root login está
-desabilitado" quando na verdade diz "não consegui olhar" é **pior que não ter auditoria** —
+desabilitado" quando na verdade diz "não consegui olhar" é **pior que não ter auditoria**,
 ela produz confiança falsa, e alguém decide com base nela.
 
 O ticket também nomeia: *reportar isso como conforme seria falso.*
 
-### C — reportar como `desvio`
+### C: reportar como `desvio`
 
 **O que se ganha:** falha para o lado seguro. Nenhum host passa com dado faltando, e o
 código de saída fica `1`, barrando promoção em pipeline.
@@ -52,7 +52,7 @@ código de saída fica `1`, barrando promoção em pipeline.
   desvio alto um dado não coletado contamina a contagem por severidade, que é o número que
   prioriza o plantão.
 
-### D — terceiro veredito, com motivo (escolhida)
+### D: terceiro veredito, com motivo (escolhida)
 
 **O que se ganha:**
 

@@ -11,7 +11,7 @@
 #     é veredito do host, não deste container.
 #   - namespace de swap. `/proc/swaps` mostra o swap do host.
 # As duas regras são de nível de host e não de nível de container. Isso não é limitação da
-# ferramenta — é limitação do laboratório, e a ferramenta reporta o que encontra.
+# ferramenta: é limitação do laboratório, e a ferramenta reporta o que encontra.
 FROM ubuntu:22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -30,7 +30,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Sem ele, `systemctl` e `timedatectl` funcionam para root pelo socket privado do systemd e
 # FALHAM para usuario comum com "Failed to connect to bus: No such file or directory".
 # A coleta entra com usuario sem privilegio de proposito, entao sem dbus as quatro regras de
-# servico e de NTP sairiam todas como `nao_verificado` — veredito correto da ferramenta, e
+# servico e de NTP sairiam todas como `nao_verificado`: veredito correto da ferramenta, e
 # laboratorio que nao exercita o que deveria.
 RUN systemctl enable dbus
 

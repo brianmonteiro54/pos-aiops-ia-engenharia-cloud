@@ -19,8 +19,8 @@
 #
 #   1. contra este arquivo, o host conforme sai com ZERO desvios e codigo 0.
 #      Isso prova a logica de julgamento.
-#   2. contra baseline.yaml do parque, o MESMO host sai com EXATAMENTE dois desvios —
-#      kernel e swap — e nada mais. Isso prova que os dois sao os previstos e nao um
+#   2. contra baseline.yaml do parque, o MESMO host sai com EXATAMENTE dois desvios,
+#      kernel e swap: e nada mais. Isso prova que os dois sao os previstos e nao um
 #      defeito escondido.
 #
 # A diferenca entre os dois arquivos e auditavel por `diff`. Quando houver VM de verdade,

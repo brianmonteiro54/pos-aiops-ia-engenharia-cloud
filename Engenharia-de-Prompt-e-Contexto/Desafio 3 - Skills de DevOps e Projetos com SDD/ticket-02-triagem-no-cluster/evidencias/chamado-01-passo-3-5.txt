@@ -15,7 +15,7 @@
     }
 }
 
-### passo 5: eventos — confirmam ou contradizem?
+### passo 5: eventos: confirmam ou contradizem?
 3m37s       Normal    Pulling             pod/nyx-api-79c5f4d8d7-zrwbb         Pulling image "fabricioveronez/kube-news:v1"
 3m37s       Normal    Pulling             pod/nyx-api-79c5f4d8d7-777ht         Pulling image "fabricioveronez/kube-news:v1"
 3m10s       Normal    Pulled              pod/nyx-api-79c5f4d8d7-zrwbb         Successfully pulled image "fabricioveronez/kube-news:v1" in 29.921s (29.922s including waiting). Image size: 75844157 bytes.

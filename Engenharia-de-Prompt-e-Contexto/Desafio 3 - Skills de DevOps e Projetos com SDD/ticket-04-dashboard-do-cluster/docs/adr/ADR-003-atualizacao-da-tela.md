@@ -1,4 +1,4 @@
-# ADR-003 — Como manter a tela atualizada
+# ADR-003: Como manter a tela atualizada
 
 **Status:** aceito
 **Contexto:** a tela mostra o estado de seis tipos de recurso. O ticket pede a comparação de
@@ -19,7 +19,7 @@ O botão de recarregar é o navegador.**
 
 ## Alternativas consideradas
 
-### A — intervalo fixo (polling a cada N segundos)
+### A: intervalo fixo (polling a cada N segundos)
 
 **O que se ganha:** a tela "vive". Durante uma triagem, ver o `restartCount` subindo sem
 tocar em nada é informação de verdade.
@@ -31,9 +31,9 @@ tocar em nada é informação de verdade.
   **seis processos**, não seis requisições.
 - escolher N é escolher entre atraso e carga, sem número certo. 5s é agressivo para um
   painel de leitura; 60s não "vive".
-- requisição sobreposta quando o cluster está lento — justamente quando se está triando.
+- requisição sobreposta quando o cluster está lento, justamente quando se está triando.
 
-### B — `watch` (observação de mudanças)
+### B: `watch` (observação de mudanças)
 
 **O que se ganha:** o menor atraso possível e a menor carga em regime. É o que `k9s` e
 `kubectl get -w` fazem, e o mecanismo que o Kubernetes oferece para isso.
@@ -46,12 +46,12 @@ tocar em nada é informação de verdade.
 - **briga com o transporte escolhido.** `kubectl get -w` com `-o json` emite um fluxo que eu
   teria que parsear incrementalmente de um processo que nunca termina, com seis processos
   vivos em paralelo. É o pior encaixe possível com o ADR-002.
-- **exigiria push para o navegador** — SSE ou WebSocket — e o ADR-001 escolheu HTML no
+- **exigiria push para o navegador**: SSE ou WebSocket, e o ADR-001 escolheu HTML no
   servidor sem JavaScript. Trazer `watch` arrastaria a decisão do ADR-001 junto.
 - **o recorte não precisa.** Isto encurta os **primeiros minutos** de um chamado. Quem quer
   acompanhar em tempo real tem `kubectl get -w`, e a aplicação não substitui o terminal.
 
-### C — sob demanda (escolhida)
+### C: sob demanda (escolhida)
 
 **O que se ganha:**
 

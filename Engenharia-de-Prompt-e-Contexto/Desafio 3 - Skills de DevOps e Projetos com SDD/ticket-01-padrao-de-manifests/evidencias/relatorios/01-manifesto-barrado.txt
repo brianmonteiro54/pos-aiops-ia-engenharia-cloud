@@ -1,11 +1,10 @@
 # Gerado por: python3 conferir_manifesto.py manifests/nyx-api-barrado.yaml
-# Trivy 0.52.2 | 2026-10-22T22:17:40Z
-
+# Trivy 0.52.2 | 2026-10-23T13:39:59Z
 
 Conferência contra o Padrão de Manifests da Metacortex (rev. 2026-07-29)
 2 objeto(s) em 1 arquivo(s): nyx-api-barrado.yaml
 
-BARRA A REVISÃO — 20 violação(ões) de regra obrigatória ou proibida
+BARRA A REVISÃO: 20 violação(ões) de regra obrigatória ou proibida
   [1.1] Deployment/NyxAPI em nyx-prod
         campo: metadata.name
         nome 'NyxAPI' não é kebab-case (tem maiúscula); use 'nyx-api'
@@ -22,16 +21,16 @@ BARRA A REVISÃO — 20 violação(ões) de regra obrigatória ou proibida
         campo: spec.selector
         nenhum pod casa com o seletor; o Service sobe e fica SEM ENDPOINT. Mais próximo é Deployment/NyxAPI em nyx-prod (app: Service 'nyx-api' x pod 'nyxapi')
   [2.1] nyx-api-barrado.yaml
-        campo: — (via trivy)
+        campo: n/d (via trivy)
         limite de CPU ausente [KSV011]
   [2.1] nyx-api-barrado.yaml
-        campo: — (via trivy)
+        campo: n/d (via trivy)
         requests de CPU ausente [KSV015]
   [2.1] nyx-api-barrado.yaml
-        campo: — (via trivy)
+        campo: n/d (via trivy)
         requests de memória ausente [KSV016]
   [2.1] nyx-api-barrado.yaml
-        campo: — (via trivy)
+        campo: n/d (via trivy)
         limite de memória ausente [KSV018]
   [2.2] Deployment/NyxAPI em nyx-prod
         campo: container 'api'
@@ -43,7 +42,7 @@ BARRA A REVISÃO — 20 violação(ões) de regra obrigatória ou proibida
         campo: spec.strategy
         estratégia não declarada em prod; exigido RollingUpdate com maxUnavailable: 0 e maxSurge: 1
   [3.1] nyx-api-barrado.yaml
-        campo: — (via trivy)
+        campo: n/d (via trivy)
         tag :latest [KSV013]
   [3.2] Deployment/NyxAPI em nyx-prod
         campo: container 'api'.securityContext
@@ -67,7 +66,7 @@ BARRA A REVISÃO — 20 violação(ões) de regra obrigatória ou proibida
         campo: spec.template.spec.automountServiceAccountToken
         token da ServiceAccount montado; declare false quando a aplicação não fala com o apiserver (obrigatório desde 2026-07-29)
 
-EXIGE JUSTIFICATIVA NO PR — 3 regra(s) recomendada(s)
+EXIGE JUSTIFICATIVA NO PR: 3 regra(s) recomendada(s)
   [1.5] Deployment/NyxAPI em nyx-prod
         campo: metadata.annotations
         sem metacortex.io/owner; o plantão não sabe quem é o dono às 3 da manhã
@@ -78,14 +77,14 @@ EXIGE JUSTIFICATIVA NO PR — 3 regra(s) recomendada(s)
         campo: spec.template.spec.serviceAccountName
         sem ServiceAccount dedicada; usa a 'default' do namespace
 
-APONTADO PELO TRIVY, FORA DO PADRÃO DA CASA — 4 item(ns)
+APONTADO PELO TRIVY, FORA DO PADRÃO DA CASA: 4 item(ns)
   (não barra a revisão; o padrão da Metacortex não adota estas regras)
-  - KSV020 em nyx-api-barrado.yaml: UID <= 10000 — a 3.2 não estabelece piso de UID
-  - KSV021 em nyx-api-barrado.yaml: GID <= 10000 — a 3.2 não tem requisito de runAsGroup
+  - KSV020 em nyx-api-barrado.yaml: UID <= 10000 (a 3.2 não estabelece piso de UID
+  - KSV021 em nyx-api-barrado.yaml: GID <= 10000) a 3.2 não tem requisito de runAsGroup
   - KSV030 em nyx-api-barrado.yaml: seccompProfile RuntimeDefault
   - KSV104 em nyx-api-barrado.yaml: seccompProfile ausente
 
-O TRIVY OPINOU SOBRE REGRAS QUE ESTE SCRIPT JULGA — 5 item(ns)
+O TRIVY OPINOU SOBRE REGRAS QUE ESTE SCRIPT JULGA: 5 item(ns)
   (A CASA ADOTA estas regras. O que não serve de veredito é a implementação
    do Trivy: KSV020/KSV021 acusam manifesto correto quando runAsUser está no
    pod, e AVD-KSV-01010 casa por palavra-chave sem achar a senha. O veredito
@@ -96,23 +95,21 @@ O TRIVY OPINOU SOBRE REGRAS QUE ESTE SCRIPT JULGA — 5 item(ns)
   - [3.2] KSV014 em nyx-api-barrado.yaml: readOnlyRootFilesystem
   - [3.2] KSV106 em nyx-api-barrado.yaml: capabilities.add
 
-NÃO CONFERIDO POR ESTE SCRIPT — exige abrir o projeto:
-  [2.2] obrigatório — a PRESENÇA das duas probes já foi conferida acima, e
+NÃO CONFERIDO POR ESTE SCRIPT: exige abrir o projeto:
+  [2.2] obrigatório: a PRESENÇA das duas probes já foi conferida acima, e
         também se as duas testam a mesma coisa. Falta o que o YAML não diz: o
         endpoint existe na aplicação, e a liveness NÃO toca dependência externa?
-  [2.6] recomendado — terminationGracePeriodSeconds foi deliberado? O valor não
+  [2.6] recomendado: terminationGracePeriodSeconds foi deliberado? O valor não
         precisa ser diferente do default de 30s, precisa ser justificado. Sem
         registro no PR a regra fica PENDENTE, não conforme.
         Este script não vê o corpo do PR: leve a 2.6 para o bloco 2 do seu
         relatório, porque o rc acima NÃO reflete pendência de justificativa.
-  [3.2] obrigatório — os cinco campos foram conferidos acima. Falta só o que não
+  [3.2] obrigatório: os cinco campos foram conferidos acima. Falta só o que não
         está no YAML: se os emptyDir cobrem TODOS os caminhos em que a aplicação
         escreve. readOnlyRootFilesystem: true com caminho faltando não sobe.
-  [3.3] proibido — o script pega senha em URI e nome de variável sensível. Falta
+  [3.3] proibido: o script pega senha em URI e nome de variável sensível. Falta
         conferir se alguma variável de nome inocente carrega segredo.
 
   Quando o workload é imagem de terceiro (Postgres, Redis, nginx) não há projeto
   para abrir: a fonte são a documentação da imagem e o entrypoint dela. Registre
   isso no DECISOES.md em lugar de arquivo e linha.
-
-# codigo de saida: 1

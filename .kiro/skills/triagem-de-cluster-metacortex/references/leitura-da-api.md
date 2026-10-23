@@ -1,4 +1,4 @@
-# Leitura da API do Kubernetes — o que ela não devolve
+# Leitura da API do Kubernetes: o que ela não devolve
 
 Consulte ao interpretar JSON cru ou ao escrever código que lê o cluster. Tudo aqui foi
 confirmado contra apiserver v1.31.5.
@@ -30,7 +30,7 @@ EndpointSlice  chaves de topo: ['addressType','apiVersion','endpoints','kind',
                                -> 'endpoints' esta na lista, com valor None
 ```
 
-Consequência prática — só uma das três formas abaixo sobrevive aos dois:
+Consequência prática, só uma das três formas abaixo sobrevive aos dois:
 
 ```python
 len(ep["subsets"])                  # KeyError no Endpoints
@@ -51,7 +51,7 @@ sl.get("endpoints") is None          # existe e esta nula?
 
 Este erro é documentado porque eu o cometi: o script que coletou a evidência deste ticket
 usou `or "AUSENTE"` e rotulou o `EndpointSlice` como campo ausente quando a chave estava
-presente e nula. A conclusão da triagem não mudou — zero endpoint nos dois casos —, mas a
+presente e nula. A conclusão da triagem não mudou (zero endpoint nos dois casos), mas a
 regra que eu escrevi aqui estava errada até um teste cego medir de novo.
 
 Na triagem, o efeito é pior que um erro: código que falha ao ler o caso quebrado faz a
@@ -106,7 +106,7 @@ Evento é objeto próprio, com `involvedObject` apontando para o alvo. Dois efei
 
 - `kubectl_get resourceType=pod output=json` **não traz** os eventos do pod. Use
   `kubectl_describe`, que já faz a junção.
-- Evento tem **retenção curta** — uma hora por padrão. Chamado de ontem pode não ter evento
+- Evento tem **retenção curta**: uma hora por padrão. Chamado de ontem pode não ter evento
   nenhum, e isso não significa que nada aconteceu.
 - `count`, `firstTimestamp` e `lastTimestamp` dizem se é um evento repetido ou único. Um
   `BackOff` com `count: 21` é diferente de um com `count: 1`.
@@ -131,7 +131,7 @@ Para triagem, consulte os dois: se divergirem, há problema no controlador de en
 que é causa em si. A ligação do slice com o Service é o rótulo
 `kubernetes.io/service-name`, não o nome do objeto.
 
-**Os dois sinalizam "sem endpoint" de formas diferentes** — ver a primeira seção. Não use a
+**Os dois sinalizam "sem endpoint" de formas diferentes**: ver a primeira seção. Não use a
 presença da chave como teste; use o conteúdo normalizado com `or []`.
 
 ### Contar endpoints não é contar endpoints prontos
@@ -145,7 +145,7 @@ diferentes, e só a segunda responde "por que não responde":
 | `Endpoints` | `subsets[].addresses` | `subsets[].notReadyAddresses` |
 
 Num Service com 3 pods em `ImagePullBackOff`, `subsets` **está presente** e
-`len(subsets)` devolve 1 — um subset, com 3 endereços não prontos. Quem conta subsets ou
+`len(subsets)` devolve 1: um subset, com 3 endereços não prontos. Quem conta subsets ou
 conta endpoints conclui "tem endpoint" e segue adiante. A conta certa é
 `0 de 3 prontos`.
 
@@ -156,7 +156,7 @@ alarme e um não-evento.
 ## "Pronto" não significa "saudável"
 
 `ready: true` significa que a readinessProbe passou. Se a aplicação **não tem** endpoint de
-saúde, o Kubernetes marca o container como pronto assim que o processo sobe — é o caso do
+saúde, o Kubernetes marca o container como pronto assim que o processo sobe: é o caso do
 fake-shop, que não expõe `/health` nem `/ready`.
 
 Na Metacortex a regra 2.2 do padrão de manifests exige as duas probes, mas workload antigo

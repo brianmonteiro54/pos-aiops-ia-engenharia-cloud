@@ -1,4 +1,4 @@
-# Capacidade — inventário de host
+# Capacidade: inventário de host
 
 ## ADDED Requirements
 
@@ -15,7 +15,7 @@ auditado.
 
 #### Scenario: a chave privada é credencial
 
-- **WHEN** qualquer saída é produzida — relatório, log ou mensagem de erro
+- **WHEN** qualquer saída é produzida: relatório, log ou mensagem de erro
 - **THEN** o conteúdo da chave privada SHALL NOT aparecer
 - **AND** o caminho da chave SHALL NOT aparecer em mensagem de erro
 

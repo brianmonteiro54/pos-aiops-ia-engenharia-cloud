@@ -1,10 +1,10 @@
-# Fluxo executado 1 — conferência manual do manifesto barrado
+# Fluxo executado 1: conferência manual do manifesto barrado
 
 Registro do que eu fiz **antes** de existir skill. É daqui que a skill nasce: a ordem dos
 passos, o que precisou de ferramenta, o que precisou de leitura do projeto e onde eu
 travei. A skill é o empacotamento deste fluxo, não um texto escrito de cabeça.
 
-## Passo 1 — Trivy primeiro, antes de qualquer script
+## Passo 1: Trivy primeiro, antes de qualquer script
 
 O ticket manda descobrir o que o Trivy já pega antes de escrever código. Rodei:
 
@@ -27,14 +27,14 @@ A diferença entre as duas execuções é o que fecha o mapa.
 | 1.2 namespace `<cliente>-<ambiente>` | obrigatório | **não** | sonda com `ambiente-errado` não disparou |
 | 1.3 quatro rótulos obrigatórios | obrigatório | **não** | sonda só com `app:` não disparou |
 | 1.4 seletor casa com rótulo do pod | obrigatório | **não** | sonda com `app: sonda` x `app: sonda-diferente` não disparou |
-| 1.5 anotação de dono | recomendado | **não** | — |
-| 1.6 nome do container = componente | recomendado | **não** | — |
+| 1.5 anotação de dono | recomendado | **não** | n/d |
+| 1.6 nome do container = componente | recomendado | **não** | n/d |
 | 2.1 requests e limits | obrigatório | **sim** | KSV011, KSV015, KSV016, KSV018 |
 | 2.2 readiness e liveness | obrigatório | **não** | manifesto sem probe nenhuma, nada disparou |
 | 2.3 replicas >= 2 em prod | obrigatório | **não** | sonda com `replicas: 1` não disparou |
 | 2.4 estratégia de atualização | obrigatório em prod | **não** | sem `strategy`, nada disparou |
-| 2.5 PodDisruptionBudget | recomendado | **não** | — |
-| 2.6 terminationGracePeriodSeconds | recomendado | **não** | — |
+| 2.5 PodDisruptionBudget | recomendado | **não** | n/d |
+| 2.6 terminationGracePeriodSeconds | recomendado | **não** | n/d |
 | 3.1 tag `:latest` | proibido | **sim** | KSV013 |
 | 3.2 securityContext | obrigatório | **parcial** | KSV012, KSV001, KSV014, KSV003, KSV106, KSV020, KSV105 |
 | 3.3 segredo em texto puro | proibido | **não** | ver passo 2 |
@@ -47,12 +47,12 @@ A diferença entre as duas execuções é o que fecha o mapa.
 parte (3.2) e não cobre 15.**
 
 Nota sobre 3.2 ser "parcial": o Trivy confere os cinco campos do `securityContext` do
-padrão por regras separadas e com severidades diferentes — `readOnlyRootFilesystem` é
+padrão por regras separadas e com severidades diferentes: `readOnlyRootFilesystem` é
 HIGH, `runAsNonRoot` é MEDIUM, `capabilities.drop` é LOW. Ele não tem o conceito de "o
 bloco inteiro que a Metacortex exige". Quem lê a saída do Trivy não sabe que são cinco
 campos de uma regra só da casa.
 
-## Passo 2 — o achado que mais pesa: o Trivy não vê o segredo
+## Passo 2: o achado que mais pesa: o Trivy não vê o segredo
 
 `trivy config` não faz detecção de segredo. Testei o scanner dedicado:
 
@@ -75,13 +75,13 @@ problema com precisão:
 
 O Trivy reconhece **formato conhecido de credencial**, não senha arbitrária dentro de
 string de conexão. O manifesto barrado tem exatamente o segundo caso. Ou seja: a regra
-mais perigosa do padrão — a única classificada como `proibido` junto com `:latest` e
-`hostNetwork` — é invisível para a ferramenta.
+mais perigosa do padrão (a única classificada como `proibido` junto com `:latest` e
+`hostNetwork`) é invisível para a ferramenta.
 
 Isso decide a prioridade do script: 3.3 entra, e entra com detecção de padrão de
 conexão, não de formato de credencial.
 
-## Passo 3 — conferência regra por regra
+## Passo 3: conferência regra por regra
 
 Com o mapa na mão, conferi o manifesto barrado contra as 19 regras acionáveis.
 
@@ -127,13 +127,13 @@ Com o mapa na mão, conferi o manifesto barrado contra as 19 regras acionáveis.
 > achados no script, porque falta em três objetos distintos; a 3.2 é uma linha aqui e
 > cinco achados, um por requisito; a 2.1, quatro.
 >
-> A contagem do script é a mais útil na prática — cada achado é um lugar para consertar,
+> A contagem do script é a mais útil na prática: cada achado é um lugar para consertar,
 > com objeto e campo. A desta tabela serve para discutir cobertura do padrão. O relatório
 > em `evidencias/relatorios/01-manifesto-barrado.txt` tem a lista completa.
 
 ### Uma distinção que eu quase errei
 
-Minha primeira leitura foi "o seletor está errado". Está — mas em **um** dos dois
+Minha primeira leitura foi "o seletor está errado". Está, mas em **um** dos dois
 objetos. O `matchLabels` do Deployment é `app: nyxapi` e o rótulo do pod é `app: nyxapi`:
 **casam**. Quem não casa é o `selector` do Service, que diz `app: nyx-api`. O Deployment
 sobe e fica saudável; o Service é que fica sem endpoint.
@@ -142,7 +142,7 @@ Isso importa para a skill: o relatório precisa dizer **qual objeto** tem o sele
 quebrado, porque o conserto é em lugares diferentes e o sintoma que o cliente relata
 ("subiu mas não responde") só se explica com essa precisão.
 
-## Passo 4 — o que o YAML não responde
+## Passo 4: o que o YAML não responde
 
 A regra 2.2 exige as duas probes apontando para endpoints que a aplicação **de fato
 expõe**, e avisa que apontar as duas para o mesmo endpoint que checa banco derruba a
@@ -170,7 +170,7 @@ container quando a aplicação se declara doente.
 Observação sobre o `DATABASE_URL` do manifesto barrado: o kube-news **não lê**
 `DATABASE_URL`. Ele lê as cinco variáveis `DB_*`. Então a variável do manifesto está, ao
 mesmo tempo, vazando segredo e não servindo para nada. A correção não é mover
-`DATABASE_URL` para um Secret — é trocar pelas variáveis que a aplicação usa, com a
+`DATABASE_URL` para um Secret: é trocar pelas variáveis que a aplicação usa, com a
 senha vindo de `secretKeyRef`.
 
 ## O que este fluxo ensinou sobre a skill

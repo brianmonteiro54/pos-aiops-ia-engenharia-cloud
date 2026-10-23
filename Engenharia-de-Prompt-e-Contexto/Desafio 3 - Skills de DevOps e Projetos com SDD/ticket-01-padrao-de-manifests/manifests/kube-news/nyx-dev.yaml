@@ -1,4 +1,4 @@
-# kube-news (cliente nyx) — namespace nyx-dev
+# kube-news (cliente nyx): namespace nyx-dev
 #
 # Gerado contra o Padrão de Manifests da Metacortex, revisão 2026-07-29.
 # As decisões que não saem do YAML estão em DECISOES.md, ao lado deste arquivo.
@@ -7,13 +7,13 @@
 #   src/server.js:81          app.listen(8080)
 #   src/server.js:22          healthMid registrado ANTES das rotas
 #   src/server.js:80          models.initDatabase() roda no start de todo pod
-#   src/system-life.js:11     GET /ready  — relógio interno, NÃO toca o banco
-#   src/system-life.js:22     GET /health — {state, machine}, NÃO toca o banco
+#   src/system-life.js:11     GET /ready: relógio interno, NÃO toca o banco
+#   src/system-life.js:22     GET /health: {state, machine}, NÃO toca o banco
 #   src/models/post.js:6-11   DB_DATABASE, DB_USERNAME, DB_PASSWORD, DB_HOST, DB_PORT, DB_SSL_REQUIRE
 #   src/models/post.js:8      senha default 'Pg#123' embutida no código (ver DECISOES.md)
 #   src/package.json          express-prom-bundle expõe /metrics; "start": node server.js
 #
-# ATENÇÃO — este namespace é `dev`, e por isso DUAS regras obrigatórias do padrão não se
+# ATENÇÃO: este namespace é `dev`, e por isso DUAS regras obrigatórias do padrão não se
 # aplicam aqui: 2.3 (replicas >= 2) e 2.4 (estratégia de atualização) são condicionadas a
 # `prod`. O manifesto do fake-shop, em orion-prod, mostra as duas cumpridas.
 ---
@@ -29,7 +29,7 @@ metadata:
   annotations:
     metacortex.io/owner: time-nyx
 ---
-# 3.3 — a senha não entra em manifesto. `stringData` vazio de propósito: o placeholder
+# 3.3: a senha não entra em manifesto. `stringData` vazio de propósito: o placeholder
 # documenta a chave esperada sem carregar segredo nenhum para o Git. O valor real é
 # injetado pelo cofre no momento do apply.
 apiVersion: v1
@@ -48,7 +48,7 @@ type: Opaque
 stringData:
   password: ""   # preenchido no apply; nunca commitado
 ---
-# 3.5 — ServiceAccount dedicada, sem RBAC: a aplicação não fala com o apiserver.
+# 3.5: ServiceAccount dedicada, sem RBAC: a aplicação não fala com o apiserver.
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -61,7 +61,7 @@ metadata:
     app.kubernetes.io/managed-by: platform
   annotations:
     metacortex.io/owner: time-nyx
-# 3.4 — o token não é montado nem pelo default da SA nem no pod.
+# 3.4: o token não é montado nem pelo default da SA nem no pod.
 automountServiceAccountToken: false
 ---
 apiVersion: v1
@@ -115,7 +115,7 @@ spec:
       maxSurge: 0
   selector:
     matchLabels:
-      # 1.4 — idêntico, caractere por caractere, aos rótulos do template abaixo.
+      # 1.4: idêntico, caractere por caractere, aos rótulos do template abaixo.
       app.kubernetes.io/name: nyx-api
       app.kubernetes.io/instance: nyx-dev
   template:
@@ -128,7 +128,7 @@ spec:
     spec:
       serviceAccountName: nyx-api
       automountServiceAccountToken: false
-      # 2.6 — express não drena conexão em SIGTERM (não há `server.close()` em
+      # 2.6: express não drena conexão em SIGTERM (não há `server.close()` em
       # server.js), então o processo morre junto com as requisições em curso. 15s é
       # tempo para o endpoint sair do Endpoints do Service antes do SIGKILL; aumentar
       # mais não ajuda, porque a aplicação não usa o tempo extra.
@@ -141,24 +141,24 @@ spec:
         seccompProfile:
           type: RuntimeDefault
       containers:
-        # 1.6 — `api` é o nome do componente. Não `app`, não `main`.
+        # 1.6: `api` é o nome do componente. Não `app`, não `main`.
         - name: api
-          # 3.1 e 3.7 — tag fixa, registry interno. A versão vem de src/package.json.
+          # 3.1 e 3.7: tag fixa, registry interno. A versão vem de src/package.json.
           image: registry.metacortex.io/nyx/kube-news:1.0.0
           ports:
             - {name: http, containerPort: 8080}
           envFrom:
             - configMapRef: {name: nyx-api}
           env:
-            # 3.3 — a única variável que é segredo vem do Secret. O código tem
+            # 3.3: a única variável que é segredo vem do Secret. O código tem
             # 'Pg#123' como default embutido (src/models/post.js:8); se esta variável
             # faltar, a aplicação sobe com a senha de exemplo em vez de falhar.
             - name: DB_PASSWORD
               valueFrom:
                 secretKeyRef: {name: nyx-db, key: password}
-          # 2.2 — esta aplicação TEM os dois endpoints, e nenhum dos dois toca o banco.
+          # 2.2: esta aplicação TEM os dois endpoints, e nenhum dos dois toca o banco.
           # Isso satisfaz a regra sem o risco que ela descreve: banco lento não derruba
-          # pod. O custo é o inverso — o pod se declara pronto antes de o banco
+          # pod. O custo é o inverso: o pod se declara pronto antes de o banco
           # responder. Aceitável em dev; ver DECISOES.md para o que prod exigiria.
           readinessProbe:
             httpGet: {path: /ready, port: http}
@@ -173,7 +173,7 @@ spec:
             timeoutSeconds: 3
             failureThreshold: 3
           resources:
-            # 2.1 — dev, carga de uma pessoa. Node com sequelize carregado fica na casa
+            # 2.1: dev, carga de uma pessoa. Node com sequelize carregado fica na casa
             # dos 90Mi em repouso; 128Mi de request com limite em 2x cobre o pico de GC.
             requests: {cpu: 50m,  memory: 128Mi}
             limits:   {cpu: 500m, memory: 256Mi}
@@ -185,7 +185,7 @@ spec:
             readOnlyRootFilesystem: true
             capabilities:
               drop: ["ALL"]
-          # 3.2 — com root filesystem somente leitura, o que a aplicação escreve precisa
+          # 3.2, com root filesystem somente leitura, o que a aplicação escreve precisa
           # de volume. Diferente do fake-shop, aqui NÃO há diretório de métricas:
           # express-prom-bundle agrega em memória no processo único do node, sem
           # PROMETHEUS_MULTIPROC_DIR. Só /tmp, que o node usa para si.
@@ -209,7 +209,7 @@ metadata:
     metacortex.io/owner: time-nyx
 spec:
   type: ClusterIP
-  # 1.4 — este bloco é o que o manifesto barrado errou por um hífen. Copiado dos
+  # 1.4: este bloco é o que o manifesto barrado errou por um hífen. Copiado dos
   # rótulos do pod, não digitado de novo.
   selector:
     app.kubernetes.io/name: nyx-api

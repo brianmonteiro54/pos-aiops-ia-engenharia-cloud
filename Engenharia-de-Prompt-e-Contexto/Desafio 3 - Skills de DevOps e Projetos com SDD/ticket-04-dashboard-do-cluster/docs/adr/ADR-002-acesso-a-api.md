@@ -1,4 +1,4 @@
-# ADR-002 — Como falar com a API do Kubernetes
+# ADR-002: Como falar com a API do Kubernetes
 
 **Status:** aceito
 **Contexto:** a aplicação lê seis tipos de recurso do contexto corrente do kubeconfig da
@@ -12,7 +12,7 @@ provedor de nuvem.
 
 ## Alternativas consideradas
 
-### A — cliente oficial da linguagem (`kubernetes` do PyPI)
+### A: cliente oficial da linguagem (`kubernetes` do PyPI)
 
 **O que se ganha:** objetos tipados, paginação, `watch` de graça, e tratamento de erro por
 exceção em vez de parsing. É o caminho "certo" para uma aplicação que cresce.
@@ -20,14 +20,14 @@ exceção em vez de parsing. É o caminho "certo" para uma aplicação que cresc
 **O que se perde, e foi decisivo:**
 
 - **autenticação é o problema difícil, e o cliente resolve só parte.** Certificado de
-  cliente e token ele faz. **`exec` plugin** — o que EKS, GKE e AKS usam — tem suporte
+  cliente e token ele faz. **`exec` plugin** (o que EKS, GKE e AKS usam) tem suporte
   parcial e historicamente irregular. Numa provedora que opera cluster de cliente, o
   kubeconfig com `exec` é o caso comum, não a exceção.
 - **dependência grande, com versão amarrada à do cluster.** O pacote tem política de
   compatibilidade por versão de API, e a frota tem clusters em versões diferentes.
 - contraria o ADR-001: `pip install` antes de usar.
 
-### B — HTTP direto contra o apiserver
+### B: HTTP direto contra o apiserver
 
 **O que se ganha:** controle total, zero dependência além da biblioteca padrão, e nenhum
 processo externo.
@@ -43,7 +43,7 @@ processo externo.
   nunca a vejo. Para uma ferramenta que lê cluster de cliente, isso é redução de superfície
   que vale muito.
 
-### C — `kubectl` como subprocesso (escolhida)
+### C: `kubectl` como subprocesso (escolhida)
 
 **O que se ganha:**
 
@@ -62,13 +62,13 @@ processo externo.
 | Perda | Tratamento |
 |---|---|
 | um processo por consulta | o ADR-003 escolheu consulta sob demanda, então são ~6 processos por carregamento de página. Em cluster local, dezenas de ms |
-| erro vira texto de `stderr`, não exceção tipada | classificação por padrão de texto. **É frágil, e a medição confirmou que é pior do que eu supunha ao escrever este ADR** — ver a nota de implementação no fim |
+| erro vira texto de `stderr`, não exceção tipada | classificação por padrão de texto. **É frágil, e a medição confirmou que é pior do que eu supunha ao escrever este ADR**: ver a nota de implementação no fim |
 | `kubectl` pode escrever | **é o ponto crítico**, e é o que a decisão abaixo trata |
 
 ## A garantia de só leitura, que é requisito e não intenção
 
 O RE-01 exige que a garantia esteja **visível no projeto**. `kubectl` é a mesma ferramenta
-que faz `delete`, então "não vou chamar delete" não é garantia — é promessa.
+que faz `delete`, então "não vou chamar delete" não é garantia: é promessa.
 
 O que foi implementado:
 
@@ -87,7 +87,7 @@ A garantia acima é do lado da aplicação; RBAC é do lado do apiserver, e é a
 depende do meu código estar correto. O ticket oferece o `platform-ro` justamente como esse
 caso, e o CA-07 o exercita.
 
-## Nota de implementação — o que mudou depois de escrever este ADR
+## Nota de implementação: o que mudou depois de escrever este ADR
 
 Registrado aqui porque o ADR foi escrito antes do código, e o código discordou dele em três
 pontos. A decisão de fundo não mudou; os detalhes abaixo mudaram.
@@ -124,7 +124,7 @@ contra um endereço não roteável:
 | sem teto | travou **além de 70s** |
 | `--request-timeout=5s` | falhou em **25s** |
 
-`--request-timeout` limita cada requisição, não o comando — o `kubectl` repete a descoberta
+`--request-timeout` limita cada requisição, não o comando: o `kubectl` repete a descoberta
 de grupos da API e os tempos somam. São dois tetos: o do `kubectl` e um `subprocess` com
 `timeout` do lado da aplicação, que no estouro mata o **grupo** de processos
 (`start_new_session` + `killpg`), porque matar o PID sozinho deixa filho órfão.
@@ -136,7 +136,7 @@ Medi nove modos de falha. Dois achados que o ADR original não previa:
 1. **todos devolvem `exit 1`.** O código de saída não carrega informação nenhuma.
 2. **token inválido, token expirado e certificado de cliente expirado produzem a mesma
    linha**: `error: You must be logged in to the server (Unauthorized)`. O apiserver
-   responde 401 nos três. A aplicação **não pode** dizer "credencial expirada" — ela diz
+   responde 401 nos três. A aplicação **não pode** dizer "credencial expirada": ela diz
    "rejeitada: expirada, inválida ou revogada". A única exceção é o `exec` plugin, em que o
    provedor informa a expiração.
 

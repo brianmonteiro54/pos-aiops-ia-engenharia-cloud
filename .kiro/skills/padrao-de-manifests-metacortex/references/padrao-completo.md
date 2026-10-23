@@ -22,7 +22,7 @@ ter de novo.
 
 ---
 
-# Bloco 1 — Identidade e nomenclatura
+# Bloco 1: Identidade e nomenclatura
 
 ## 1.1 Nome de recurso em kebab-case · `obrigatório`
 
@@ -52,7 +52,7 @@ aterrissar.
 
 ## 1.3 Rótulos obrigatórios em todo objeto · `obrigatório`
 
-Todo objeto — Deployment, Service, ConfigMap, Secret, Job, CronJob — carrega os quatro
+Todo objeto (Deployment, Service, ConfigMap, Secret, Job, CronJob) carrega os quatro
 rótulos. São eles que sustentam o inventário, o rateio de custo por cliente e a resposta à
 pergunta "quem é o dono disso?" às três da manhã.
 
@@ -76,7 +76,7 @@ serviço simplesmente não tem para onde mandar tráfego. O `selector` do Servic
 caractere por caractere**.
 
 ```yaml
-# errado — um hífen de diferença e o Service fica sem endpoint
+# errado: um hífen de diferença e o Service fica sem endpoint
 spec:
   selector:
     app: nyx-api
@@ -88,12 +88,12 @@ template:
 
 > **INTERPRETAÇÃO DA SKILL.** O script compara por **subconjunto**: toda chave presente no
 > seletor precisa existir no pod com o mesmo valor, mas o seletor pode usar menos chaves
-> que o pod. É o que o Kubernetes de fato faz, e é o uso recomendado — selecionar por
+> que o pod. É o que o Kubernetes de fato faz, e é o uso recomendado: selecionar por
 > `name` e `instance` enquanto o pod tem os quatro rótulos da regra 1.3, porque `part-of` e
 > `managed-by` não distinguem workloads.
 >
 > Leitura literal de "idênticos" exigiria o conjunto inteiro, o que tornaria a 1.3 e a 1.4
-> incompatíveis na prática. Se a casa quiser a leitura estrita, o script muda numa linha —
+> incompatíveis na prática. Se a casa quiser a leitura estrita, o script muda numa linha,
 > mas aí todo manifesto que seleciona por subconjunto passa a barrar.
 
 ## 1.5 Anotação de dono · `recomendado`
@@ -108,7 +108,7 @@ manifesto para descobrir o que é. Use o nome do componente: `api`, `worker`, `s
 
 ---
 
-# Bloco 2 — Resiliência
+# Bloco 2: Resiliência
 
 ## 2.1 `requests` e `limits` obrigatórios · `obrigatório`
 
@@ -126,13 +126,13 @@ regime. Apertar demais gera reinício por OOM; folgar demais desperdiça reserva
 
 ## 2.2 `readinessProbe` e `livenessProbe` obrigatórias · `obrigatório`
 
-Sem probe, o Kubernetes considera o container pronto assim que o processo sobe — e manda
+Sem probe, o Kubernetes considera o container pronto assim que o processo sobe, e manda
 tráfego para aplicação que ainda está carregando. As duas probes são obrigatórias **em
 qualquer ambiente**, e precisam apontar para endpoints que a aplicação **de fato expõe**.
 
 A distinção importa: readiness responde "posso receber tráfego agora?" e liveness responde
 "ainda estou vivo?". Apontar as duas para o mesmo endpoint que checa banco é um jeito
-conhecido de derrubar a aplicação inteira quando o banco fica lento — a liveness falha, o
+conhecido de derrubar a aplicação inteira quando o banco fica lento: a liveness falha, o
 container reinicia, e **o reinício não conserta banco**.
 
 > **INTERPRETAÇÃO DA SKILL.** O padrão não isenta `Job`, `CronJob` nem `initContainer`. O
@@ -170,11 +170,11 @@ mínimo. Sem PDB, uma manutenção de nó pode derrubar todas as réplicas ao me
 ## 2.6 `terminationGracePeriodSeconds` compatível com a aplicação · `recomendado`
 
 O padrão de 30s não serve para worker que processa mensagem longa. Se a aplicação precisa
-de mais tempo para drenar, declare — e garanta que ela **trata SIGTERM**.
+de mais tempo para drenar, declare, e garanta que ela **trata SIGTERM**.
 
 ---
 
-# Bloco 3 — Segurança
+# Bloco 3: Segurança
 
 > Segurança & Compliance mantém uma varredura de configuração no pipeline, com **Trivy**,
 > rodando sobre o diretório de manifests. **Ela não substitui esta página**: o que a
@@ -213,14 +213,14 @@ securityContext:
 `readOnlyRootFilesystem` exige que o que precisa escrever use `emptyDir` montado no caminho
 certo. Dá trabalho uma vez e fecha uma classe inteira de escalonamento de privilégio.
 
-> **INTERPRETAÇÃO DA SKILL — o nível de cada campo.** O padrão mostra um bloco único e não
+> **INTERPRETAÇÃO DA SKILL: o nível de cada campo.** O padrão mostra um bloco único e não
 > diz se ele é de pod ou de container. Fato da API do Kubernetes, verificado contra
 > apiserver v1.31.5:
 >
 > | Campo | Nível aceito |
 > |---|---|
-> | `runAsNonRoot` | pod ou container — o container **herda** do pod |
-> | `runAsUser` | pod ou container — o container **herda** do pod |
+> | `runAsNonRoot` | pod ou container: o container **herda** do pod |
+> | `runAsUser` | pod ou container: o container **herda** do pod |
 > | `allowPrivilegeEscalation` | **só container** |
 > | `readOnlyRootFilesystem` | **só container** |
 > | `capabilities` | **só container** |
@@ -239,7 +239,7 @@ certo. Dá trabalho uma vez e fecha uma classe inteira de escalonamento de privi
 
 > **O QUE A SKILL NÃO EXIGE, E JÁ EXIGIU POR ERRO MEU.** O `runAsUser: 10001` acima é
 > **exemplo**, não limiar. O padrão não estabelece piso de UID. Uma versão anterior desta
-> skill cobrava "acima de 10000" como se fosse regra da casa — era invenção minha, e fazia
+> skill cobrava "acima de 10000" como se fosse regra da casa: era invenção minha, e fazia
 > o `runAsUser: 70` da imagem alpine do Postgres barrar indevidamente. Hoje a regra exige
 > `runAsUser` **declarado e não-root**, o que `runAsNonRoot: true` já garante.
 >
@@ -248,7 +248,7 @@ certo. Dá trabalho uma vez e fecha uma classe inteira de escalonamento de privi
 
 ## 3.3 Segredo em texto puro proibido · `proibido`
 
-Nenhum valor sensível entra no manifesto — **nem em `env.value`, nem em ConfigMap, nem em
+Nenhum valor sensível entra no manifesto: **nem em `env.value`, nem em ConfigMap, nem em
 comentário**. Sempre por referência a um Secret.
 
 ```yaml
@@ -267,7 +267,7 @@ Lembre que Secret do Kubernetes é **base64, não criptografia**. O padrão vale
 versionar o segredo no Git; a proteção em repouso é assunto do cluster.
 
 > **COBERTURA DA SKILL.** O script varre `env.value`, `ConfigMap.data` e
-> `Secret.stringData`. **Não varre comentário**, que o padrão também proíbe — comentário é
+> `Secret.stringData`. **Não varre comentário**, que o padrão também proíbe: comentário é
 > descartado pelo parser de YAML antes de o script ver. Fica como instrução de leitura
 > manual no passo 3.
 >
@@ -282,7 +282,7 @@ Passou de `recomendado` a `obrigatório` em **2026-07-29**.
 
 ## 3.5 ServiceAccount dedicada · `recomendado`
 
-Não use a `default` do namespace. Uma ServiceAccount por workload, com o RBAC mínimo — e
+Não use a `default` do namespace. Uma ServiceAccount por workload, com o RBAC mínimo, e
 **nenhum RBAC** quando ela não fala com a API.
 
 ## 3.6 `hostNetwork`, `hostPID` e `privileged` proibidos · `proibido`
@@ -300,10 +300,10 @@ Todo `image:` aponta para `registry.metacortex.io`. Imagem de registry público 
 
 ---
 
-# Bloco 4 — Vocabulário e conceitos
+# Bloco 4: Vocabulário e conceitos
 
 > **ESTE BLOCO FICOU FORA DA SKILL.** A justificativa está em `curadoria.md`, seção 7. Em
-> resumo: é material de onboarding, não critério de revisão — o próprio padrão diz "quem já
+> resumo: é material de onboarding, não critério de revisão, o próprio padrão diz "quem já
 > opera os clusters pode pular direto para os blocos anteriores". Nenhum item aqui produz
 > veredito, e carregar 8 definições de objeto do Kubernetes no contexto de toda conferência
 > gastaria orçamento sem mudar uma linha de relatório.
@@ -318,13 +318,13 @@ Os oito itens do bloco, para quem precisar: 4.1 Pod · 4.2 ReplicaSet · 4.3 Dep
 
 Dois deles têm valor operacional e não só didático, e vale registrar:
 
-- **4.5** — `port` é a porta em que o Service escuta; `targetPort` é a porta em que o
+- **4.5**: `port` é a porta em que o Service escuta; `targetPort` é a porta em que o
   container realmente escuta. Normalmente são diferentes: o Service publica 80 e o
   container escuta 8080. É por isso que os manifests gerados apontam `targetPort` para o
   **nome** da porta e não para o número.
-- **4.6** — o objeto `Endpoints` é onde se descobre que um Service não entrega tráfego: sem
+- **4.6**: o objeto `Endpoints` é onde se descobre que um Service não entrega tráfego: sem
   endereço nenhum, nenhum pod casou com o seletor. E **o campo de endereços não vem vazio
-  quando não há nenhum — ele simplesmente não aparece na resposta da API.** Isso é
+  quando não há nenhum: ele simplesmente não aparece na resposta da API.** Isso é
   diagnóstico de cluster, território da skill de triagem, não desta.
 
 ---

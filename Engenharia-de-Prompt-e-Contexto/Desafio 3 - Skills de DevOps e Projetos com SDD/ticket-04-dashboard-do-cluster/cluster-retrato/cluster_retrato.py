@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""cluster-retrato — leitura do cluster corrente do kubeconfig.
+"""cluster-retrato: leitura do cluster corrente do kubeconfig.
 
 Encurta os primeiros minutos de um chamado. NÃO substitui o terminal.
 
@@ -27,7 +27,7 @@ from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 # ---------------------------------------------------------------------------
-# ADR-002 — o portão. Lista branca ENUMERADA: prefixo novo é proibido por omissão.
+# ADR-002: o portão. Lista branca ENUMERADA: prefixo novo é proibido por omissão.
 #
 # São PREFIXOS, não verbos soltos, por causa de `config`: `kubectl config` tem
 # subcomando de escrita (que altera o kubeconfig), então liberar o verbo inteiro
@@ -54,7 +54,7 @@ class VerboProibido(RuntimeError):
     def __init__(self, verbo: str) -> None:
         super().__init__(
             f"{verbo!r} não está na lista branca "
-            f"{sorted(' '.join(p) for p in PREFIXOS_PERMITIDOS)} — "
+            f"{sorted(' '.join(p) for p in PREFIXOS_PERMITIDOS)}: "
             f"esta aplicação é somente leitura"
         )
         self.verbo = verbo
@@ -153,7 +153,7 @@ def classificar(stderr: str) -> Falha:
     """Transforma a saída de erro do kubectl em falha rotulada.
 
     Quando nada casa, devolve `nao_classificada` com o texto original. Admitir
-    ignorância é melhor que arriscar um rótulo errado — mesma escolha do
+    ignorância é melhor que arriscar um rótulo errado: mesma escolha do
     `nao_verificado` do Ticket 03.
     """
     limpo = limpar_ruido(stderr)
@@ -175,7 +175,7 @@ def usuario_negado(bruto: str) -> str:
 
 
 # ---------------------------------------------------------------------------
-# ADR-002 — único ponto do arquivo que cria subprocesso
+# ADR-002: único ponto do arquivo que cria subprocesso
 # ---------------------------------------------------------------------------
 def _kubectl(
     args: list[str],
@@ -233,7 +233,7 @@ def _kubectl(
 
 
 # ---------------------------------------------------------------------------
-# ADR-004 — qual fonte de endpoint este cluster oferece
+# ADR-004: qual fonte de endpoint este cluster oferece
 # ---------------------------------------------------------------------------
 def detectar_fonte_de_endpoints(**kw) -> tuple[str, Falha | None]:
     """Decide entre EndpointSlice e Endpoints. Roda UMA vez, na subida."""
@@ -247,7 +247,7 @@ def detectar_fonte_de_endpoints(**kw) -> tuple[str, Falha | None]:
 
 
 # ---------------------------------------------------------------------------
-# Normalização — funções puras. Aqui vivem os fatos estranhos da API.
+# Normalização: funções puras. Aqui vivem os fatos estranhos da API.
 # ---------------------------------------------------------------------------
 def normalizar_endpoints(itens: list[dict], fonte: str) -> dict[tuple[str, str], dict]:
     """Conta endpoints PRONTOS sobre total, das duas fontes, na mesma estrutura.
@@ -322,7 +322,7 @@ def normalizar_pod(pod: dict) -> dict:
         if espera.get("reason"):
             estado = espera["reason"]
             break
-    # 2. por que morreu na última vez: OOMKilled, Error, ... — esta é a CAUSA
+    # 2. por que morreu na última vez: OOMKilled, Error, ... esta é a CAUSA
     for c in cs:
         morte = (c.get("lastState") or {}).get("terminated") or {}
         if morte.get("reason"):
@@ -446,7 +446,7 @@ def coletar(fonte: str, ns: str = "", **kw) -> dict:
     """As seis consultas do ADR-005. Falha por consulta, não falha global.
 
     Exceção: se a PRIMEIRA consulta falhar com algo global (cluster fora, credencial),
-    as outras cinco são puladas — repetir seis vezes uma falha de conexão custa seis
+    as outras cinco são puladas: repetir seis vezes uma falha de conexão custa seis
     estouros de teto.
     """
     estado: dict = {
@@ -513,7 +513,7 @@ def coletar(fonte: str, ns: str = "", **kw) -> dict:
 def versao_do_cluster(**kw) -> str:
     """Versão do servidor. Informação de triagem de verdade: k3s não é EKS.
 
-    Falha aqui não impede a aplicação de subir — o CA-05 exige que a tela explique a
+    Falha aqui não impede a aplicação de subir: o CA-05 exige que a tela explique a
     falha, e para isso o servidor HTTP precisa estar no ar.
     """
     dados, falha = _kubectl(["version", "-o", "json"], **kw)
@@ -552,7 +552,7 @@ def contexto_corrente(**kw) -> tuple[str, str]:
 
 
 # ---------------------------------------------------------------------------
-# Tela — HTML montado no servidor, zero JavaScript (ADR-001)
+# Tela: HTML montado no servidor, zero JavaScript (ADR-001)
 # ---------------------------------------------------------------------------
 E = html.escape
 
@@ -681,7 +681,7 @@ def _tabela_pods(pods: list[dict]) -> str:
             f"<td>{pronto}</td><td>{estado_txt}</td><td>{causa}</td>"
             f"<td>{rein}</td></tr>")
     nota = ("<div class='nota aviso'><strong>pronto (sem probe)</strong> significa que o "
-            "container subiu e que <em>nenhuma readinessProbe está declarada</em> — "
+            "container subiu e que <em>nenhuma readinessProbe está declarada</em>: "
             "o Kubernetes não está verificando se a aplicação responde. "
             "É prontidão presumida, não verificada.</div>") if sem_probe else ""
     return ("<table><tr><th>namespace</th><th>pod</th><th>prontos</th><th>estado</th>"
@@ -721,7 +721,7 @@ def _tabela_servicos(svcs: list[dict], fonte: str) -> str:
             + "".join(linhas) + "</table>"
             + f"<div class=mu>contagem de endpoints via <code>{E(fonte)}</code>"
             + ("" if fonte == "endpointslices" else
-               " — nesta fonte <code>terminating</code> não é distinguido")
+               ": nesta fonte <code>terminating</code> não é distinguido")
             + "</div>")
 
 
@@ -738,7 +738,7 @@ def _tabela_eventos(estado: dict) -> str:
                     f"válido.<pre>{E(falha.bruto)}</pre></div>")
         return _bloco_falha(falha, "Falha ao ler eventos")
     if not estado["ns_selecionado"]:
-        return ("<p class=vazio>selecione um namespace para ver os eventos — "
+        return ("<p class=vazio>selecione um namespace para ver os eventos: "
                 "<code>get events -A</code> é a consulta mais cara e quase sempre "
                 "inútil</p>")
     if not estado["eventos"]:
@@ -766,7 +766,7 @@ def renderizar(estado: dict, ctx: str, servidor: str, q: str = "",
             + "<div class=nota>A aplicação está no ar. O problema está no acesso ao "
               "cluster, não na aplicação. Corrija o contexto ou a credencial e "
               "recarregue.</div>",
-            "cluster-retrato — falha de acesso")
+            "cluster-retrato: falha de acesso")
 
     ns = estado["ns_selecionado"]
     partes = [cab, _formulario(estado, q)]
@@ -797,7 +797,7 @@ def renderizar(estado: dict, ctx: str, servidor: str, q: str = "",
         "<h2>Services</h2>",
         _tabela_servicos(_filtrar(estado["servicos"], ns, q),
                          estado["fonte_endpoints"]),
-        f"<h2>Eventos{' — ' + E(ns) if ns else ''}</h2>", _tabela_eventos(estado),
+        f"<h2>Eventos{': ' + E(ns) if ns else ''}</h2>", _tabela_eventos(estado),
         "<footer><div class=mu>somente leitura: comandos permitidos "
         f"<code>kubectl "
         f"{E(' | '.join(sorted(' '.join(p) for p in PREFIXOS_PERMITIDOS)))}</code>. "
@@ -859,7 +859,7 @@ def _loopback(endereco: str) -> bool:
 
 
 # ---------------------------------------------------------------------------
-# CA-08 — a varredura do próprio fonte
+# CA-08: a varredura do próprio fonte
 # ---------------------------------------------------------------------------
 VERBOS_DE_ESCRITA = frozenset({
     "annotate", "attach", "auth", "autoscale", "certificate", "cordon", "cp",
@@ -874,14 +874,14 @@ def auditar_fonte(caminho: str) -> list[str]:
     `_kubectl`.
 
     Um verbo só chega ao kubectl como string. Então a checagem é sobre os literais,
-    via AST — mais preciso que grep, que acusaria `frozenset` por conter "set".
+    via AST: mais preciso que grep, que acusaria `frozenset` por conter "set".
     """
     with open(caminho, encoding="utf-8") as fh:
         arvore = ast.parse(fh.read(), filename=caminho)
     problemas: list[str] = []
 
     # Duas isenções, as duas declaradas. Na primeira vez que esta varredura rodou ela
-    # acusou o literal 'run' do conjunto `perigosos`, aqui dentro — verdadeiro
+    # acusou o literal 'run' do conjunto `perigosos`, aqui dentro: verdadeiro
     # positivo da regra aplicado ao vocabulário do próprio auditor. A saída não é
     # encurtar a lista de verbos; é isentar o auditor, que não chama kubectl e que
     # continua coberto pela checagem 2.
@@ -919,14 +919,14 @@ def auditar_fonte(caminho: str) -> list[str]:
                 if isinstance(base, ast.Name) and base.id in {"subprocess", "os"}:
                     problemas.append(
                         f"linha {no.lineno}: {fn.name} chama "
-                        f"{base.id}.{alvo.attr} — só _kubectl pode")
+                        f"{base.id}.{alvo.attr}, só _kubectl pode")
     return problemas
 
 
 # ---------------------------------------------------------------------------
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(
-        description="cluster-retrato — leitura do cluster corrente. Somente leitura.")
+        description="cluster-retrato: leitura do cluster corrente. Somente leitura.")
     p.add_argument("--endereco", default="127.0.0.1",
                    help="endereço de escuta (padrão: 127.0.0.1, loopback)")
     p.add_argument("--porta", type=int, default=8777)

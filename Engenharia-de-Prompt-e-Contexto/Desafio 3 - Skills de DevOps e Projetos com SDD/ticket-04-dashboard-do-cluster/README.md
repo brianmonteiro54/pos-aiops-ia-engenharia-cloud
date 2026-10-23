@@ -1,4 +1,4 @@
-# Ticket 04 — Dashboard de leitura do cluster
+# Ticket 04: Dashboard de leitura do cluster
 
 `cluster-retrato`: aplicação local que lê o cluster corrente do kubeconfig e mostra o
 retrato de um namespace numa tela. Encurta os primeiros minutos de um chamado. **Não
@@ -42,7 +42,7 @@ python3 cluster-retrato/cluster_retrato.py --help
 ./validar.sh
 ```
 
-Última execução: **66 verificações, 0 falhas** — `evidencias/validacao.txt`.
+Última execução: **66 verificações, 0 falhas**: `evidencias/validacao.txt`.
 
 > `preparar-cenarios-de-falha.sh` gera kubeconfigs com token e chave privada de verdade
 > (descartáveis, de um cluster local) em `~/desafio03-lab/t04`, **fora do repositório**.
@@ -55,11 +55,11 @@ python3 cluster-retrato/cluster_retrato.py --help
 | brainstorm do recorte | `docs/01-brainstorm-e-prd.md` |
 | PRD com requisitos e critérios de aceite | `docs/01-brainstorm-e-prd.md` |
 | TRD | `docs/02-trd.md` |
-| decisão 1 — linguagem e stack | `docs/adr/ADR-001-linguagem-e-stack.md` |
-| decisão 2 — como falar com a API | `docs/adr/ADR-002-acesso-a-api.md` |
-| decisão 3 — como atualizar a tela | `docs/adr/ADR-003-atualizacao-da-tela.md` |
-| decisão 4 — `Endpoints` ou `EndpointSlice` | `docs/adr/ADR-004-fonte-dos-endpoints.md` |
-| decisão 5 — recorte da primeira fatia | `docs/adr/ADR-005-recorte-da-primeira-fatia.md` |
+| decisão 1: linguagem e stack | `docs/adr/ADR-001-linguagem-e-stack.md` |
+| decisão 2, como falar com a API | `docs/adr/ADR-002-acesso-a-api.md` |
+| decisão 3, como atualizar a tela | `docs/adr/ADR-003-atualizacao-da-tela.md` |
+| decisão 4: `Endpoints` ou `EndpointSlice` | `docs/adr/ADR-004-fonte-dos-endpoints.md` |
+| decisão 5: recorte da primeira fatia | `docs/adr/ADR-005-recorte-da-primeira-fatia.md` |
 | ciclo OpenSpec | `cluster-retrato/openspec/` (arquivado) |
 | implementação | `cluster-retrato/cluster_retrato.py` |
 | validação com os 3 cenários de falha | `validar.sh`, `evidencias/` |
@@ -101,7 +101,7 @@ o PRD deste ticket **e** a skill do Ticket 02.
 
 - **sem autenticação.** Bind em loopback por padrão, aviso ao expor. Inadequado para uso
   compartilhado
-- **RBAC somente-leitura não é usado como camada de garantia** — é a dívida que o Ticket 02
+- **RBAC somente-leitura não é usado como camada de garantia**: é a dívida que o Ticket 02
   registrou e que este ticket não pagou
 - o caminho de `Endpoints` só roda por injeção no teste; este cluster tem
   `discovery.k8s.io/v1`
@@ -116,7 +116,7 @@ o PRD deste ticket **e** a skill do Ticket 02.
 em seguida roda `kubectl set image` para imagens públicas. Efeito: a regra 3.7 do Padrão de
 Manifests fica **satisfeita no artefato e insatisfeita no cluster**.
 
-Isso não é descuido — é a diferença entre o que a skill do Ticket 01 julga (arquivo) e o que
+Isso não é descuido: é a diferença entre o que a skill do Ticket 01 julga (arquivo) e o que
 a do Ticket 02 vê (estado). Está analisada em `docs/03-registro-das-skills.md`.
 
 ## Estrutura

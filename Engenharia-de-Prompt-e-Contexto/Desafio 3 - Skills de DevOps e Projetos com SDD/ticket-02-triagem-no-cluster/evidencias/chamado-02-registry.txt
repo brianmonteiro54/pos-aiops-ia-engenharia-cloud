@@ -1,7 +1,7 @@
 ### passo 6: a tag v1.14.2 existe no Docker Hub?
   tags publicadas (18): 1, latest, v1, v11, v12, v13, v14, v15, v16, v17, v19, v2, v20, v26, v6, v7, v8, v9
 
-  v1.14.2 existe? NAO — e esta e a causa raiz
+  v1.14.2 existe? NAO, e esta e a causa raiz
 
 ### e a mensagem crua do kubelet ao tentar o pull?
   Warning  Failed     3m58s (x4 over 5m22s)  kubelet            Failed to pull image "fabricioveronez/fake-shop:v1.14.2": rpc error: code = NotFound desc = failed to pull and unpack image "docker.io/fabricioveronez/fake-shop:v1.14.2": failed to resolve reference "docker.io/fabricioveronez/fake-shop:v1.14.2": docker.io/fabricioveronez/fake-shop:v1.14.2: not found

@@ -19,7 +19,7 @@ Skill em `.kiro/skills/triagem-de-cluster-metacortex/`.
 
 1. Apliquei os três chamados no k3d e esperei os defeitos se manifestarem.
 2. **Triei os três à mão com `kubectl`**, registrando a ordem em que desci as camadas, onde
-   cruzei duas fontes e onde uma fonte me daria a resposta errada —
+   cruzei duas fontes e onde uma fonte me daria a resposta errada,
    `fluxos/fluxo-01-triagem-manual.md`.
 3. Medi o que o modo não destrutivo de fato remove, enumerando as ferramentas do servidor
    nos dois modos.
@@ -27,7 +27,7 @@ Skill em `.kiro/skills/triagem-de-cluster-metacortex/`.
 5. Executei a skill nos três chamados pelo transporte MCP real, com um sub-agente que não
    tinha visto a triagem manual.
 
-A regra do desafio — *skill escrita de cabeça não vale* — é o que produziu os achados. As
+A regra do desafio (*skill escrita de cabeça não vale*) é o que produziu os achados. As
 três distinções centrais do método saíram de **erros que eu quase cometi triando à mão**, não
 de teoria.
 
@@ -48,7 +48,7 @@ três.
 | logs | **vazios** | **impossíveis** | sem erro |
 | eventos | só `BackOff` | **`not found`** | nada |
 | status do container | **`OOMKilled`** | `lastState` vazio | `ready=True` |
-| endpoints | — | — | **`subsets` ausente** |
+| endpoints | n/d | n/d | **`subsets` ausente** |
 
 "Sempre comece pelos logs" falha em 2 de 3. "Sempre pelos eventos" também. Deixar a ordem a
 critério do agente é reintroduzir o problema que a SRE pediu para resolver: cada plantonista
@@ -117,7 +117,7 @@ install_helm_chart   upgrade_helm_chart
 Um agente de triagem poderia "consertar" o OOM do chamado 1 com `kubectl_patch`, e o modo
 não destrutivo **deixaria**. Então a garantia tem três camadas, e nenhuma sozinha basta:
 
-### Camada 1 — o servidor, que bloqueia o irreversível
+### Camada 1: o servidor, que bloqueia o irreversível
 
 Verificado por chamada direta:
 
@@ -127,17 +127,17 @@ RECUSADA pelo servidor: MCP error -32600:
   Tool 'kubectl_delete' is not allowed under the current server configuration
 ```
 
-Esta camada é a única que não depende de boa-fé. Ela cobre o que não tem volta — apagar
+Esta camada é a única que não depende de boa-fé. Ela cobre o que não tem volta: apagar
 objeto, drenar nó, executar comando arbitrário dentro de pod.
 
-### Camada 2 — a skill, que proíbe o que o servidor deixou
+### Camada 2: a skill, que proíbe o que o servidor deixou
 
 A lista branca de cinco, e as doze proibidas por nome, **cobrindo as 17 que o servidor
 expõe**. Não é "evite escrever": é a enumeração completa, para que a regra *use apenas as
 autorizadas* seja verificável.
 
 Três que estavam fora das duas listas na primeira versão e entraram depois, apontadas pela
-execução: `kubectl_context` (troca o cluster-alvo — triagem no cluster errado é pior que
+execução: `kubectl_context` (troca o cluster-alvo, triagem no cluster errado é pior que
 nenhuma), `kubectl_reconnect` (muda estado do cliente; conexão caída é achado, não coisa a
 consertar) e `stop_port_forward`.
 
@@ -145,7 +145,7 @@ consertar) e `stop_port_forward`.
 altera objeto, mas abre túnel para dentro do cluster e não responde pergunta que `get` e
 `describe` não respondam.
 
-### Camada 3 — o método, que remove o motivo de escrever
+### Camada 3: o método, que remove o motivo de escrever
 
 A skill define **parar na causa** e **entregar o conserto como recomendação**. A frase que
 carrega isso:
@@ -157,7 +157,7 @@ carrega isso:
 
 Na execução dos três chamados, o executor registrou por conta própria:
 
-> Nenhuma ferramenta de escrita foi chamada — `kubectl_apply`, `create`, `patch`, `scale`,
+> Nenhuma ferramenta de escrita foi chamada: `kubectl_apply`, `create`, `patch`, `scale`,
 > `rollout`, `install_helm_chart`, `upgrade_helm_chart`, `port_forward` e `stop_port_forward`
 > **estavam disponíveis no servidor e não foram tocadas**.
 
@@ -172,7 +172,7 @@ ServiceAccount somente-leitura tornaria a escrita impossível **no apiserver**, 
 de skill e de servidor MCP. É a única camada que não depende de configuração do cliente.
 
 Não fiz porque o k3d de laboratório usa o contexto de admin e montar RBAC restrito seria
-trabalho fora do ticket. **Em produção seria a primeira camada, não a quarta** — e fica
+trabalho fora do ticket. **Em produção seria a primeira camada, não a quarta**: e fica
 registrado como lacuna conhecida, não como coisa resolvida.
 
 ## 4. Corpo x reference
@@ -191,7 +191,7 @@ carregam quando o passo manda.
 
 ### Um erro de desenho que a execução revelou
 
-A `por-que-a-ordem-importa.md` **é a solução trabalhada dos três chamados** — namespace,
+A `por-que-a-ordem-importa.md` **é a solução trabalhada dos três chamados**: namespace,
 causa e valor, nominalmente. E a abertura do corpo mandava lê-la.
 
 O executor apontou:
@@ -199,7 +199,7 @@ O executor apontou:
 > A skill manda ler, então li. O efeito é que a triagem não pode ser cega, e qualquer
 > medição de "o método guia à descoberta?" fica comprometida.
 
-Ele está certo, e isso contaminou a Parte C — ver `com-e-sem-skill.md`. Hoje a abertura do
+Ele está certo, e isso contaminou a Parte C: ver `com-e-sem-skill.md`. Hoje a abertura do
 corpo diz explicitamente que as references **não são passo do método** e que a de cobertura
 contém solução trabalhada.
 
@@ -232,16 +232,16 @@ causas saíram corretas. O valor estava nos **nove atritos**, todos corrigidos:
 4. **A skill afirmava `registry.metacortex.io`** e as imagens do cluster vêm de `docker.io`.
    Mandaria o plantonista ao registry errado.
 5. **A lista de ferramentas não cobria 3 das 17.**
-6. **`ping` retorna conteúdo vazio** — sucesso em branco não informa nada. Saiu das
+6. **`ping` retorna conteúdo vazio**: sucesso em branco não informa nada. Saiu das
    permitidas.
 7. **O passo 5 não mencionava Ingress**, e roteava justamente "503 de fora". Um ClusterIP sem
    endpoint não devolve 503: devolve recusa ou timeout.
 8. **A `leitura-da-api.md` estava errada sobre `EndpointSlice`.** Eu escrevi que a chave
    `endpoints` não aparece. Medido: ela **aparece com valor `null`**. Só `Endpoints.subsets`
-   some de verdade. O erro veio do meu script de coleta, que usou `or "AUSENTE"` — e `[]`,
+   some de verdade. O erro veio do meu script de coleta, que usou `or "AUSENTE"`: e `[]`,
    `None` e chave ausente são todos falsy. São dois jeitos diferentes de quebrar:
    `len(x["subsets"])` dá `KeyError`, `len(x.get("endpoints", []))` dá `TypeError`.
-9. **A reference obrigatória entregava o gabarito** — seção 4.
+9. **A reference obrigatória entregava o gabarito**: seção 4.
 
 Os defeitos 1, 4 e 8 mudariam o resultado de uma triagem real. O 8 é o mais incômodo: é uma
 regra de leitura **errada** dentro do arquivo que existe para ensinar regras de leitura, e ela

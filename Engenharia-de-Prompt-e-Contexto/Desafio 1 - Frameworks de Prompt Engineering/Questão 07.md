@@ -1,4 +1,4 @@
-# Questão 07 — Runbook para alerta recorrente
+# Questão 07: Runbook para alerta recorrente
 
 **Framework:** R-I-S-E (Role, Input, Steps, Expectation)
 
@@ -70,13 +70,13 @@ Escolhido porque o entregável é um documento procedural longo em que a consist
 
 ## Output
 
-### Runbook — `[CRITICAL] High memory usage on Chronos API pods (>85% for 10min)`
+### Runbook: `[CRITICAL] High memory usage on Chronos API pods (>85% for 10min)`
 
 #### Resumo
 
 | Campo | Valor |
 |---|---|
-| **Severidade** | CRITICAL — Chronos é tier-0, ponto de entrada de todo o tráfego da empresa |
+| **Severidade** | CRITICAL: Chronos é tier-0, ponto de entrada de todo o tráfego da empresa |
 | **Tempo estimado** | 12 a 18 minutos até mitigação ou escalação. Nunca passe de 10 min (horário comercial) ou 15 min (fora dele) sem acionar @chronos-core |
 | **Impacto potencial** | OOMKill em cascata: pods morrem, HPA repõe, os que sobram recebem mais tráfego e estouram também. O resultado final é indisponibilidade total do gateway |
 | **Primeira ação** | Passo 1: postar o ACK em #oncall-chronos e anotar o horário. Não execute nenhuma mitigação antes do Passo 4 |
@@ -87,7 +87,7 @@ Escolhido porque o entregável é um documento procedural longo em que a consist
 
 > **Segunda regra:** o Chronos é gerido por **Argo CD**. Se o app estiver com sync automático e self-heal, qualquer alteração feita com `kubectl edit`, `kubectl scale` ou `kubectl patch` **será revertida sozinha em poucos minutos**. O Passo 4 verifica isso antes de qualquer mitigação. Não pule.
 
-#### Tabela de decisão rápida — 3 cenários mais prováveis
+#### Tabela de decisão rápida: 3 cenários mais prováveis
 
 | Sinal observado na triagem | Cenário provável | Ação imediata | Vá para |
 |---|---|---|---|
@@ -98,7 +98,7 @@ Escolhido porque o entregável é um documento procedural longo em que a consist
 
 ---
 
-#### Passo 0 — Preparar o terminal (30 segundos)
+#### Passo 0: Preparar o terminal (30 segundos)
 
 **Objetivo:** fixar as variáveis usadas por todos os comandos, para você não digitar nome de recurso errado às 3h da manhã.
 
@@ -125,7 +125,7 @@ kubectl get ns "$NS"
 
 ---
 
-#### Passo 1 — Abrir o incidente no canal e ligar o cronômetro (30 segundos)
+#### Passo 1: Abrir o incidente no canal e ligar o cronômetro (30 segundos)
 
 **Objetivo:** garantir que existe registro do atendimento desde o primeiro minuto, mesmo que você precise escalar depois.
 
@@ -151,20 +151,20 @@ Próxima atualização: T0+5min
 
 ---
 
-#### Passo 2 — Confirmar que o alerta é real: memória por pod contra o limit (2 minutos)
+#### Passo 2: Confirmar que o alerta é real: memória por pod contra o limit (2 minutos)
 
 **Objetivo:** medir o consumo real de cada pod e comparar com o limit configurado, para saber se o alerta é verdadeiro e quantas réplicas estão afetadas.
 
 ```bash
-# 2.1 — consumo atual, do maior para o menor
+# 2.1: consumo atual, do maior para o menor
 kubectl top pods -n "$NS" -l app="$APP" --no-headers | sort -k3 -h -r | tee "$EVID/01-top.txt"
 
-# 2.2 — limits, requests, idade e reinícios de cada pod
+# 2.2: limits, requests, idade e reinícios de cada pod
 kubectl get pods -n "$NS" -l app="$APP" \
   -o custom-columns='POD:.metadata.name,STATUS:.status.phase,READY:.status.containerStatuses[0].ready,RESTARTS:.status.containerStatuses[0].restartCount,MEM_REQ:.spec.containers[0].resources.requests.memory,MEM_LIM:.spec.containers[0].resources.limits.memory,IDADE:.metadata.creationTimestamp,NODE:.spec.nodeName' \
   | tee "$EVID/02-pods.txt"
 
-# 2.3 — houve OOMKill? (esta é a pergunta mais importante do passo)
+# 2.3: houve OOMKill? (esta é a pergunta mais importante do passo)
 kubectl get pods -n "$NS" -l app="$APP" \
   -o custom-columns='POD:.metadata.name,ULTIMO_MOTIVO:.status.containerStatuses[0].lastState.terminated.reason,EXIT:.status.containerStatuses[0].lastState.terminated.exitCode,QUANDO:.status.containerStatuses[0].lastState.terminated.finishedAt' \
   | tee "$EVID/03-oomkill.txt"
@@ -184,17 +184,17 @@ kubectl get pods -n "$NS" -l app="$APP" \
 
 ---
 
-#### Passo 3 — Medir o impacto no usuário antes de tocar em qualquer coisa (2 minutos)
+#### Passo 3: Medir o impacto no usuário antes de tocar em qualquer coisa (2 minutos)
 
 **Objetivo:** decidir se você está diante de um problema de capacidade que ainda não afeta ninguém ou de uma indisponibilidade em curso; a resposta muda o nível de agressividade permitido.
 
 ```bash
-# 3.1 — quantos pods estão realmente recebendo tráfego
+# 3.1: quantos pods estão realmente recebendo tráfego
 kubectl get endpoints -n "$NS" "$APP" -o wide | tee "$EVID/04-endpoints.txt"
 kubectl get endpointslices -n "$NS" -l kubernetes.io/service-name="$APP" \
   -o custom-columns='SLICE:.metadata.name,ENDERECOS:.endpoints[*].addresses,PRONTOS:.endpoints[*].conditions.ready' 2>/dev/null
 
-# 3.2 — descobrir se existe ALB na frente do serviço (não presuma que existe)
+# 3.2: descobrir se existe ALB na frente do serviço (não presuma que existe)
 aws elbv2 describe-load-balancers \
   --query "LoadBalancers[?contains(LoadBalancerName,'chronos')].[LoadBalancerName,LoadBalancerArn]" \
   --output table
@@ -211,19 +211,19 @@ echo "Dimensão do ALB: $ALB_DIM"
 export T_INI=$(date -u -d '30 minutes ago' +%Y-%m-%dT%H:%M:%SZ)
 export T_FIM=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 
-# 3.3 — erros 5xx nos últimos 30 min, em janelas de 5 min
+# 3.3: erros 5xx nos últimos 30 min, em janelas de 5 min
 aws cloudwatch get-metric-statistics --namespace AWS/ApplicationELB \
   --metric-name HTTPCode_Target_5XX_Count --dimensions Name=LoadBalancer,Value="$ALB_DIM" \
   --start-time "$T_INI" --end-time "$T_FIM" --period 300 --statistics Sum \
   --output table | tee "$EVID/05-5xx.txt"
 
-# 3.4 — volume de requisições, para separar pico de tráfego de leak
+# 3.4: volume de requisições, para separar pico de tráfego de leak
 aws cloudwatch get-metric-statistics --namespace AWS/ApplicationELB \
   --metric-name RequestCount --dimensions Name=LoadBalancer,Value="$ALB_DIM" \
   --start-time "$T_INI" --end-time "$T_FIM" --period 300 --statistics Sum \
   --output table | tee "$EVID/06-requests.txt"
 
-# 3.5 — latência p99
+# 3.5: latência p99
 aws cloudwatch get-metric-statistics --namespace AWS/ApplicationELB \
   --metric-name TargetResponseTime --dimensions Name=LoadBalancer,Value="$ALB_DIM" \
   --start-time "$T_INI" --end-time "$T_FIM" --period 300 --extended-statistics p99 \
@@ -260,21 +260,21 @@ kill "$PF_PID"
 
 ---
 
-#### Passo 4 — Verificar deploy recente e o modo de sync do Argo CD (2 minutos)
+#### Passo 4: Verificar deploy recente e o modo de sync do Argo CD (2 minutos)
 
 **Objetivo:** descobrir se um deploy causou isso e, principalmente, se o Argo CD vai reverter qualquer mitigação manual que você fizer.
 
 ```bash
-# 4.1 — estado do app, incluindo a política de sync
+# 4.1: estado do app, incluindo a política de sync
 argocd app get "$APP" | tee "$EVID/09-argocd-get.txt"
 
-# 4.2 — histórico de deploys, com data e revisão
+# 4.2: histórico de deploys, com data e revisão
 argocd app history "$APP" | tail -10 | tee "$EVID/10-argocd-history.txt"
 
-# 4.3 — o que está rodando difere do que está no Git?
+# 4.3: o que está rodando difere do que está no Git?
 argocd app diff "$APP" | tee "$EVID/11-argocd-diff.txt"
 
-# 4.4 — confirmação pelo lado do cluster: quando o rollout mudou pela última vez
+# 4.4: confirmação pelo lado do cluster: quando o rollout mudou pela última vez
 kubectl rollout history -n "$NS" "deployment/$DEPLOY" | tee "$EVID/12-rollout-history.txt"
 kubectl get deployment -n "$NS" "$DEPLOY" \
   -o custom-columns='DEPLOY:.metadata.name,IMAGEM:.spec.template.spec.containers[0].image,GERACAO:.metadata.generation,ATUALIZADO:.status.conditions[?(@.type=="Progressing")].lastUpdateTime' \
@@ -297,7 +297,7 @@ kubectl get deployment -n "$NS" "$DEPLOY" \
 
 ---
 
-#### Passo 5 — Coletar a evidência que desaparece no restart (3 minutos)
+#### Passo 5: Coletar a evidência que desaparece no restart (3 minutos)
 
 **Objetivo:** salvar em disco tudo que morre junto com o pod, antes de qualquer mitigação. Este passo é obrigatório e não pode ser pulado: sem ele o alerta volta na semana que vem e ninguém sabe por quê.
 
@@ -307,30 +307,30 @@ kubectl get deployment -n "$NS" "$DEPLOY" \
 export POD_PIOR=$(kubectl top pods -n "$NS" -l app="$APP" --no-headers | sort -k3 -h -r | head -1 | awk '{print $1}')
 echo "Pod alvo da coleta: $POD_PIOR" | tee -a "$EVID/timeline.txt"
 
-# 5.1 — describe completo: limites, eventos, último estado de terminação
+# 5.1: describe completo: limites, eventos, último estado de terminação
 kubectl describe pod -n "$NS" "$POD_PIOR" > "$EVID/14-describe-$POD_PIOR.txt"
 
-# 5.2 — logs atuais e do container anterior (o anterior só existe se já houve restart)
+# 5.2: logs atuais e do container anterior (o anterior só existe se já houve restart)
 kubectl logs -n "$NS" "$POD_PIOR" --tail=2000 > "$EVID/15-logs-atual.txt" 2>&1
 kubectl logs -n "$NS" "$POD_PIOR" --previous --tail=2000 > "$EVID/16-logs-anterior.txt" 2>&1 || \
   echo "sem container anterior (nenhum restart)" > "$EVID/16-logs-anterior.txt"
 
-# 5.3 — eventos do namespace, ordenados por horário
+# 5.3: eventos do namespace, ordenados por horário
 kubectl get events -n "$NS" --sort-by=.lastTimestamp | tail -50 > "$EVID/17-events.txt"
 
-# 5.4 — snapshot das métricas do pod, incluindo memória por área, se exposta
+# 5.4: snapshot das métricas do pod, incluindo memória por área, se exposta
 kubectl port-forward -n "$NS" "pod/$POD_PIOR" 19090:8080 >/dev/null 2>&1 &
 export PF_PID=$!
 sleep 3
 curl -s localhost:19090/metrics > "$EVID/18-metrics-completo.txt"
 
-# 5.5 — perfil de heap, SOMENTE se o endpoint pprof existir; verifique antes
+# 5.5: perfil de heap, SOMENTE se o endpoint pprof existir; verifique antes
 curl -s -o /dev/null -w "pprof status: %{http_code}\n" localhost:19090/debug/pprof/heap
 # Se o status for 200, capture. Se for 404, siga sem o heap e registre isso no follow-up.
 curl -s localhost:19090/debug/pprof/heap > "$EVID/19-heap.pprof" 2>/dev/null
 kill "$PF_PID"
 
-# 5.6 — duas medições de memória com 60s de intervalo: revela a inclinação da curva
+# 5.6: duas medições de memória com 60s de intervalo: revela a inclinação da curva
 kubectl top pods -n "$NS" -l app="$APP" --no-headers > "$EVID/20-mem-t1.txt"
 sleep 60
 kubectl top pods -n "$NS" -l app="$APP" --no-headers > "$EVID/21-mem-t2.txt"
@@ -353,12 +353,12 @@ ls -la "$EVID"
 
 ---
 
-#### Passo 6 — Classificar a causa: o Chronos é a vítima ou o culpado? (2 minutos)
+#### Passo 6: Classificar a causa: o Chronos é a vítima ou o culpado? (2 minutos)
 
 **Objetivo:** verificar as duas dependências diretas antes de reiniciar o Chronos, porque reiniciar o gateway quando o problema está no Ledger ou no Reactor piora o incidente.
 
 ```bash
-# 6.1 — Ledger (PostgreSQL no RDS): descobrir a instância
+# 6.1: Ledger (PostgreSQL no RDS): descobrir a instância
 aws rds describe-db-instances \
   --query "DBInstances[?contains(DBInstanceIdentifier,'ledger')].[DBInstanceIdentifier,DBInstanceStatus,DBInstanceClass]" \
   --output table | tee "$EVID/23-rds.txt"
@@ -368,7 +368,7 @@ export DB_ID=$(aws rds describe-db-instances \
   --output text | head -1)
 echo "Instância do Ledger: $DB_ID"
 
-# 6.2 — conexões e latência do Ledger nos últimos 30 min
+# 6.2: conexões e latência do Ledger nos últimos 30 min
 for M in DatabaseConnections ReadLatency WriteLatency CPUUtilization; do
   echo "=== $M ==="
   aws cloudwatch get-metric-statistics --namespace AWS/RDS --metric-name "$M" \
@@ -377,18 +377,18 @@ for M in DatabaseConnections ReadLatency WriteLatency CPUUtilization; do
     --output table
 done | tee "$EVID/24-ledger-metrics.txt"
 
-# 6.3 — Reactor (SQS): descobrir as filas
+# 6.3: Reactor (SQS): descobrir as filas
 aws sqs list-queues --queue-name-prefix reactor --output table | tee "$EVID/25-sqs-list.txt"
 
 export FILA=$(aws sqs list-queues --queue-name-prefix reactor --query 'QueueUrls[0]' --output text)
 echo "Fila do Reactor: $FILA"
 
-# 6.4 — profundidade da fila e mensagens em voo
+# 6.4: profundidade da fila e mensagens em voo
 aws sqs get-queue-attributes --queue-url "$FILA" \
   --attribute-names ApproximateNumberOfMessages ApproximateNumberOfMessagesNotVisible ApproximateNumberOfMessagesDelayed \
   --output table | tee "$EVID/26-sqs-depth.txt"
 
-# 6.5 — idade da mensagem mais antiga: o melhor indicador de consumer travado
+# 6.5: idade da mensagem mais antiga: o melhor indicador de consumer travado
 aws cloudwatch get-metric-statistics --namespace AWS/SQS \
   --metric-name ApproximateAgeOfOldestMessage \
   --dimensions Name=QueueName,Value="$(basename "$FILA")" \
@@ -419,7 +419,7 @@ aws cloudwatch get-metric-statistics --namespace AWS/SQS \
 
 ---
 
-#### Passo 7 — Mitigação 1, menos invasiva: adicionar capacidade (3 minutos)
+#### Passo 7: Mitigação 1, menos invasiva: adicionar capacidade (3 minutos)
 
 **Objetivo:** diluir o consumo entre mais réplicas quando a causa é volume de tráfego.
 
@@ -436,7 +436,7 @@ kubectl describe hpa -n "$NS" "$HPA" | tee "$EVID/29-hpa-describe.txt"
 
 **O que observar:** `MINPODS`, `MAXPODS`, `REPLICAS` e a coluna de targets. O esperado é min 4, max 12, CPU 70%. Se `REPLICAS` já está em **12**, o HPA está no teto e este passo não tem efeito: vá direto para o **Passo 11, gatilho E1**.
 
-**Caminho A — Argo CD com sync automático e self-heal (o que você viu no Passo 4.1):**
+**Caminho A: Argo CD com sync automático e self-heal (o que você viu no Passo 4.1):**
 
 Alterar o HPA por kubectl será revertido. Suspenda o self-heal, aplique, e **registre para religar depois**:
 
@@ -448,7 +448,7 @@ echo "$(date -u +%H:%M:%SZ) auto-sync DESLIGADO - RELIGAR NO PASSO 12" | tee -a 
 kubectl patch hpa -n "$NS" "$HPA" --type=merge -p '{"spec":{"minReplicas":9}}'
 ```
 
-**Caminho B — sync manual ou sem política:**
+**Caminho B: sync manual ou sem política:**
 
 ```bash
 kubectl patch hpa -n "$NS" "$HPA" --type=merge -p '{"spec":{"minReplicas":9}}'
@@ -473,7 +473,7 @@ kubectl top pods -n "$NS" -l app="$APP" --no-headers | sort -k3 -h -r
 
 ---
 
-#### Passo 8 — Mitigação 2: restart controlado em ondas (4 minutos)
+#### Passo 8: Mitigação 2: restart controlado em ondas (4 minutos)
 
 **Objetivo:** zerar a memória dos pods afetados sem derrubar o serviço, comprando tempo até a correção real do leak.
 
@@ -483,7 +483,7 @@ kubectl top pods -n "$NS" -l app="$APP" --no-headers | sort -k3 -h -r
 > 1. `kubectl get endpoints -n production chronos-api` mostra **pelo menos 4 endereços prontos** (perder 1 ainda deixa 3 servindo enquanto o novo sobe).
 > 2. Você já executou o Passo 5. Depois do restart a evidência do processo atual desaparece para sempre.
 
-**8.1 — Matar apenas o pior pod e observar (menos invasivo):**
+**8.1: Matar apenas o pior pod e observar (menos invasivo):**
 
 ```bash
 kubectl get endpoints -n "$NS" "$APP" -o wide   # confirme >= 4 endereços prontos
@@ -506,7 +506,7 @@ kubectl top pods -n "$NS" -l app="$APP" --no-headers | sort -k3 -h -r
 - **Pod novo também chega a 85% em menos de 10 minutos** → o leak é rápido ou o problema não é o pod. → **Passo 11, gatilho E4**.
 - **Pod substituto não fica `Ready` em 2 minutos** → pare imediatamente, não delete mais nenhum pod. → **Passo 11, gatilho E1**.
 
-**8.2 — Restart completo em rolling (mais invasivo, só se 8.1 resolveu parcialmente e há mais de 3 pods afetados):**
+**8.2: Restart completo em rolling (mais invasivo, só se 8.1 resolveu parcialmente e há mais de 3 pods afetados):**
 
 ```bash
 # Rolling restart respeita maxUnavailable do Deployment; ainda assim recria TODOS os pods.
@@ -522,20 +522,20 @@ kubectl rollout status -n "$NS" "deployment/$DEPLOY" --timeout=5m
 
 ---
 
-#### Passo 9 — Mitigação 3: rollback via Argo CD (4 minutos)
+#### Passo 9: Mitigação 3: rollback via Argo CD (4 minutos)
 
 **Objetivo:** voltar para a última revisão saudável quando a evidência aponta regressão de deploy.
 
 > **Impacto e risco:** rollback troca a versão em execução do serviço que recebe **todo** o tráfego da empresa. Se a versão nova já gravou dados em formato novo, ou se houve migração de schema no Ledger, voltar a versão pode causar erro pior que o consumo de memória. **Antes de executar, verifique se o changelog do deploy contém migração de banco.** Se contiver, ou se você não conseguir determinar isso, **não faça rollback sozinho**: Passo 11, gatilho E3.
 
 ```bash
-# 9.1 — identificar as revisões e a data de cada uma
+# 9.1: identificar as revisões e a data de cada uma
 argocd app history "$APP" | tail -10
 
-# 9.2 — ver exatamente o que mudou entre o que roda e o Git
+# 9.2: ver exatamente o que mudou entre o que roda e o Git
 argocd app diff "$APP"
 
-# 9.3 — confirmar a imagem atual, para poder comparar depois
+# 9.3: confirmar a imagem atual, para poder comparar depois
 kubectl get deployment -n "$NS" "$DEPLOY" -o jsonpath='{.spec.template.spec.containers[0].image}{"\n"}'
 ```
 
@@ -565,14 +565,14 @@ kubectl get pods -n "$NS" -l app="$APP" \
 
 ---
 
-#### Passo 10 — Registrar no canal o que foi feito (1 minuto)
+#### Passo 10: Registrar no canal o que foi feito (1 minuto)
 
 **Objetivo:** deixar o rastro que o próximo plantonista e o postmortem vão usar.
 
 Poste em **#oncall-chronos**:
 
 ```text
-:white_check_mark: Mitigado — High memory usage on Chronos API pods
+:white_check_mark: Mitigado, High memory usage on Chronos API pods
 T0: <horário> | Mitigado em: <horário> | Duração: <minutos>
 Cenário identificado: <A leak / B pico / C dependência / D regressão>
 Evidência que sustenta: <número concreto: ex. memória +4%/min com RequestCount estável>
@@ -600,7 +600,7 @@ Próxima verificação: T+30min para encerramento
 
 ---
 
-#### Passo 11 — Escalação para @chronos-core: gatilhos objetivos
+#### Passo 11: Escalação para @chronos-core: gatilhos objetivos
 
 **Objetivo:** eliminar o julgamento subjetivo sobre "quando chamar alguém". Se qualquer gatilho abaixo for verdadeiro, escale. Não pondere, não espere melhorar.
 
@@ -618,8 +618,8 @@ Próxima verificação: T+30min para encerramento
 **Como escalar.** Poste em **#oncall-chronos** marcando **@chronos-core**:
 
 ```text
-:rotating_light: ESCALANDO @chronos-core — High memory usage on Chronos API pods
-Gatilho: <E1..E6> — <condição exata que disparou, com o número>
+:rotating_light: ESCALANDO @chronos-core, High memory usage on Chronos API pods
+Gatilho: <E1..E6>, <condição exata que disparou, com o número>
 T0: <horário> | Agora: <horário> | Decorrido: <minutos>
 Estado atual: <X de 6 pods acima de 85%>, <OOMKills: N>, <réplicas: N>, <HPA: min/max/atual>
 Impacto ao usuário: <5xx %>, <p99>, <pods ready / total>
@@ -638,7 +638,7 @@ SLA de resposta esperado: <15min horário comercial / 30min fora>
 
 ---
 
-#### Passo 12 — Encerrar o incidente: critério objetivo (30 minutos de observação)
+#### Passo 12: Encerrar o incidente: critério objetivo (30 minutos de observação)
 
 **Objetivo:** garantir que "resolvido" significa estável e medido, não "parou de alertar".
 
@@ -652,7 +652,7 @@ kubectl get hpa -n "$NS" "$HPA"
 kubectl get endpoints -n "$NS" "$APP" -o wide
 ```
 
-**Critérios de encerramento — todos precisam ser verdadeiros nas 3 verificações:**
+**Critérios de encerramento: todos precisam ser verdadeiros nas 3 verificações:**
 
 | Critério | Valor exigido |
 |---|---|
@@ -663,7 +663,7 @@ kubectl get endpoints -n "$NS" "$APP" -o wide
 | Erros 5xx (repita 3.3) | De volta ao valor da primeira janela do Passo 3 |
 | p99 (repita 3.5) | Até 20% acima do valor da primeira janela do Passo 3 |
 
-**Reverter o que foi mexido temporariamente — obrigatório antes de encerrar:**
+**Reverter o que foi mexido temporariamente: obrigatório antes de encerrar:**
 
 ```bash
 # Se você desligou o auto-sync no Passo 7, RELIGUE
@@ -680,7 +680,7 @@ kubectl get hpa -n "$NS" "$HPA"
 **Poste o encerramento em #oncall-chronos:**
 
 ```text
-:checkered_flag: Encerrado — High memory usage on Chronos API pods
+:checkered_flag: Encerrado, High memory usage on Chronos API pods
 Duração total: <T0 até agora>
 Causa raiz (ou hipótese): <cenário + evidência>
 Mitigação aplicada: <ação>
@@ -698,7 +698,7 @@ Evidências: <caminho de $EVID>
 
 ---
 
-#### Ações de prevenção — para o alerta parar de acontecer 4x por semana
+#### Ações de prevenção: para o alerta parar de acontecer 4x por semana
 
 O runbook acima reduz o tempo de atendimento, mas trata sintoma. Os itens abaixo são o follow-up a levar ao time, em ordem de impacto sobre a recorrência:
 

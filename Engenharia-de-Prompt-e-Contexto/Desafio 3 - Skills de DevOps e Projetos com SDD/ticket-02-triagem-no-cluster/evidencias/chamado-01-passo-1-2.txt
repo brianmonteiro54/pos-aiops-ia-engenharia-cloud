@@ -1,4 +1,4 @@
-############ CHAMADO 1 — nyx-prod: a API reinicia sozinha ############
+############ CHAMADO 1: nyx-prod: a API reinicia sozinha ############
 
 ### passo 1: o retrato do namespace
 NAME                           READY   UP-TO-DATE   AVAILABLE   AGE

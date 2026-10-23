@@ -1,4 +1,4 @@
-# PRD — Inventário e drift de VM
+# PRD: Inventário e drift de VM
 
 **Produto:** `roster-inventario`, primeira peça do substituto do Roster.
 **Dono:** Plataforma.
@@ -32,11 +32,11 @@ Uma ferramenta de linha de comando que:
 
 ## Requisitos funcionais
 
-### RF-01 — Coleta por SSH, sem agente
+### RF-01: Coleta por SSH, sem agente
 
 A ferramenta conecta por SSH com chave privada. **Nada é instalado no host auditado.**
 
-### RF-02 — Nove grupos de dados coletados
+### RF-02: Nove grupos de dados coletados
 
 | Grupo | O que volta |
 |---|---|
@@ -57,7 +57,7 @@ Dois detalhes que não são decoração:
 - **endereço de bind**: "porta 9100 em `0.0.0.0`" e "porta 9100 só no endereço interno" têm
   **vereditos diferentes**. A porta sozinha não decide.
 
-### RF-03 — Conformidade com três vereditos
+### RF-03: Conformidade com três vereditos
 
 Uma entrada por regra do baseline, com quatro informações: a regra, o valor esperado, o
 valor encontrado e o veredito.
@@ -72,7 +72,7 @@ valor encontrado e o veredito.
 inteira não ajudaria ninguém. O caso típico: a coleta entra com usuário comum e o dado
 exige privilégio.
 
-### RF-04 — Dois formatos, do mesmo dado
+### RF-04: Dois formatos, do mesmo dado
 
 **JSON** para o Roster, com `host`, `inventario`, `conformidade` e `resumo`.
 
@@ -81,16 +81,16 @@ não verificados com o motivo, e os conformes em uma linha.
 
 Os dois saem do mesmo dado coletado. Não há segunda coleta para o segundo formato.
 
-### RF-05 — Baseline versionado e externo
+### RF-05: Baseline versionado e externo
 
 O baseline é arquivo YAML com `versao`, e a versão aparece na saída. Trocar o baseline não
 exige mexer na ferramenta.
 
-### RF-06 — Código de saída utilizável em pipeline
+### RF-06: Código de saída utilizável em pipeline
 
 | Código | Significa |
 |---|---|
-| `0` | host conforme — nenhum desvio |
+| `0` | host conforme: nenhum desvio |
 | `1` | há desvio |
 | `2` | host inalcançável, ou erro de uso |
 
@@ -99,22 +99,22 @@ consegui olhar o host" de formas diferentes.
 
 ## Restrições
 
-### RE-01 — Só leitura
+### RE-01: Só leitura
 
 Nada é instalado, escrito ou corrigido no host auditado.
 
-### RE-02 — Determinismo
+### RE-02: Determinismo
 
 **Duas execuções seguidas devolvem o mesmo veredito para cada regra.** Só o instante da
 coleta muda.
 
-### RE-03 — A chave privada é credencial
+### RE-03: A chave privada é credencial
 
 Ela **não aparece na saída, no log nem em mensagem de erro**. Nem o caminho dela em
 mensagem de erro de conexão, porque caminho de chave em log de CI é meio caminho para o
 conteúdo.
 
-### RE-04 — Roda na máquina de quem opera
+### RE-04: Roda na máquina de quem opera
 
 Sem agente, sem daemon, sem estado entre execuções.
 
@@ -125,7 +125,7 @@ Sem agente, sem daemon, sem estado entre execuções.
 | **CA-01** | um host conforme sai **sem nenhum desvio** | executar contra o host conforme do laboratório |
 | **CA-02** | um host com desvios sai com **cada desvio classificado pela severidade do baseline** | executar contra o host de desvios e conferir regra a regra |
 | **CA-03** | regra não verificável aparece como `nao_verificado`, **separada de `conforme`** | o usuário da coleta é sem privilégio; `sshd -T` exige root |
-| **CA-04** | host inalcançável falha com mensagem que **explica o que houve, sem stack trace**, e **não é confundido com host conforme** | endereço errado, chave recusada, SSH fora do ar — três execuções |
+| **CA-04** | host inalcançável falha com mensagem que **explica o que houve, sem stack trace**, e **não é confundido com host conforme** | endereço errado, chave recusada, SSH fora do ar: três execuções |
 | **CA-05** | a segunda execução devolve **o mesmo resultado** | executar duas vezes e comparar, ignorando o instante da coleta |
 
 ## Fora de escopo

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Validação do Ticket 04 — CA-01 a CA-08.
+# Validação do Ticket 04: CA-01 a CA-08.
 #
 # Pré-requisitos:
 #   laboratorio/subir-workload.sh            (os quatro estados no cluster)
@@ -55,14 +55,14 @@ tela() {              # tela <kubeconfig|""> <namespace> <saida>
   return $code
 }
 
-printf 'Validação do Ticket 04 — cluster-retrato\n'
+printf 'Validação do Ticket 04: cluster-retrato\n'
 printf 'data: %s\n' "$(date --iso-8601=seconds)"
 printf 'kubectl: %s\n' "$(kubectl version --client -o json 2>/dev/null \
         | python3 -c 'import sys,json;print(json.load(sys.stdin)["clientVersion"]["gitVersion"])' 2>/dev/null)"
 printf 'python: %s\n' "$(python3 --version)"
 
 # ---------------------------------------------------------------- CA-08
-titulo "CA-08 — nenhum caminho do código executa verbo de escrita"
+titulo "CA-08: nenhum caminho do código executa verbo de escrita"
 if python3 "$APP" --auditar > "$TMP/auditoria.txt" 2>&1; then
   verde "varredura do fonte: $(tail -1 "$TMP/auditoria.txt")"
 else
@@ -78,7 +78,7 @@ else
 fi
 
 # ---------------------------------------------------------------- CA-01
-titulo "CA-01 — os seis itens do RF-02 contra o cluster real"
+titulo "CA-01: os seis itens do RF-02 contra o cluster real"
 tela "" "nyx-prod" "$TMP/ca01.txt"
 for secao in Namespaces Pods Deployments Services Eventos; do
   conferir "seção $secao presente" "$TMP/ca01.txt" "^${secao}"
@@ -89,7 +89,7 @@ conferir "contexto corrente no cabeçalho"        "$TMP/ca01.txt" "contexto"
 conferir "fonte dos endpoints declarada"         "$TMP/ca01.txt" "contagem de endpoints via"
 conferir "contagem de quebrados por namespace"   "$TMP/ca01.txt" "quebrados"
 
-titulo "CA-01b — a tela responde por HTTP, em loopback por padrão"
+titulo "CA-01b: a tela responde por HTTP, em loopback por padrão"
 PORTA=8787
 python3 "$APP" --porta "$PORTA" > "$TMP/srv.out" 2>"$TMP/srv.err" &
 SRV=$!
@@ -120,13 +120,13 @@ fi
 kill "$SRV" 2>/dev/null; wait "$SRV" 2>/dev/null
 
 # ---------------------------------------------------------------- CA-02
-titulo "CA-02 — readyReplicas ausente aparece como 0/N, não como erro"
+titulo "CA-02: readyReplicas ausente aparece como 0/N, não como erro"
 conferir "deployment nyx-api em 0/2"    "$TMP/ca01.txt" "nyx-api \| 0/2"
 conferir "deployment saudável em 1/1"   "$TMP/ca01.txt" "nyx-postgres \| 1/1"
 negar    "nenhum rastro de exceção"     "$TMP/ca01.txt" "Traceback|KeyError|TypeError"
 
 # ---------------------------------------------------------------- CA-03
-titulo "CA-03 — Service por endpoints prontos/total, nos dois modos de vazio"
+titulo "CA-03: Service por endpoints prontos/total, nos dois modos de vazio"
 conferir "nyx-prod/nyx-api: 0/2, endpoints existem e não servem" \
          "$TMP/ca01.txt" "0/2 \| 2 endpoint\(s\) existem, nenhum pronto"
 tela "" "nyx-stg" "$TMP/ca03.txt"
@@ -136,19 +136,19 @@ negar    "chave ausente e chave nula não quebraram" \
          "$TMP/ca03.txt" "Traceback|KeyError|TypeError"
 
 # ---------------------------------------------------------------- CA-04
-titulo "CA-04 — CrashLoopBackOff com OOMKilled, apesar de phase: Running"
+titulo "CA-04: CrashLoopBackOff com OOMKilled, apesar de phase: Running"
 conferir "estado e causa juntos na mesma linha" \
          "$TMP/ca01.txt" "CrashLoopBackOff \| OOMKilled"
 tela "" "orion-stg" "$TMP/ca04b.txt"
 conferir "ImagePullBackOff em orion-stg" "$TMP/ca04b.txt" "ImagePullBackOff"
 conferir "a tag errada aparece no evento" "$TMP/ca04b.txt" "v1\.14\.2"
 
-titulo "RF-03 — prontidão presumida é marcada como presumida"
+titulo "RF-03: prontidão presumida é marcada como presumida"
 conferir "pod pronto sem probe é marcado" "$TMP/ca01.txt" "pronto \(sem probe\)"
 conferir "a ressalva é explicada"         "$TMP/ca01.txt" "não está verificando"
 
 # ---------------------------------------------------------------- CA-05
-titulo "CA-05 — cluster que não responde"
+titulo "CA-05: cluster que não responde"
 for caso in fora blackhole; do
   if [ -f "$LAB/kubeconfig-$caso.yaml" ]; then
     tela "$LAB/kubeconfig-$caso.yaml" "" "$TMP/ca05-$caso.txt"
@@ -161,7 +161,7 @@ for caso in fora blackhole; do
     negar    "[$caso] sem ruído de diagnóstico do kubectl" \
              "$TMP/ca05-$caso.txt" "Unhandled Error"
   else
-    vermelho "[$caso] kubeconfig ausente — rode preparar-cenarios-de-falha.sh"
+    vermelho "[$caso] kubeconfig ausente: rode preparar-cenarios-de-falha.sh"
   fi
 done
 if pgrep -af 'kubectl.*10\.255\.255\.1|kubectl.*59999' >/dev/null 2>&1; then
@@ -171,7 +171,7 @@ else
 fi
 
 # ---------------------------------------------------------------- CA-06
-titulo "CA-06 — credencial rejeitada, distinguível de cluster fora"
+titulo "CA-06: credencial rejeitada, distinguível de cluster fora"
 declare -A ESPERADO=(
   [token-invalido]=credencial_rejeitada
   [token-expirado]=credencial_rejeitada
@@ -195,7 +195,7 @@ conferir "expiração É afirmada quando o provedor informa" "$TMP/ca06-exec-fal
          "provedor de autenticação informou"
 
 # ---------------------------------------------------------------- CA-07
-titulo "CA-07 — permissão negada em um tipo, os outros seguem na tela"
+titulo "CA-07: permissão negada em um tipo, os outros seguem na tela"
 arq="$LAB/kubeconfig-restrito.yaml"
 if [ -f "$arq" ]; then
   tela "$arq" "nyx-prod" "$TMP/ca07.txt"
@@ -209,11 +209,11 @@ if [ -f "$arq" ]; then
   negar    "a falha NÃO derrubou a tela"     "$TMP/ca07.txt" "Não foi possível ler o cluster"
   negar    "sem rastro de exceção"           "$TMP/ca07.txt" "Traceback"
 else
-  vermelho "kubeconfig restrito ausente — rode preparar-cenarios-de-falha.sh"
+  vermelho "kubeconfig restrito ausente: rode preparar-cenarios-de-falha.sh"
 fi
 
 # ---------------------------------------------------------------- RE-01
-titulo "RE-01 — exposição na rede avisa que não há autenticação"
+titulo "RE-01: exposição na rede avisa que não há autenticação"
 if python3 - "$APP" > "$TMP/aviso.txt" 2>&1 <<'PY'
 import subprocess, sys, time
 p = subprocess.Popen([sys.executable, sys.argv[1], "--endereco", "0.0.0.0",

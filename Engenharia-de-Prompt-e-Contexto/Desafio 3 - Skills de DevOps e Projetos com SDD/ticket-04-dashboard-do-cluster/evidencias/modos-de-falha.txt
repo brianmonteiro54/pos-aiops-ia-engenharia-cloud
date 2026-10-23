@@ -1,4 +1,4 @@
-Medição dos modos de falha — kubectl v1.33.13
+Medição dos modos de falha: kubectl v1.33.13
 data: 2026-10-23T09:58:53-03:00
 
 MODO                   EXIT   PRIMEIRA LINHA ÚTIL DO STDERR

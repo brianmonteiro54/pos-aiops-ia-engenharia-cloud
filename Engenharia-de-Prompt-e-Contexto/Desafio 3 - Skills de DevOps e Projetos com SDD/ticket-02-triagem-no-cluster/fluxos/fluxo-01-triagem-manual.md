@@ -1,4 +1,4 @@
-# Fluxo executado — triagem manual dos três chamados
+# Fluxo executado: triagem manual dos três chamados
 
 Registro do que eu fiz **antes** de existir skill, com `kubectl` na mão. É daqui que o
 método da skill nasce: a ordem em que eu desci as camadas, onde eu precisei cruzar duas
@@ -6,7 +6,7 @@ fontes, e onde uma fonte me daria a resposta errada.
 
 Cluster: k3d `metacortex`, k3s v1.31.5. Evidências brutas em `../evidencias/`.
 
-Os três chamados têm o mesmo sintoma para o cliente — "está fora do ar" — e causas em
+Os três chamados têm o mesmo sintoma para o cliente ("está fora do ar") e causas em
 camadas diferentes.
 
 ---
@@ -24,11 +24,11 @@ Antes dos chamados, a conclusão que eles produziram juntos:
 | `get endpoints` | em branco (pods não prontos) | em branco | **`subsets` AUSENTE** |
 
 Nenhuma fonte resolve os três. **A fonte que resolve muda com a camada onde está a
-causa** — e é por isso que a skill precisa de uma ordem, não de uma lista de comandos.
+causa**: e é por isso que a skill precisa de uma ordem, não de uma lista de comandos.
 
 ---
 
-## Chamado 1 — `nyx-prod`: a API reinicia sozinha
+## Chamado 1: `nyx-prod`: a API reinicia sozinha
 
 Relato: "a API do kube-news reinicia sozinha, depois de um corte de custos que mudou os
 limites de recurso do namespace inteiro de uma vez."
@@ -71,7 +71,7 @@ kubectl -n nyx-prod logs <pod> --previous --tail=15          # vazio
 ```
 
 **Vazios, nos dois.** `OOMKilled` é `SIGKILL` do kernel: a aplicação não tem chance de
-escrever nada. Quem começa a triagem pelos logs — e é por onde metade do plantão começa —
+escrever nada. Quem começa a triagem pelos logs (e é por onde metade do plantão começa)
 não encontra absolutamente nada e conclui que "não tem erro".
 
 Os eventos são melhores, mas não suficientes:
@@ -94,7 +94,7 @@ Com `OOMKilled` na mão, a pergunta vira "quanto de memória ele tem?":
 ```
 
 24 MiB para um processo Node com Express, Sequelize e `prom-client` carregados. O
-interpretador sozinho passa disso. **Causa identificada, e a triagem acabou** — o conserto
+interpretador sozinho passa disso. **Causa identificada, e a triagem acabou**: o conserto
 é decisão de quem opera, não da triagem.
 
 O relato do cliente confirma o mecanismo: "um corte de custos que mudou os limites do
@@ -107,7 +107,7 @@ confirmação. **Logs não entram neste caminho.**
 
 ---
 
-## Chamado 2 — `orion-stg`: a loja parou depois de uma publicação
+## Chamado 2: `orion-stg`: a loja parou depois de uma publicação
 
 Relato: "a tag nova foi anunciada no release e o deploy foi aplicado, mas o pod nunca foi
 substituído."
@@ -126,7 +126,7 @@ De novo o banco de pé. E uma diferença do chamado 1 que importa:
 phase=Pending                      <- nao Running
 container web ready=False restartCount=0
 state: waiting -> reason=ImagePullBackOff
-lastState: vazio — o container NUNCA rodou
+lastState: vazio, o container NUNCA rodou
 imageID real: (vazio)
 ```
 
@@ -134,7 +134,7 @@ imageID real: (vazio)
 executou quatro vezes e morreu; aqui ele nunca chegou a existir. São camadas diferentes, e
 o `lastState` é o que distingue as duas em um olhar.
 
-### Aqui os logs nem são vazios — são impossíveis
+### Aqui os logs nem são vazios: são impossíveis
 
 ```
 Error from server (BadRequest): container "web" in pod "orion-web-..." is waiting
@@ -168,7 +168,7 @@ curl -s "https://hub.docker.com/v2/repositories/fabricioveronez/fake-shop/tags?p
 `v1.14.2` não existe.** O registry é público, então não é credencial.
 
 Causa: a tag anunciada no release nunca foi publicada. O deploy referenciou uma imagem que
-não existe, e por isso o pod novo nunca subiu — e, no incidente real, o ReplicaSet antigo é
+não existe, e por isso o pod novo nunca subiu, e, no incidente real, o ReplicaSet antigo é
 que seguia servindo.
 
 ### Limitação honesta da reprodução
@@ -177,7 +177,7 @@ No laboratório o Deployment foi **criado** já na tag ruim: `generation 1`,
 `observedGeneration 1`, um único ReplicaSet, `rollout history` com uma revisão. Não existe
 ReplicaSet antigo.
 
-No incidente descrito existiria, e o sintoma seria diferente — a loja continuaria servindo
+No incidente descrito existiria, e o sintoma seria diferente: a loja continuaria servindo
 a versão velha, e o chamado seria "a versão nova não entrou". Aqui são 0 de 3 pods prontos
 e a loja está de fato fora. **O ambiente reproduz o estado final, não a história.** Para a
 triagem isso muda um passo: num rollout travado de verdade, `rollout status` e
@@ -191,7 +191,7 @@ confirmação fora do cluster, no registry.
 
 ---
 
-## Chamado 3 — `nyx-stg`: 503 de fora, aplicação de pé
+## Chamado 3: `nyx-stg`: 503 de fora, aplicação de pé
 
 Relato: "o kube-news responde 503 para quem chama de fora. A aplicação está de pé e
 saudável, e mesmo assim ninguém chega nela."
@@ -208,7 +208,7 @@ pod/nyx-api-...-rl2d2   1/1   Running   2 (5m7s ago)
 aponta nada: o status do container está são, os logs não têm erro, e os eventos não trazem
 nada relevante.
 
-Uma triagem que só desce na camada do pod **conclui que não há problema** — e o cliente
+Uma triagem que só desce na camada do pod **conclui que não há problema**: e o cliente
 está recebendo 503.
 
 ### A armadilha de verdade: um restart já curado
@@ -223,7 +223,7 @@ aplicação subiu antes do Postgres aceitar conexão, morreu duas vezes e recupe
 `lastState` guarda uma falha que **já passou**.
 
 Quem ancora no contador de restart passa a investigar conexão de banco, que está
-funcionando. É o caso em que `lastState` — a fonte que resolveu o chamado 1 — **engana**.
+funcionando. É o caso em que `lastState` (a fonte que resolveu o chamado 1) **engana**.
 
 A distinção que separa os dois casos: no chamado 1 o `state` **atual** é `waiting` com
 `CrashLoopBackOff`; aqui o `state` atual é `running` e o `lastState` é histórico. Falha
@@ -235,7 +235,7 @@ Pods prontos e cliente sem resposta aponta para a camada de rede. A pergunta é 
 tem endpoint?":
 
 ```
-campo subsets: AUSENTE — o campo nao vem, nao vem vazio
+campo subsets: AUSENTE, o campo nao vem, nao vem vazio
 ```
 
 E no `EndpointSlice`, que é o substituto moderno:
@@ -244,7 +244,7 @@ E no `EndpointSlice`, que é o substituto moderno:
 slice nyx-api-wszq8: endpoints=AUSENTE
 ```
 
-O objeto `Endpoints` existe e o campo `subsets` **não aparece na resposta da API** — não vem
+O objeto `Endpoints` existe e o campo `subsets` **não aparece na resposta da API**: não vem
 como lista vazia. Código que faz `len(ep["subsets"])` quebra com `KeyError` em vez de
 reportar "sem endpoint". Está no Bloco 4.6 do padrão de manifests, e eu confirmei aqui.
 
@@ -309,7 +309,7 @@ relatado** e descer dali.
 - **fase do pod x estado do container.** Pod `Running` com container morrendo. Filtrar por
   fase perde o chamado 1.
 - **`state` x `lastState`.** Falha viva mora em `state`; falha curada mora em `lastState`.
-  Confundir os dois faz perseguir problema que já passou — chamado 3.
+  Confundir os dois faz perseguir problema que já passou: chamado 3.
 - **seletor do Deployment x seletor do Service.** São dois objetos, dois erros, dois
   consertos. No chamado 3 só um dos dois estava errado.
 
@@ -325,7 +325,7 @@ causa, pare.
 Nos três casos eu identifiquei a causa e **não consertei**. No chamado 1 o conserto é
 medir consumo e subir o limite; no 2 é publicar a tag ou apontar para uma que existe; no 3
 é trocar um caractere no seletor. Nenhum dos três é decisão da triagem, e dois deles
-exigem saber coisas que a triagem não tem — o orçamento do cliente e o que o release
+exigem saber coisas que a triagem não tem: o orçamento do cliente e o que o release
 pretendia entregar.
 
 ### 6. Componente são ao lado do quebrado é a norma

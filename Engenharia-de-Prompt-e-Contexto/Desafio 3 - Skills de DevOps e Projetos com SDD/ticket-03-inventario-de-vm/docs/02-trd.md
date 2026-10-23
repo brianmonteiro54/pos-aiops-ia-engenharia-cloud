@@ -1,4 +1,4 @@
-# TRD — Inventário e drift de VM
+# TRD: Inventário e drift de VM
 
 Como a ferramenta funciona por dentro. As quatro decisões que o ticket manda registrar
 estão em ADRs próprios, em `adr/`.
@@ -15,13 +15,13 @@ Quatro etapas, nesta ordem, e a separação entre a 2 e a 3 é deliberada:
 ```
 
 **Por que coleta e julgamento são separados.** O Roster quer saber o que existe, não só o
-que está errado — o inventário tem valor sem o baseline. E trocar o baseline não deve mexer
+que está errado: o inventário tem valor sem o baseline. E trocar o baseline não deve mexer
 em coletor: um baseline v2 exigindo kernel 6.8 muda uma linha de YAML, não código.
 
 O custo: duas estruturas de dados em vez de uma, e um passo a mais. É o que faz os dois
 formatos de saída saírem do mesmo dado, como o PRD exige.
 
-## Etapa 1 — transporte
+## Etapa 1: transporte
 
 Uma sessão SSH, **n comandos**, sessão fechada. Ver **ADR-001** para a escolha do
 mecanismo.
@@ -39,9 +39,9 @@ Opções do cliente, fixadas e com motivo:
 `hostname`, `timedatectl`, `sshd -T`. A restrição RE-01 é propriedade dos comandos
 escolhidos, não de uma verificação em tempo de execução.
 
-## Etapa 2 — coleta
+## Etapa 2: coleta
 
-Nove coletores independentes. Cada um devolve **dado** ou **falha com motivo legível** — e
+Nove coletores independentes. Cada um devolve **dado** ou **falha com motivo legível**: e
 a falha de um não derruba os outros, que é o mecanismo do `nao_verificado` (**ADR-002**).
 
 | Coletor | Comando | Nota |
@@ -63,7 +63,7 @@ facilidade: `sshd_config.d/*.conf` sobrepõe, `Match` cria bloco condicional, e 
 diretiva é que vence em caso de repetição. Ler `/etc/ssh/sshd_config` com `grep` responde o
 que alguém escreveu, não o que o daemon aplica.
 
-`sshd -T` imprime a configuração resolvida. **E exige privilégio** — é exatamente o caso
+`sshd -T` imprime a configuração resolvida. **E exige privilégio**: é exatamente o caso
 típico de `nao_verificado` que o PRD descreve, e por isso o usuário da coleta no laboratório
 é sem privilégio de propósito.
 
@@ -82,7 +82,7 @@ Normalização do bind, para o julgamento não depender de formato:
 | `127.0.0.1`, `::1`, `[::1]` | **loopback** |
 | qualquer outro IP | **rede interna** |
 
-## Etapa 3 — julgamento
+## Etapa 3: julgamento
 
 Uma entrada por regra do baseline. Onze regras, nos três níveis de severidade que o
 baseline define.
@@ -105,16 +105,16 @@ baseline define.
 em comparação de string e falso no mundo. `5.15.0-118-generic` contra mínimo `6.5` precisa
 virar `(5,15,0)` contra `(6,5)`.
 
-Severidade **nunca é inferida** — vem do mapa `severidade` do baseline. Se uma regra não
+Severidade **nunca é inferida**: vem do mapa `severidade` do baseline. Se uma regra não
 aparecer em nenhum dos três níveis, isso é erro do baseline e a ferramenta diz, em vez de
 assumir um nível.
 
-## Etapa 4 — apresentação
+## Etapa 4: apresentação
 
 Os dois formatos consomem a mesma estrutura.
 
 **JSON**: `host`, `inventario`, `conformidade`, `resumo`. `resumo` traz as contagens por
-veredito e, dentro de `por_severidade`, a contagem **dos desvios** — não de todas as regras.
+veredito e, dentro de `por_severidade`, a contagem **dos desvios**: não de todas as regras.
 
 **Markdown**: desvios primeiro, ordenados por severidade (`critico`, `alto`, `medio`),
 depois `nao_verificado` com o motivo, depois os conformes em uma linha. O plantão lê de cima
@@ -155,13 +155,13 @@ conforme. Três categorias distinguíveis pelo `stderr` do `ssh`:
 | autenticação recusada | `Permission denied`, `publickey` |
 | chave do host mudou | `REMOTE HOST IDENTIFICATION HAS CHANGED` |
 
-As três saem com **código 2** e nenhuma produz bloco de conformidade — é o que impede
+As três saem com **código 2** e nenhuma produz bloco de conformidade: é o que impede
 confundir com `conforme`.
 
 ## O que o laboratório não consegue provar
 
 **ADR-004**: o laboratório usa containers com systemd, e duas regras do baseline são de
-nível de host — `kernel.versao_minima` e `swap.habilitado`. Container compartilha o kernel e
+nível de host: `kernel.versao_minima` e `swap.habilitado`. Container compartilha o kernel e
 o namespace de swap do host.
 
 Isso não é limitação da ferramenta. Ela coleta e reporta o que encontra, e o que encontra é

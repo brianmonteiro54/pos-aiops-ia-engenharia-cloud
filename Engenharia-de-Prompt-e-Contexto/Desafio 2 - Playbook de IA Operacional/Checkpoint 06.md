@@ -1,12 +1,12 @@
-# Checkpoint 06 — Endurecendo a NetworkPolicy do Sentinel
+# Checkpoint 06: Endurecendo a NetworkPolicy do Sentinel
 
 Sexto e último item do playbook que produz prompt. A Natasha Romanoff barrou um manifesto de NetworkPolicy que ia subir para o namespace do Sentinel: estava permissivo demais, e um erro ali expõe o produto core.
 
 Três coisas distinguem este checkpoint dos anteriores.
 
-A entrega inclui as **iterações de verificação e refino** — v1, o que a verificação apontou, e como a v2 endereçou cada ponto. Artefato crítico de segurança não sai certo na primeira tentativa, e o registro do ciclo é parte do valor.
+A entrega inclui as **iterações de verificação e refino**: v1, o que a verificação apontou, e como a v2 endereçou cada ponto. Artefato crítico de segurança não sai certo na primeira tentativa, e o registro do ciclo é parte do valor.
 
-Este é o primeiro prompt de saída aberta que **entra na suíte determinística do Checkpoint 08**: a saída é YAML e vai ser testada por `contains`, `regex` e `not-contains`. Um dos asserts é que a saída não contenha a regra vazia `- {}`, o que cria uma armadilha não óbvia — se o modelo explicar "removi as regras permissivas `- {}`", o teste reprova por causa do comentário e não da política.
+Este é o primeiro prompt de saída aberta que **entra na suíte determinística do Checkpoint 08**: a saída é YAML e vai ser testada por `contains`, `regex` e `not-contains`. Um dos asserts é que a saída não contenha a regra vazia `- {}`, o que cria uma armadilha não óbvia, se o modelo explicar "removi as regras permissivas `- {}`", o teste reprova por causa do comentário e não da política.
 
 E há uma armadilha técnica no manifesto barrado que um refino ingênuo estraga: o `podSelector: {}` **não** é o defeito. Ele é exatamente o que se quer numa política de negação padrão, que precisa alcançar o namespace inteiro. Os defeitos são as regras `ingress: [{}]` e `egress: [{}]`. Quem "corrige" estreitando o seletor perde a cobertura, e pod fora de escopo não fica mais restrito: fica sem política aplicável.
 
@@ -25,7 +25,7 @@ REVISOR (recebe a v2)           ->  apontamentos residuais
 
 Separar quem gera de quem critica é intencional: revisor que reescreve tende a justificar a própria reescrita em vez de encontrar problema.
 
-### Gerador — `devops/networkpolicy-sentinel/prompt.md` · versão 1.0.0
+### Gerador: `devops/networkpolicy-sentinel/prompt.md` · versão 1.0.0
 
 | Parâmetro | Obrigatório | Descrição |
 |---|---|---|
@@ -144,7 +144,7 @@ inputs:
     descricao: Opcional. Apontamentos numerados de uma revisao anterior. Vazio produz a primeira versao; preenchido produz a versao corrigida com cada apontamento atendido ou recusado.
 ```
 
-### Revisor — `devops/revisao-de-networkpolicy/prompt.md` · versão 1.0.0
+### Revisor: `devops/revisao-de-networkpolicy/prompt.md` · versão 1.0.0
 
 | Parâmetro | Obrigatório | Descrição |
 |---|---|---|
@@ -258,9 +258,9 @@ inputs:
 
 ---
 
-## Execução — as iterações
+## Execução: as iterações
 
-**Modelo:** Claude Opus, no plano Max, nas quatro rodadas — gerador e revisor.
+**Modelo:** Claude Opus, no plano Max, nas quatro rodadas: gerador e revisor.
 
 > **Ressalva de reprodutibilidade.** O identificador acima é o nome do produto como exposto na interface em que a execução foi feita, e não um id versionado de API. A versão exata do snapshot e o orçamento de raciocínio não foram capturados no momento da execução, então este registro não é suficiente para reexecução byte a byte. Dos Checkpoints 08 em diante, em que a execução passa a ser por API, os identificadores são versionados (`openai:gpt-4o-mini`, `google:gemini-3.5-flash`).
 
@@ -269,7 +269,7 @@ Primeira troca de modelo no desafio, e o motivo é o item: política de rede err
 
 > **Ressalva de independência, e ela importa para a leitura de tudo que vem abaixo.** Os dois prompts foram escritos e executados pelo mesmo modelo, na mesma sessão. Isso é uma demonstração do ciclo, não um teste independente do par. Um revisor que compartilha a janela de contexto de quem escreveu não é um segundo par de olhos, é o mesmo par com outro cabeçalho. A análise mais adiante mostra um caso concreto em que esse vício produziu um apontamento falso.
 
-### Rodada 1 — gerador, `{{apontamentos}}` vazio → v1
+### Rodada 1: gerador, `{{apontamentos}}` vazio → v1
 
 ```yaml
 # Endurecimento do manifesto recebido. Permissao irrestrita removida nas duas
@@ -395,11 +395,11 @@ spec:
 # warehouse, saida para a busca, saida para o DNS interno.
 ```
 
-**O que a v1 já acertou.** O `podSelector` de cobertura total foi preservado nos dois objetos, com a justificativa explícita de que pod fora de escopo fica sem política e não mais restrito — a armadilha principal foi evitada. Os dois critérios de namespace e de pod compõem um único par em todos os itens, que é o defeito clássico e invisível de NetworkPolicy. O DNS saiu com UDP e TCP na porta 53, com a explicação de que liberar só UDP produz falha intermitente. As duas lacunas de porta de entrada foram declaradas em comentário em vez de a porta ser inventada. E o modelo chegou sozinho ao label `kubernetes.io/metadata.name`, declarando a premissa e a pré-condição em vez de assumir em silêncio.
+**O que a v1 já acertou.** O `podSelector` de cobertura total foi preservado nos dois objetos, com a justificativa explícita de que pod fora de escopo fica sem política e não mais restrito: a armadilha principal foi evitada. Os dois critérios de namespace e de pod compõem um único par em todos os itens, que é o defeito clássico e invisível de NetworkPolicy. O DNS saiu com UDP e TCP na porta 53, com a explicação de que liberar só UDP produz falha intermitente. As duas lacunas de porta de entrada foram declaradas em comentário em vez de a porta ser inventada. E o modelo chegou sozinho ao label `kubernetes.io/metadata.name`, declarando a premissa e a pré-condição em vez de assumir em silêncio.
 
-### Rodada 2 — revisor sobre a v1
+### Rodada 2: revisor sobre a v1
 
-**VEREDITO:** BARRADO — o primeiro item de saída agrupa dois destinos e duas portas no mesmo item, liberando cada destino em cada porta e excedendo os fluxos de saída que o padrão declara.
+**VEREDITO:** BARRADO: o primeiro item de saída agrupa dois destinos e duas portas no mesmo item, liberando cada destino em cada porta e excedendo os fluxos de saída que o padrão declara.
 
 **PERGUNTAS DE VERIFICACAO**
 
@@ -461,7 +461,7 @@ spec:
 
 **LACUNAS DA REVISAO:** porta de escuta dos pods de sentinel-prod; protocolo de transporte das portas 5432 e 9200; presença da chave de label nos cinco namespaces citados; comportamento do CNI quanto à avaliação por conexão; manifesto de origem, não recebido, o que impede verificar preservação de cobertura; outras NetworkPolicies existentes no namespace, que podem ampliar o permitido.
 
-### Rodada 3 — gerador com os apontamentos → v2
+### Rodada 3: gerador com os apontamentos → v2
 
 Trecho relevante do YAML corrigido, com as respostas aos apontamentos em comentário. A conferência de não regressão veio completa no topo, percorrendo regra por regra do padrão.
 
@@ -589,9 +589,9 @@ spec:
 # 6 ATENDIDO. Nenhum apontamento ficou sem estado declarado.
 ```
 
-### Rodada 4 — revisor sobre a v2, apontamentos residuais
+### Rodada 4: revisor sobre a v2, apontamentos residuais
 
-**VEREDITO:** APROVADO COM RESSALVAS — nenhum apontamento bloqueador; cada item de regra restringe origem ou destino, cada par destino-porta está isolado em item próprio e o namespace tem objeto de negação por padrão. Permanecem ressalvas de exposição de porta em entrada e de pré-condição não verificável.
+**VEREDITO:** APROVADO COM RESSALVAS: nenhum apontamento bloqueador; cada item de regra restringe origem ou destino, cada par destino-porta está isolado em item próprio e o namespace tem objeto de negação por padrão. Permanecem ressalvas de exposição de porta em entrada e de pré-condição não verificável.
 
 **APONTAMENTOS residuais:** dois IMPORTANTE herdados e recusados na v2 (ausência de porta em entrada; dependência do label de namespace), um IMPORTANTE sobre TCP declarado como premissa nas portas 5432 e 9200, e dois MENOR: os comentários citam números de apontamento de uma revisão que não acompanha o manifesto, e a mesma lacuna de porta é repetida em texto integral em dois itens, criando dois pontos para atualizar.
 
@@ -606,10 +606,10 @@ Rodei as checagens por fora do modelo:
 | `kubeconform` em modo estrito, dois documentos | 2 recursos válidos, 0 inválidos |
 | Assert do CP08: `kind: NetworkPolicy` | passa |
 | Assert do CP08: `policyTypes` com Ingress e Egress | passa |
-| Assert do CP08: não contém a regra vazia `- {}` | passa — a v2 não tem nenhuma chave em lugar nenhum |
+| Assert do CP08: não contém a regra vazia `- {}` | passa, a v2 não tem nenhuma chave em lugar nenhum |
 | Assert do CP08: egress libera Forge na 5432 e Cerebro na 9200 | passa |
 | Assert do CP08: ingress libera Relay (`app: relay`) | passa |
-| Assert do CP08: toda regra tem comentário | passa — os 5 itens de regra têm comentário imediatamente acima |
+| Assert do CP08: toda regra tem comentário | passa, os 5 itens de regra têm comentário imediatamente acima |
 | Convergência do ciclo | 1 BLOQUEADOR na v1, 0 na v2; BARRADO → APROVADO COM RESSALVAS |
 
 ---
@@ -620,27 +620,27 @@ Rodei as checagens por fora do modelo:
 
 **O ciclo convergiu, e sem o vício mais comum de revisor automático.** Um BLOQUEADOR na v1, nenhum na v2, e o veredito saiu de BARRADO para APROVADO COM RESSALVAS **sem** o revisor inventar bloqueador na segunda passagem para justificar a própria existência. A regra que tornou isso possível é a que amarra o veredito aos apontamentos de forma declarada, mais a instrução explícita de que aprovar é resultado possível. Sem essas duas, o campo mais lido da saída seria o menos verificável.
 
-**O bloqueador encontrado é o defeito clássico de NetworkPolicy.** O item de saída da v1 reunia dois destinos e duas portas, e um item de regra libera o produto cartesiano entre seus critérios — então ele também permitia Forge na 9200 e Cerebro na 5432, fluxos que o padrão não declara. O revisor pegou isso enumerando as combinações, que é exatamente o que a categoria de semântica de seletor manda fazer, e a v2 corrigiu separando cada par destino-porta em item próprio.
+**O bloqueador encontrado é o defeito clássico de NetworkPolicy.** O item de saída da v1 reunia dois destinos e duas portas, e um item de regra libera o produto cartesiano entre seus critérios, então ele também permitia Forge na 9200 e Cerebro na 5432, fluxos que o padrão não declara. O revisor pegou isso enumerando as combinações, que é exatamente o que a categoria de semântica de seletor manda fazer, e a v2 corrigiu separando cada par destino-porta em item próprio.
 
 **O achado que o modelo não viu: o apontamento 3 era falso positivo, e a raiz do problema é uma instrução minha.**
 
 A v1 declarou o seletor de cobertura total como `podSelector: {matchExpressions: []}`. O apontamento 3 classificou isso como IMPORTANTE, alegando que a equivalência dessa forma a "casa todos os pods" não estava declarada e que uma ferramenta poderia interpretá-la como ausência de correspondência. A v2 obedeceu e trocou por `podSelector:` sem valor.
 
-A referência oficial da API é explícita: [um seletor de label vazio casa todos os objetos, e um seletor nulo não casa objeto nenhum](https://kubernetes.io/docs/reference/kubernetes-api/definitions/label-selector-v1-meta/). Um seletor sem `matchLabels` e com `matchExpressions` vazio **é** um seletor vazio, então a v1 estava correta e documentada. A v2 mudou para a forma que a documentação descreve como não casando nada — exatamente no objeto de negação padrão, onde a cobertura do namespace inteiro é o ponto. Na prática ele funciona, porque o campo é obrigatório e não ponteiro no tipo da API em Go, então o nulo é coagido para o valor zero do tipo, que é o seletor vazio. (No parser de YAML, antes disso, o campo sem valor decodifica para nulo — são duas camadas diferentes, e é a coerção da segunda que salva a política.) Mas isso passou a depender de comportamento de desserialização em vez de semântica documentada, e esse é o pior lugar possível para essa dependência.
+A referência oficial da API é explícita: [um seletor de label vazio casa todos os objetos, e um seletor nulo não casa objeto nenhum](https://kubernetes.io/docs/reference/kubernetes-api/definitions/label-selector-v1-meta/). Um seletor sem `matchLabels` e com `matchExpressions` vazio **é** um seletor vazio, então a v1 estava correta e documentada. A v2 mudou para a forma que a documentação descreve como não casando nada, exatamente no objeto de negação padrão, onde a cobertura do namespace inteiro é o ponto. Na prática ele funciona, porque o campo é obrigatório e não ponteiro no tipo da API em Go, então o nulo é coagido para o valor zero do tipo, que é o seletor vazio. (No parser de YAML, antes disso, o campo sem valor decodifica para nulo, são duas camadas diferentes, e é a coerção da segunda que salva a política.) Mas isso passou a depender de comportamento de desserialização em vez de semântica documentada, e esse é o pior lugar possível para essa dependência.
 
 Verifiquei as três formas com `kubeconform` em modo estrito: `podSelector: {}`, `matchExpressions: []` e o seletor nulo são todas válidas no schema, e o nulo decodifica para `None`. Ou seja, o schema não protege contra a escolha pior.
 
-A causa raiz é minha. Eu escrevi no meta-prompt que um teste automatizado procura a sequência de caracteres da regra vazia na saída. O modelo generalizou com prudência — proibiu chaves em qualquer lugar, para não arriscar reprovar a política inteira num assert ingênuo — e com isso tirou da mesa a forma idiomática `podSelector: {}`. O revisor então inventou uma dúvida sobre a alternativa que sobrou, e o gerador obedeceu. Três decisões defensáveis em sequência produziram um resultado pior que o ponto de partida.
+A causa raiz é minha. Eu escrevi no meta-prompt que um teste automatizado procura a sequência de caracteres da regra vazia na saída. O modelo generalizou com prudência (proibiu chaves em qualquer lugar, para não arriscar reprovar a política inteira num assert ingênuo) e com isso tirou da mesa a forma idiomática `podSelector: {}`. O revisor então inventou uma dúvida sobre a alternativa que sobrou, e o gerador obedeceu. Três decisões defensáveis em sequência produziram um resultado pior que o ponto de partida.
 
-A correção é no prompt, não no teste. O assert do Checkpoint 08 foi escrito do jeito certo — `not-contains: '- {}'`, a **string exata** da regra vazia e não a presença de chaves — justamente porque `podSelector: {}` é a forma documentada do seletor que cobre o namespace e seria reprovada por engano. Quem está largo é a proibição no prompt, que precisa encolher para o padrão específico para o seletor voltar à forma documentada.
+A correção é no prompt, não no teste. O assert do Checkpoint 08 foi escrito do jeito certo (`not-contains: '- {}'`, a **string exata** da regra vazia e não a presença de chaves) justamente porque `podSelector: {}` é a forma documentada do seletor que cobre o namespace e seria reprovada por engano. Quem está largo é a proibição no prompt, que precisa encolher para o padrão específico para o seletor voltar à forma documentada.
 
-Isso também é o caso concreto que dá peso à ressalva de independência registrada na execução: gerador e revisor rodaram no mesmo modelo e na mesma sessão. Um revisor que herda as restrições de quem escreveu não questiona a restrição, ele opera dentro dela — e aqui ele foi além, inventando uma justificativa técnica errada para uma escolha que a minha própria instrução havia forçado.
+Isso também é o caso concreto que dá peso à ressalva de independência registrada na execução: gerador e revisor rodaram no mesmo modelo e na mesma sessão. Um revisor que herda as restrições de quem escreveu não questiona a restrição, ele opera dentro dela, e aqui ele foi além, inventando uma justificativa técnica errada para uma escolha que a minha própria instrução havia forçado.
 
 **A autocrítica mais útil que o modelo produziu foi sobre o prompt, não sobre a política.** Ele observou que a seção 5 do gerador **avisa** sobre o cruzamento entre critérios de destino e critérios de porta, e a v1 caiu nesse erro de todo modo. O diagnóstico dele: o aviso aparece como segundo eixo de uma regra cujo primeiro eixo é mais vistoso, e o modelo aplicou o primeiro com rigor e passou por cima do segundo. É uma leitura precisa de como atenção se distribui dentro de uma instrução composta, e a lição é geral: duas armadilhas diferentes na mesma regra fazem a segunda ser tratada como nota de rodapé.
 
 **Correções para a v1.0.1, não aplicadas para não invalidar as quatro rodadas:**
 
-- **Gerador:** separar os dois eixos da seção 5 em regras próprias e transformar a conferência em obrigação de saída — cada item de regra declara em comentário quantas combinações produz e quais são. Foi o defeito que a v1 cometeu apesar do aviso.
+- **Gerador:** separar os dois eixos da seção 5 em regras próprias e transformar a conferência em obrigação de saída: cada item de regra declara em comentário quantas combinações produz e quais são. Foi o defeito que a v1 cometeu apesar do aviso.
 - **Gerador:** encolher a proibição de chaves ao padrão específico da regra vazia, e voltar a permitir o seletor vazio na forma documentada. O assert do Checkpoint 08 já é a string exata, então não há nada a corrigir do lado do teste.
 - **Gerador:** declarar lacuna repetida em um ponto único e referenciá-la nas regras afetadas, em vez de duplicar o texto integral. Foi o apontamento 5 da rodada 4, e o risco é atualizar um ponto e esquecer o outro.
 - **Revisor:** ganhar parâmetro opcional `manifesto_de_origem`. Sem ele, a categoria de cobertura de escopo é estruturalmente incompleta: o revisor não tem como detectar que o gerador estreitou o escopo, que é justamente o erro que o método mais teme. Se o estreitamento for coerente com o padrão, o revisor aprova.
@@ -649,7 +649,7 @@ Isso também é o caso concreto que dá peso à ressalva de independência regis
 > A regra de severidade da seção 6 estava truncada: dizia "não promova apontamento de forma
 > a bloqueador", sem o nível de origem, e ficava sem sentido. É a regra que impede o revisor
 > de inflar severidade para parecer rigoroso, e esta curadoria credita a ela a convergência
-> do veredito — ou seja, o texto que sustenta a conclusão estava quebrado. Corrigido para
+> do veredito, ou seja, o texto que sustenta a conclusão estava quebrado. Corrigido para
 > "de MENOR ou IMPORTANTE a BLOQUEADOR" na **v1.0.1** do prompt, com o histórico no README
 > do item.
 >
@@ -661,12 +661,12 @@ Isso também é o caso concreto que dá peso à ressalva de independência regis
 - **Ciclo:** o revisor é sem estado e não recebe as recusas anteriores, então reapresenta apontamento já discutido com número novo. Em ciclos longos isso gasta rodada sem produzir mudança. Quem mede convergência é o humano que orquestra, e isso precisa estar documentado no README do item.
 - **Independência:** rodar o revisor em modelo diferente do gerador, ou no mínimo em sessão limpa. O que se compra com quatro chamadas depende disso.
 
-**Uma tensão de nomenclatura que o modelo levantou e eu aceito.** O item se chama `networkpolicy-sentinel`, o que sugere domínio fixo, mas o corpo do prompt não menciona Sentinel, Relay, Forge, Cerebro, 5432, 9200 nem 53 — ele funciona para qualquer namespace. O nome amarra ao caso de estreia porque o Checkpoint 08 o fixa no caminho do arquivo de teste. Se houver liberdade de renomear no registry, `endurecimento-de-networkpolicy` descreve melhor o que o item faz.
+**Uma tensão de nomenclatura que o modelo levantou e eu aceito.** O item se chama `networkpolicy-sentinel`, o que sugere domínio fixo, mas o corpo do prompt não menciona Sentinel, Relay, Forge, Cerebro, 5432, 9200 nem 53: ele funciona para qualquer namespace. O nome amarra ao caso de estreia porque o Checkpoint 08 o fixa no caminho do arquivo de teste. Se houver liberdade de renomear no registry, `endurecimento-de-networkpolicy` descreve melhor o que o item faz.
 
-**Sanitização.** Aqui o insumo é, por natureza, um mapa de superfície de ataque: quais serviços existem, em quais namespaces, com quais labels, em quais portas, e quem pode falar com quem. É a informação mais diretamente ofensiva de todos os seis checkpoints — mais que a capacidade do Checkpoint 04 e mais que o grafo de dependências do Checkpoint 05, porque aqui está explícito o que **não** está protegido.
+**Sanitização.** Aqui o insumo é, por natureza, um mapa de superfície de ataque: quais serviços existem, em quais namespaces, com quais labels, em quais portas, e quem pode falar com quem. É a informação mais diretamente ofensiva de todos os seis checkpoints, mais que a capacidade do Checkpoint 04 e mais que o grafo de dependências do Checkpoint 05, porque aqui está explícito o que **não** está protegido.
 
 E o mais desconfortável: **quase nada disso dá para remover sem inutilizar o prompt.** A regra 4 proíbe inventar seletor justamente porque seletor inventado gera política que não casa nada e falha em silêncio. Então namespace, label e porta têm que ir literais.
 
-O que resta como política real é outra coisa: pseudonimizar de forma consistente e reversível. Substituir `sentinel-prod` por `ns-a`, `app=sentinel` por `app=svc-a`, e assim por diante, mantendo o mapeamento local — a estrutura de quem fala com quem se preserva inteira, a política gerada é mecanicamente re-hidratável, e o que sai da empresa é um grafo anônimo. As portas 5432 e 9200 eu manteria: elas revelam a tecnologia, o que é informação de baixo valor ofensivo, e são necessárias porque o prompt exige que a porta venha do mapa.
+O que resta como política real é outra coisa: pseudonimizar de forma consistente e reversível. Substituir `sentinel-prod` por `ns-a`, `app=sentinel` por `app=svc-a`, e assim por diante, mantendo o mapeamento local, a estrutura de quem fala com quem se preserva inteira, a política gerada é mecanicamente re-hidratável, e o que sai da empresa é um grafo anônimo. As portas 5432 e 9200 eu manteria: elas revelam a tecnologia, o que é informação de baixo valor ofensivo, e são necessárias porque o prompt exige que a porta venha do mapa.
 
-O que eu não faria de jeito nenhum é o inverso: mandar o manifesto permissivo original sem sanitizar. Ele é literalmente a declaração de que o namespace do produto core está com entrada e saída liberadas para qualquer origem e qualquer destino — a informação mais sensível do pacote não é o mapa, é o defeito.
+O que eu não faria de jeito nenhum é o inverso: mandar o manifesto permissivo original sem sanitizar. Ele é literalmente a declaração de que o namespace do produto core está com entrada e saída liberadas para qualquer origem e qualquer destino, a informação mais sensível do pacote não é o mapa, é o defeito.

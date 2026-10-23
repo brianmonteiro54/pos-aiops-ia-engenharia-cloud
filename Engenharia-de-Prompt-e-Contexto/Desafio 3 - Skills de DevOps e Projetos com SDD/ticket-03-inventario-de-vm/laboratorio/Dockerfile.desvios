@@ -5,16 +5,16 @@
 # o baseline atribui, para a validação poder conferir a classificação uma a uma.
 FROM roster-lab-base:1
 
-# DESVIO — servicos.ativos (alto): chrony NAO fica ativo.
+# DESVIO: servicos.ativos (alto): chrony NAO fica ativo.
 RUN systemctl disable chrony
 
-# DESVIO — servicos.proibidos (alto): rpcbind.socket ativo.
+# DESVIO: servicos.proibidos (alto): rpcbind.socket ativo.
 # O baseline distingue `.service` de `.socket`, e proibe justamente os dois sockets.
 RUN apt-get update && apt-get install -y --no-install-recommends rpcbind \
     && apt-get clean && rm -rf /var/lib/apt/lists/* \
     && systemctl enable rpcbind.socket
 
-# DESVIO — portas_em_escuta.somente_rede_interna (critico): node_exporter em 0.0.0.0.
+# DESVIO: portas_em_escuta.somente_rede_interna (critico): node_exporter em 0.0.0.0.
 # A diferenca com o host conforme e UMA flag. "9100 em 0.0.0.0" e "9100 so no endereco
 # interno" tem vereditos diferentes, e e isso que esta sendo exercitado.
 RUN printf '%s\n' \
@@ -33,7 +33,7 @@ RUN printf '%s\n' \
     > /etc/systemd/system/node_exporter.service \
     && systemctl enable node_exporter
 
-# DESVIO — ssh.login_de_root (alto): login de root permitido.
+# DESVIO: ssh.login_de_root (alto): login de root permitido.
 # E a configuracao EFETIVA que importa. Aqui o arquivo diz `yes` e `sshd -T` confirma.
 RUN printf '%s\n' \
     'PermitRootLogin yes' \
@@ -45,8 +45,8 @@ RUN printf '%s\n' \
 RUN useradd -m -s /bin/bash auditor \
     && mkdir -p /home/auditor/.ssh \
     && chmod 700 /home/auditor/.ssh
-# DESVIO — chaves_ssh.emitidas_por (critico): uma chave da plataforma e uma de origem
-# desconhecida, que e o caso real do Roster — "chaves SSH que ficaram para tras".
+# DESVIO: chaves_ssh.emitidas_por (critico): uma chave da plataforma e uma de origem
+# desconhecida, que e o caso real do Roster: "chaves SSH que ficaram para tras".
 COPY chaves/auditor.pub /tmp/k1.pub
 COPY chaves/intruso.pub /tmp/k2.pub
 RUN cat /tmp/k1.pub /tmp/k2.pub > /home/auditor/.ssh/authorized_keys \

@@ -1,4 +1,4 @@
-# Brainstorm — escopo do substituto do Roster
+# Brainstorm: escopo do substituto do Roster
 
 Antes do PRD: o que entra, o que fica de fora, e as perguntas que precisaram de resposta
 antes de qualquer linha de spec. Escrito em conversa com o agente, registrando as ideias
@@ -23,7 +23,7 @@ Decidir isto primeiro economizou metade das discussões.
 
 | Ideia levantada | Por que ficou fora |
 |---|---|
-| **um agente nas VMs** | o ticket é explícito: as VMs não têm agente e nenhum será instalado. E a decisão é boa — agente é software para manter, atualizar e auditar em cada host, e o Roster está desatualizado justamente por falta de alguém mantendo coisa |
+| **um agente nas VMs** | o ticket é explícito: as VMs não têm agente e nenhum será instalado. E a decisão é boa, agente é software para manter, atualizar e auditar em cada host, e o Roster está desatualizado justamente por falta de alguém mantendo coisa |
 | **corrigir o desvio que encontrar** | auditoria que conserta não é auditoria. E mais: conserto exige saber o que o host faz, qual cliente usa, e qual janela de manutenção existe. Nada disso está no baseline |
 | **varrer o parque inteiro de uma vez** | é a segunda peça. Esta é a primeira: **uma VM**. Paralelizar antes de a coleta de uma estar correta multiplica o erro |
 | **servir uma API ou um banco** | o consumidor é o Roster, que já existe. A ferramenta produz JSON; quem orquestra é outro problema |
@@ -50,7 +50,7 @@ Três caminhos reais, e a escolha muda a dependência da ferramenta:
 
 ### 2. O que acontece quando um dado não volta?
 
-O ticket já decidiu a forma — `nao_verificado` — mas não o mecanismo. As opções que
+O ticket já decidiu a forma (`nao_verificado`) mas não o mecanismo. As opções que
 apareceram:
 
 - abortar a execução inteira
@@ -81,7 +81,7 @@ são de nível de host.
 
 **Coleta e julgamento são etapas separadas.**
 
-A ferramenta primeiro coleta — nove grupos de dados, cada um com sucesso ou falha — e só
+A ferramenta primeiro coleta (nove grupos de dados, cada um com sucesso ou falha) e só
 depois compara com o baseline. Duas consequências que valem o esforço:
 
 1. **O inventário tem valor sem o baseline.** O Roster quer saber o que existe, não só o
@@ -90,7 +90,7 @@ depois compara com o baseline. Duas consequências que valem o esforço:
 2. **Trocar o baseline não mexe na coleta.** Baseline v2 exigindo kernel 6.8 não muda uma
    linha de coletor.
 
-O inverso — julgar durante a coleta — economizaria código e amarraria as duas coisas. É a
+O inverso (julgar durante a coleta) economizaria código e amarraria as duas coisas. É a
 troca que o ticket paga pelos dois formatos de saída saírem "do mesmo dado".
 
 ## Riscos que eu enxerguei antes de começar

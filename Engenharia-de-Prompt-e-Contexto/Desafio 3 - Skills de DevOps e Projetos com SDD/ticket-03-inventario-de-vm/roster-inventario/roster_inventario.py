@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-roster-inventario — audita uma VM por SSH e compara com o baseline do parque.
+roster-inventario: audita uma VM por SSH e compara com o baseline do parque.
 
 Primeira peça do substituto do Roster. Roda na máquina de quem opera; o host auditado não
 recebe agente nem escrita de nenhum tipo.
@@ -9,7 +9,7 @@ recebe agente nem escrita de nenhum tipo.
         --chave ~/.ssh/auditor --baseline baseline.yaml [--formato json|markdown|ambos]
 
 Código de saída:
-    0  host conforme — nenhum desvio
+    0  host conforme: nenhum desvio
     1  há desvio
     2  host inalcançável, baseline inválido, ou erro de uso
 
@@ -50,7 +50,7 @@ BIND_INTERNO = "interno"
 
 
 # ======================================================================================
-# ETAPA 1 — TRANSPORTE
+# ETAPA 1: TRANSPORTE
 # ======================================================================================
 
 class FalhaDeConexao(Exception):
@@ -64,7 +64,7 @@ class FalhaDeConexao(Exception):
 
 
 # Classificação do stderr do ssh. O stderr NÃO é repassado cru, porque pode conter o
-# caminho da chave privada — e a chave é credencial (RE-03).
+# caminho da chave privada: e a chave é credencial (RE-03).
 CATEGORIAS_DE_FALHA = (
     ("REMOTE HOST IDENTIFICATION HAS CHANGED",
      "a chave do host mudou desde a última conexão; o acesso foi recusado por segurança"),
@@ -97,7 +97,7 @@ class SessaoSSH:
     execução em vez de uma por comando.
 
     O socket vive em diretório temporário próprio e é removido ao fim, inclusive em caminho
-    de erro — socket de controle esquecido é conexão aberta para VM de cliente.
+    de erro: socket de controle esquecido é conexão aberta para VM de cliente.
     """
 
     def __init__(self, host: str, usuario: str, chave: str, porta: int = 22,
@@ -165,7 +165,7 @@ class SessaoSSH:
 
 
 # ======================================================================================
-# ETAPA 2 — COLETA
+# ETAPA 2: COLETA
 # ======================================================================================
 
 @dataclass
@@ -332,7 +332,7 @@ def coletar_portas(s: SessaoSSH) -> Coletado:
 
 def coletar_chaves_ssh(s: SessaoSSH) -> Coletado:
     """
-    O que identifica a origem de uma chave é o COMENTÁRIO dela — o terceiro campo da linha.
+    O que identifica a origem de uma chave é o COMENTÁRIO dela: o terceiro campo da linha.
     É por ele que se responde "esta chave foi emitida pela plataforma?".
     """
     rc, out, _ = s.executar("cat ~/.ssh/authorized_keys 2>/dev/null")
@@ -361,7 +361,7 @@ def coletar_login_de_root(s: SessaoSSH) -> Coletado:
     é que vence em repetição. Ler o arquivo com grep responde o que alguém escreveu, não o
     que o daemon aplica.
 
-    `sshd -T` imprime a configuração resolvida e EXIGE privilégio — é o caso típico de
+    `sshd -T` imprime a configuração resolvida e EXIGE privilégio: é o caso típico de
     `nao_verificado` que o PRD descreve.
     """
     rc, out, err = s.executar(
@@ -416,7 +416,7 @@ def coletar_tudo(s: SessaoSSH) -> dict[str, Coletado]:
             resultado[nome] = coletor(s)
         except FalhaDeConexao:
             raise                       # falha de transporte sobe: não há host para auditar
-        except Exception as e:           # noqa: BLE001 — qualquer erro do coletor vira motivo
+        except Exception as e:           # noqa: BLE001, qualquer erro do coletor vira motivo
             resultado[nome] = Coletado.falhou(
                 f"erro ao coletar: {type(e).__name__}"
             )
@@ -424,7 +424,7 @@ def coletar_tudo(s: SessaoSSH) -> dict[str, Coletado]:
 
 
 # ======================================================================================
-# ETAPA 3 — JULGAMENTO
+# ETAPA 3: JULGAMENTO
 # ======================================================================================
 
 @dataclass
@@ -640,7 +640,7 @@ def julgar(coletado: dict[str, Coletado], bl: Baseline) -> list[Veredito]:
 
 
 # ======================================================================================
-# ETAPA 4 — APRESENTAÇÃO
+# ETAPA 4: APRESENTAÇÃO
 # ======================================================================================
 
 def montar_inventario(coletado: dict[str, Coletado]) -> dict:

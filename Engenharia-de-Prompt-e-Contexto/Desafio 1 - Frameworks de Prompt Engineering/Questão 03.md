@@ -1,4 +1,4 @@
-# Questão 03 — Relatório de redução de custos cloud
+# Questão 03: Relatório de redução de custos cloud
 
 **Framework:** T-A-G (Task, Action, Goal)
 
@@ -57,7 +57,7 @@ Formato: relatório em Markdown, com resumo executivo de no máximo 5 linhas no 
 
 ## Modelo
 
-**DeepSeek — modelo especialista com pensamento profundo (DeepThink)**
+**DeepSeek: modelo especialista com pensamento profundo (DeepThink)**
 
 Escolhido porque a questão é de raciocínio quantitativo em cadeia (somar, ratear por categoria, derivar economia com premissa explícita, acumular e comparar com a meta), onde um modelo de raciocínio profundo erra menos na aritmética e mantém a rastreabilidade de cada número. Também atende à exigência de usar mais de um provider ao longo do desafio.
 
@@ -65,7 +65,7 @@ Escolhido porque a questão é de raciocínio quantitativo em cadeia (somar, rat
 
 ## Output
 
-### Relatório Técnico de Redução de Custo Cloud — Hill Valley Tech
+### Relatório Técnico de Redução de Custo Cloud: Hill Valley Tech
 
 #### Resumo executivo
 
@@ -115,7 +115,7 @@ O dinheiro está concentrado principalmente em compute, puxado por EC2 Reserved,
 
 #### 3. Detalhamento técnico por oportunidade
 
-##### 3.1 EC2 On-Demand — Desligar dev/homolog fora do horário
+##### 3.1 EC2 On-Demand: Desligar dev/homolog fora do horário
 
 **Economia estimada:** USD 18.200/mês
 
@@ -134,7 +134,7 @@ Ambientes dev/homolog estão ligados 24/7. Adotar schedule de 12h×5 dias = 60h/
 
 **Risco de SLA:** Baixo.
 
-##### 3.2 EKS — Right-size de nodes m5.2xlarge
+##### 3.2 EKS: Right-size de nodes m5.2xlarge
 
 **Economia estimada:** USD 13.764/mês
 
@@ -154,7 +154,7 @@ Redução de capacidade = 37,3%.
 
 **Risco de SLA:** Alto. Exige janela de manutenção e teste de carga.
 
-##### 3.3 RDS PostgreSQL — Reserva / Savings Plans
+##### 3.3 RDS PostgreSQL: Reserva / Savings Plans
 
 **Economia estimada:** USD 9.360/mês
 
@@ -172,7 +172,7 @@ Instância on-demand sem reserva; desconto estimado de ~30% para RDS Reserved In
 
 **Risco de SLA:** Baixo.
 
-##### 3.4 CloudWatch Logs — Retenção e corte de logs de debug
+##### 3.4 CloudWatch Logs: Retenção e corte de logs de debug
 
 **Economia estimada:** USD 6.700/mês
 
@@ -190,7 +190,7 @@ Retenção infinita e logs de debug do Chronos. Aplicar retenção de 30 dias pa
 
 **Risco de SLA:** Baixo, com atenção a compliance.
 
-##### 3.5 ElastiCache Redis — Right-size do cluster
+##### 3.5 ElastiCache Redis: Right-size do cluster
 
 **Economia estimada:** USD 6.370/mês
 
@@ -208,7 +208,7 @@ Capacidade necessária = 21% / 60% = 35% da atual; economia de 65%.
 
 **Risco de SLA:** Médio. Exige janela e teste.
 
-##### 3.6 EBS — Excluir volumes órfãos
+##### 3.6 EBS: Excluir volumes órfãos
 
 **Economia estimada:** USD 4.480/mês
 
@@ -225,7 +225,7 @@ Cerca de 40% dos volumes gp2 estão sem anexo a nenhuma instância.
 
 **Risco de SLA:** Baixo.
 
-##### 3.7 S3 — Lifecycle policy
+##### 3.7 S3: Lifecycle policy
 
 **Economia estimada:** USD 4.380/mês
 
@@ -243,7 +243,7 @@ Economia = 60% × 50% = 30%.
 
 **Risco de SLA:** Baixo.
 
-##### 3.8 NAT Gateway — Consolidar NATs
+##### 3.8 NAT Gateway: Consolidar NATs
 
 **Economia estimada:** USD 4.200/mês
 
@@ -261,7 +261,7 @@ Existem 3 NAT Gateways; dois com tráfego residual. Remover 2, mantendo 1.
 
 **Risco de SLA:** Médio.
 
-##### 3.9 Data Transfer Out — Reduzir tráfego cross-AZ
+##### 3.9 Data Transfer Out: Reduzir tráfego cross-AZ
 
 **Economia estimada:** USD 2.610/mês
 
@@ -279,7 +279,7 @@ Tráfego cross-AZ entre Chronos e Ledger pode ser reduzido com colocalização, 
 
 **Risco de SLA:** Médio/Alto.
 
-##### 3.10 CloudWatch Metrics — Deduplicar métricas do Beacon
+##### 3.10 CloudWatch Metrics: Deduplicar métricas do Beacon
 
 **Economia estimada:** USD 2.550/mês
 
@@ -326,7 +326,7 @@ Se excluirmos CloudWatch Logs por questão de compliance, as demais oportunidade
 
 #### 5. Plano de execução sugerido em ondas
 
-**Onda 1 — Semanas 0 a 2: ações de baixo risco e ganho imediato**
+**Onda 1: Semanas 0 a 2: ações de baixo risco e ganho imediato**
 
 | # | Ação | Economia USD/mês |
 |---|---|---:|
@@ -337,7 +337,7 @@ Se excluirmos CloudWatch Logs por questão de compliance, as demais oportunidade
 | 10 | CloudWatch Metrics dedup | 2.550 |
 | **Subtotal Onda 1** | | **27.470** |
 
-**Onda 2 — Semanas 2 a 6: schedule de dev/homolog**
+**Onda 2: Semanas 2 a 6: schedule de dev/homolog**
 
 | # | Ação | Economia USD/mês |
 |---|---|---:|
@@ -346,7 +346,7 @@ Se excluirmos CloudWatch Logs por questão de compliance, as demais oportunidade
 
 Acumulado Onda 1 + Onda 2: USD 45.670 → já supera a meta de USD 31.515.
 
-**Onda 3 — Semanas 6 a 12: mudanças em produção com teste e aprovação**
+**Onda 3: Semanas 6 a 12: mudanças em produção com teste e aprovação**
 
 | # | Ação | Economia USD/mês |
 |---|---|---:|

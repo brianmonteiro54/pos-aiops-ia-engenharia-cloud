@@ -1,9 +1,9 @@
 # Validacao de roster-inventario contra os critérios de pronto
-# 2026-10-23T12:07:48Z
+# 2026-10-23T13:40:11Z
 
-########## CA-01 — host conforme sai sem nenhum desvio (baseline do laboratorio) ##########
+########## CA-01: host conforme sai sem nenhum desvio (baseline do laboratorio) ##########
 # Inventário de d62d2cb9607d (127.0.0.1)
-Coletado em 2026-10-23 12:07:49 UTC · baseline 1-laboratorio
+Coletado em 2026-10-23 13:40:12 UTC · baseline 1-laboratorio
 
 ## Desvios
 
@@ -22,12 +22,12 @@ chaves_ssh.emitidas_por · ntp.sincronizado · portas_em_escuta.publicas_permiti
 
 codigo de saida: 0   (esperado 0)
 
-########## CA-01b — o MESMO host contra o baseline do parque (ADR-004) ##########
+########## CA-01b: o MESMO host contra o baseline do parque (ADR-004) ##########
 Esperado: exatamente DOIS desvios, kernel e swap, e nada mais.
 Os dois sao de nivel de HOST e o container compartilha os dois.
 
 # Inventário de d62d2cb9607d (127.0.0.1)
-Coletado em 2026-10-23 12:07:49 UTC · baseline 1
+Coletado em 2026-10-23 13:40:13 UTC · baseline 1
 
 ## Desvios
 
@@ -47,11 +47,11 @@ Coletado em 2026-10-23 12:07:49 UTC · baseline 1
 chaves_ssh.emitidas_por · ntp.sincronizado · portas_em_escuta.publicas_permitidas · portas_em_escuta.somente_rede_interna · servicos.ativos · servicos.proibidos · so.distribuicao · so.versao_minima
 
 
-codigo de saida: 1   (esperado 1 — ha desvio, e e verdade)
+codigo de saida: 1   (esperado 1, ha desvio, e e verdade)
 
-########## CA-02 — host com desvios, cada um com a severidade do baseline ##########
+########## CA-02: host com desvios, cada um com a severidade do baseline ##########
 # Inventário de 56e868bc0012 (127.0.0.1)
-Coletado em 2026-10-23 12:07:50 UTC · baseline 1
+Coletado em 2026-10-23 13:40:14 UTC · baseline 1
 
 ## Desvios
 
@@ -78,7 +78,7 @@ ntp.sincronizado · so.distribuicao · so.versao_minima
 
 codigo de saida: 1   (esperado 1)
 
-########## CA-02 — a classificacao por severidade, do JSON ##########
+########## CA-02: a classificacao por severidade, do JSON ##########
   medio    kernel.versao_minima
   alto     servicos.ativos
   alto     servicos.proibidos
@@ -88,7 +88,7 @@ codigo de saida: 1   (esperado 1)
   critico  chaves_ssh.emitidas_por
   resumo por severidade: {'medio': 1, 'alto': 2, 'critico': 4}
 
-########## CA-03 — regra nao verificavel aparece separada de conforme ##########
+########## CA-03: regra nao verificavel aparece separada de conforme ##########
 O usuario da coleta e sem privilegio, e `sshd -T` exige root.
 
   regra     : ssh.login_de_root
@@ -103,7 +103,7 @@ O usuario da coleta e sem privilegio, e `sshd -T` exige root.
   -> nao_verificado NAO esta somado em conforme
   -> no inventario, ssh.login_de_root = None
 
-########## CA-04 — host inalcancavel: tres falhas, sem stack trace ##########
+########## CA-04: host inalcancavel: tres falhas, sem stack trace ##########
 
 --- porta sem SSH ---
 erro: host alcançável, mas nada escutando na porta de SSH
@@ -125,15 +125,15 @@ erro: o arquivo de chave privada informado não existe
        host 127.0.0.1:2201 como auditor
 codigo de saida: 2   (esperado 2)
 
-########## CA-05 — a segunda execucao devolve o mesmo resultado ##########
-  instante da 1a coleta: 2026-10-23T12:07:52Z
-  instante da 2a coleta: 2026-10-23T12:07:55Z
+########## CA-05: a segunda execucao devolve o mesmo resultado ##########
+  instante da 1a coleta: 2026-10-23T13:40:17Z
+  instante da 2a coleta: 2026-10-23T13:40:19Z
   os instantes diferem : True
 
   mesmo veredito em todas as 11 regras: True
   resto do documento identico             : True
 
-########## RE-03 — a chave privada nao aparece em saida nenhuma ##########
+########## RE-03: a chave privada nao aparece em saida nenhuma ##########
   conteudo da chave na saida : ausente
   caminho da chave na saida  : ausente
   "BEGIN OPENSSH PRIVATE KEY": ausente

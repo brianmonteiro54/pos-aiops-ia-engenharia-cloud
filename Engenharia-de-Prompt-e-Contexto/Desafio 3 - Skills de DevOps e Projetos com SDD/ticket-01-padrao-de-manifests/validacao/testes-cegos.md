@@ -1,4 +1,4 @@
-# Validação da skill — três testes cegos
+# Validação da skill: três testes cegos
 
 Escrever a skill e declarar que funciona não é evidência. O método foi despachar
 sub-agentes que **só podiam usar a skill**, contra manifestos que não existiam quando os
@@ -11,7 +11,7 @@ Cada sub-agente recebeu:
 - **fonte única**: `.kiro/skills/padrao-de-manifests-metacortex/`, incluindo os
   `references/` que o `SKILL.md` indicasse
 - **proibição explícita** de ler `fluxo-01-conferencia-manual.md`, qualquer coisa em
-  `manifests-gerados/`, as sondas e os `.json` do laboratório — ou seja, o gabarito
+  `manifests-gerados/`, as sondas e os `.json` do laboratório, ou seja, o gabarito
 - um manifesto novo
 - perguntas dirigidas às armadilhas que eu queria testar
 - instrução final de reportar **atrito**: onde a skill foi ambígua, incompleta ou
@@ -28,7 +28,7 @@ Cliente `vega`, ambiente **stg**, workload Redis de terceiro. Quatro armadilhas:
 
 | Armadilha | O que testa |
 |---|---|
-| `replicas: 1` e `strategy` com `maxUnavailable: 1` em **stg** | 2.3/2.4 só valem em prod — reportar aqui é erro |
+| `replicas: 1` e `strategy` com `maxUnavailable: 1` em **stg** | 2.3/2.4 só valem em prod, reportar aqui é erro |
 | `runAsNonRoot`/`runAsUser` no **pod**, os outros três no container | a 3.2 está cumprida, e o Trivy acusa KSV020/KSV021 |
 | `mysql://vega:T0rr3-f0rt3@…` em `ConfigMap.data` | a 3.3, que o Trivy não pega |
 | `instance: vega-staging` no Service x `vega-stg` no pod | a 1.4, um caractere de diferença |
@@ -42,7 +42,7 @@ Cliente `atlas`, ambiente **prod**. Testa o oposto do primeiro:
 
 | Armadilha | O que testa |
 |---|---|
-| `allowPrivilegeEscalation`, `readOnlyRootFilesystem` e `capabilities` no **pod** | a violação silenciosa da 3.2 — campos que não existem naquele nível |
+| `allowPrivilegeEscalation`, `readOnlyRootFilesystem` e `capabilities` no **pod** | a violação silenciosa da 3.2: campos que não existem naquele nível |
 | readiness **e** liveness em `httpGet /healthz` | a 2.2, exatamente o cenário que o padrão adverte |
 | `replicas: 3` com `maxUnavailable: 1` | 2.3 passa, 2.4 barra |
 | `terminationGracePeriodSeconds: 45` sem corpo de PR | a 2.6 e o veredito "pendente" |
@@ -57,7 +57,7 @@ Cliente `atlas`, ambiente **prod**. Testa o oposto do primeiro:
 | 3 | `atlas-prod` | corretos | 5 | 5 |
 
 **15 defeitos no total.** Os três atritos que não eram defeito da skill: um era limitação
-real do YAML como fonte, e dois eu diagnostiquei errado na hora — ver a seção sobre a 2.4.
+real do YAML como fonte, e dois eu diagnostiquei errado na hora: ver a seção sobre a 2.4.
 
 Nota de escopo: estes três testes validaram a skill **contra si mesma**. O que eles não
 pegaram foram as três regras que eu havia inventado, porque os sub-agentes também só tinham
@@ -108,7 +108,7 @@ prateleira. Passou a dizer, com a troca explícita.
 | 10 | **"Declarados no pod são silenciosamente ignorados" estava factualmente errado** | medido contra o apiserver; ver abaixo |
 | 11 | **`maxUnavailable: "0%"` era marcado como violação.** A comparação era com `(0, "0")` e o campo aceita percentual | função `e_zero`, que normaliza inteiro e percentual |
 | 12 | **`maxSurge` não era conferido de forma alguma**, embora a regra 2.4 o inclua | conferido, com o caso `maxSurge: 0` + `maxUnavailable: 0` que **trava o rollout** |
-| 13 | **`KSV021` cobra GID, e a 3.2 não tem requisito de `runAsGroup`.** Eu havia movido `KSV020` e `KSV021` juntos | `KSV021` voltou para `TRIVY_FORA_DO_PADRAO` — e depois `KSV020` também, quando o anexo mostrou que não há piso de UID |
+| 13 | **`KSV021` cobra GID, e a 3.2 não tem requisito de `runAsGroup`.** Eu havia movido `KSV020` e `KSV021` juntos | `KSV021` voltou para `TRIVY_FORA_DO_PADRAO`: e depois `KSV020` também, quando o anexo mostrou que não há piso de UID |
 
 ### O defeito 10 em detalhe
 
@@ -129,21 +129,21 @@ E confirmei o efeito do terceiro caso: depois do apply permissivo, o `securityCo
 armazenado do pod guardou só `fsGroup`, `runAsGroup`, `runAsNonRoot`, `runAsUser` e
 `seccompProfile`, e **o container ficou sem `securityContext` nenhum**.
 
-As duas metades são verdadeiras, dependendo do caminho. O veredito não muda — barra nos
-três — mas a consequência que o relatório descreve muda de "sobe inseguro em silêncio"
+As duas metades são verdadeiras, dependendo do caminho. O veredito não muda (barra nos
+três) mas a consequência que o relatório descreve muda de "sobe inseguro em silêncio"
 para "nem passa do apply", e são conversas diferentes com o autor do PR.
 
 ## O atrito que eu diagnostiquei errado, e que era defeito meu
 
 O teste 3 observou que a regra 2.4 **premiava a opção pior**: `maxUnavailable: 1` com 3
-réplicas mantém 2 pods servindo e **barrava**, enquanto `Recreate` — que derruba a
-capacidade inteira — só exigia justificativa. Pelo motivo declarado da própria regra,
+réplicas mantém 2 pods servindo e **barrava**, enquanto `Recreate` (que derruba a
+capacidade inteira) só exigia justificativa. Pelo motivo declarado da própria regra,
 `Recreate` é estritamente pior, e o caminho mais fácil para o autor sair do bloqueio
 pioraria a disponibilidade real.
 
 Na hora eu classifiquei como tensão no padrão da casa, fora do meu alcance, e documentei
 como nota ao revisor. **Estava errado.** Ao confrontar a skill com o anexo depois, descobri
-que o padrão **não menciona `Recreate`** — ele exige `RollingUpdate` com
+que o padrão **não menciona `Recreate`**: ele exige `RollingUpdate` com
 `maxUnavailable: 0` e não prevê alternativa. A flexibilização era invenção minha, criada
 para acomodar o Postgres com volume único.
 
@@ -160,7 +160,7 @@ causa ao lugar errado. Atrito reportado vem com o sintoma, não com o diagnósti
 |---|---|---|---|---|
 | `manifests/nyx-api-barrado.yaml` | 1 | **20** | 3 | 1.1, 1.3×3, 1.4, 2.1×4, 2.2, 2.3, 2.4, 3.1, 3.2×5, 3.3, 3.4 |
 | `manifests/fake-shop/` (orion-prod) | 1 | 2 | 1 | 2.3 e 2.4 do Postgres |
-| `manifests/kube-news/` (nyx-dev) | **0** | 0 | 1 | — |
+| `manifests/kube-news/` (nyx-dev) | **0** | 0 | 1 | n/d |
 | `validacao/teste-cego-01-vega-stg.yaml` | 1 | 4 | 1 | 1.3, 1.4, 3.3, 3.7 |
 | `validacao/teste-cego-02-atlas-prod.yaml` | 1 | 4 | 2 | 2.4 e 3.2×3 |
 
@@ -173,7 +173,7 @@ desvio documentado não é exceção aprovada. O kube-news sai com `rc=0` porque
 `nyx-dev`, e as regras 2.3, 2.4 e 2.5 são condicionadas a `prod`.
 
 O `runAsUser: 70` do Postgres **não** aparece mais como violação: ele cumpre a 3.2. O
-padrão não estabelece piso de UID, e exigir isso era invenção minha — ver a seção acima.
+padrão não estabelece piso de UID, e exigir isso era invenção minha: ver a seção acima.
 
 Saídas completas em `../evidencias/relatorios/`.
 

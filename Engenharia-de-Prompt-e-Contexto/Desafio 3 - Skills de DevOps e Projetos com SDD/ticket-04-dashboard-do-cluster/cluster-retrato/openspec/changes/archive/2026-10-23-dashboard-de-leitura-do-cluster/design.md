@@ -51,7 +51,7 @@ renderizar()  → estrutura interna vira HTML, sem falar com o cluster
 ```
 
 A separação não é estética: `normalizar()` é a camada que concentra todos os fatos
-estranhos da API, e é a única que precisa de teste de unidade. Ela é função pura — recebe
+estranhos da API, e é a única que precisa de teste de unidade. Ela é função pura: recebe
 dicionário, devolve dicionário. Os testes dos cenários de endpoint e de motivo de pod batem
 nela com JSON fixo, sem cluster.
 
@@ -66,7 +66,7 @@ subida, para escolher a fonte dos endpoints. Incluí-lo custa um verbo a mais na
 e economiza uma segunda porta de entrada para o `subprocess`.
 
 A verificação do CA-08 é uma varredura do próprio fonte por verbo de escrita. Ela é mais
-forte que inspeção e mais fraca que RBAC — ver em Risks.
+forte que inspeção e mais fraca que RBAC: ver em Risks.
 
 ### Dois tetos de tempo, e o grupo de processos
 
@@ -80,13 +80,13 @@ Medido contra `10.255.255.1` (endereço que não roteia, pacote cai no vazio):
 `--request-timeout` limita cada requisição, não o comando: o `kubectl` repete a descoberta
 de grupos da API e os tempos somam. Então `--request-timeout=8s` **e** `subprocess` com
 `timeout=20s`. No estouro, `start_new_session=True` na criação e
-`os.killpg(os.getpgid(p.pid), SIGKILL)` no encerramento — matar o PID sozinho deixa filho
+`os.killpg(os.getpgid(p.pid), SIGKILL)` no encerramento: matar o PID sozinho deixa filho
 órfão. Verificado: depois de forçar os dois estouros, `pgrep -af kubectl` ficou vazio.
 
 ### A classificação de falha é tabela de padrões, e admite não saber
 
-`classificar(stderr)` descarta primeiro o ruído de diagnóstico do `kubectl` — linhas
-`E<dígitos> ...` e `"Unhandled Error"` — e só então casa padrão, nesta ordem:
+`classificar(stderr)` descarta primeiro o ruído de diagnóstico do `kubectl` (linhas
+`E<dígitos> ...` e `"Unhandled Error"`) e só então casa padrão, nesta ordem:
 
 | Rótulo | Padrão |
 |---|---|
@@ -104,7 +104,7 @@ plugin externo é o único que diz o motivo, e perder isso seria perder a única
 que existe.
 
 `nao_classificada` é a decisão deliberada: quando nada casa, a tela mostra o `stderr` cru e
-diz que não classificou. É a mesma escolha do `nao_verificado` do Ticket 03 — admitir
+diz que não classificou. É a mesma escolha do `nao_verificado` do Ticket 03: admitir
 ignorância em vez de produzir um rótulo que pode estar errado.
 
 ### A tela não pode afirmar "expirada"
@@ -114,13 +114,13 @@ assinado pela CA real do cluster produzem **a mesma linha**:
 `error: You must be logged in to the server (Unauthorized)`. O apiserver responde 401 nos
 três, e o `kubectl` imprime igual.
 
-Então `credencial_rejeitada` diz "expirada, inválida ou revogada — o `kubectl` não
+Então `credencial_rejeitada` diz "expirada, inválida ou revogada: o `kubectl` não
 distingue". O CA-06 pede que seja distinguível de cluster fora, e é. Não pede o que não dá.
 
 ### Permissão negada é por consulta, não global
 
 As seis consultas são independentes e cada uma carrega seu próprio resultado ou sua própria
-falha. Só `cluster_inacessivel` e as falhas de credencial são globais — se a primeira
+falha. Só `cluster_inacessivel` e as falhas de credencial são globais, se a primeira
 consulta falhar por um desses, as outras cinco são puladas, porque repetir seis vezes uma
 falha de conexão custa seis estouros de teto.
 
@@ -131,19 +131,19 @@ outros aparecem preenchidos.
 
 `?ns=nyx-prod&q=api`. Sem JavaScript, não há outro lugar para o filtro morar, e o efeito
 colateral é bom: a URL de uma triagem é compartilhável. Toda interpolação passa por
-`html.escape` — nome de namespace, `message` de evento e `stderr` do `kubectl` são dados
+`html.escape`: nome de namespace, `message` de evento e `stderr` do `kubectl` são dados
 que eu não controlo.
 
 ## Risks / Trade-offs
 
 **A varredura do fonte não é a garantia forte.** O CA-08 prova que não existe verbo de
 escrita escrito no arquivo. Não prova que a credencial em uso não poderia escrever. A
-garantia forte é RBAC somente-leitura, e ela está **fora desta fatia** — exatamente a mesma
+garantia forte é RBAC somente-leitura, e ela está **fora desta fatia**: exatamente a mesma
 quarta camada que o Ticket 02 identificou e não implementou. Em produção seria a primeira.
 Registrado como dívida consciente, não como esquecimento.
 
 **Casar padrão em `stderr` de outra ferramenta é frágil.** Medido com `kubectl` v1.33.13.
-Outra versão pode reescrever as mensagens, e o efeito é cair em `nao_classificada` — degrada
+Outra versão pode reescrever as mensagens, e o efeito é cair em `nao_classificada`: degrada
 para feio, não para errado. É o motivo de esse rótulo existir.
 
 **O caminho de `Endpoints` quase nunca roda.** Este cluster tem `discovery.k8s.io/v1`, então

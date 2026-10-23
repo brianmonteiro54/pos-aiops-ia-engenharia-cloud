@@ -1,10 +1,10 @@
-# Checkpoint 05 — Migração do Forge de lote para tempo real
+# Checkpoint 05: Migração do Forge de lote para tempo real
 
 Quinto item do playbook, e o primeiro que não é um prompt: é uma **cadeia** de três prompts encadeados, cada um recebendo a saída do anterior.
 
 O Forge é o pipeline de dados da Aegis, o que transforma telemetry em tabela consultável. Hoje roda em lote: de hora em hora um job acorda, lê tudo que acumulou e processa de uma vez. O Bruce Banner quer migrar para modelo orientado a eventos, consumindo cada evento do Relay assim que chega.
 
-A mudança é grande demais para um prompt só. Jogar "migre este sistema" em um prompt monolítico devolve plano genérico — o enunciado alerta para isso e a curadoria testa a afirmação. A entrega é a cadeia: um elo diagnostica o acoplamento, o próximo deriva as fases, o terceiro detalha uma fase ao nível de execução.
+A mudança é grande demais para um prompt só. Jogar "migre este sistema" em um prompt monolítico devolve plano genérico: o enunciado alerta para isso e a curadoria testa a afirmação. A entrega é a cadeia: um elo diagnostica o acoplamento, o próximo deriva as fases, o terceiro detalha uma fase ao nível de execução.
 
 Saída aberta nos três elos: nenhum entra nos testes determinísticos do Checkpoint 08.
 
@@ -18,13 +18,13 @@ O que transforma três prompts em cadeia é o contrato: a saída do elo N é exa
 
 | Elo | Entra | Sai | Alimenta |
 |---|---|---|---|
-| 1 — `diagnostico-de-acoplamento` | `{{estado_atual}}`, `{{requisitos}}` | Contrato por consumidor, etapas por incrementalidade, acoplamentos, riscos, lacunas | O parâmetro `{{diagnostico}}` do elo 2, integral |
-| 2 — `plano-de-migracao-faseado` | `{{diagnostico}}`, `{{requisitos}}` | Premissas herdadas, discordâncias, fases numeradas com critério de avanço e ponto de reversão, ordem, fora de escopo, lacunas | O parâmetro `{{plano}}` do elo 3, integral |
-| 3 — `detalhamento-de-fase` | `{{plano}}`, `{{fase_escolhida}}`, `{{requisitos}}` | Pré-condições, passos verificáveis, validação, reversão, critérios de aborto, lacunas | Execução |
+| 1: `diagnostico-de-acoplamento` | `{{estado_atual}}`, `{{requisitos}}` | Contrato por consumidor, etapas por incrementalidade, acoplamentos, riscos, lacunas | O parâmetro `{{diagnostico}}` do elo 2, integral |
+| 2: `plano-de-migracao-faseado` | `{{diagnostico}}`, `{{requisitos}}` | Premissas herdadas, discordâncias, fases numeradas com critério de avanço e ponto de reversão, ordem, fora de escopo, lacunas | O parâmetro `{{plano}}` do elo 3, integral |
+| 3: `detalhamento-de-fase` | `{{plano}}`, `{{fase_escolhida}}`, `{{requisitos}}` | Pré-condições, passos verificáveis, validação, reversão, critérios de aborto, lacunas | Execução |
 
 Três regras de integridade atravessam os elos 2 e 3, e são elas que impedem a cadeia de degenerar em três prompts independentes rodando em sequência: **não refazer** o trabalho do elo anterior, **não contradizer em silêncio** (discordância vai em seção própria), e **declarar quando a entrada recebida é insuficiente** em vez de preencher com suposição.
 
-### Elo 1 — `devops/diagnostico-de-acoplamento/prompt.md` · versão 1.0.0
+### Elo 1: `devops/diagnostico-de-acoplamento/prompt.md` · versão 1.0.0
 
 | Parâmetro | Obrigatório | Descrição |
 |---|---|---|
@@ -90,7 +90,7 @@ inputs:
     descricao: Restrições e objetivos não negociáveis da migração para o modelo contínuo.
 ```
 
-### Elo 2 — `devops/plano-de-migracao-faseado/prompt.md` · versão 1.0.0
+### Elo 2: `devops/plano-de-migracao-faseado/prompt.md` · versão 1.0.0
 
 | Parâmetro | Obrigatório | Descrição |
 |---|---|---|
@@ -102,7 +102,7 @@ Você é um SRE Arquiteto especializado em migração de sistemas. Sua tarefa é
 
 EXECUTE AS SEGUINTES ETAPAS DE RACIOCÍNIO (não as imprima, use-as para estruturar a saída):
 1. Derivação Baseada no Diagnóstico: Derive as fases a partir dos riscos e acoplamentos listados no diagnóstico recebido, justificando a ordem.
-2. Contrato de Integridade da Cadeia: Este prompt NÃO refaz o diagnóstico. Classificação de etapa, garantia implícita de consumidor e ordenação de risco já foram estabelecidas no diagnóstico recebido e são usadas como dadas. Você não reclassifica, não reordena e não reanalisa nada disso. Se discordar de algum ponto, declare expressamente na seção de discordâncias com justificativa — discordar é permitido, rediagnosticar em silêncio não é. Ao citar consumidores e etapas, use exatamente os mesmos nomes que aparecem no diagnóstico, sem abreviar nem renomear, para que a rastreabilidade entre os documentos não se perca.
+2. Contrato de Integridade da Cadeia: Este prompt NÃO refaz o diagnóstico. Classificação de etapa, garantia implícita de consumidor e ordenação de risco já foram estabelecidas no diagnóstico recebido e são usadas como dadas. Você não reclassifica, não reordena e não reanalisa nada disso. Se discordar de algum ponto, declare expressamente na seção de discordâncias com justificativa, discordar é permitido, rediagnosticar em silêncio não é. Ao citar consumidores e etapas, use exatamente os mesmos nomes que aparecem no diagnóstico, sem abreviar nem renomear, para que a rastreabilidade entre os documentos não se perca.
 3. Herança de Lacunas: Para cada fase, verifique se ela depende de alguma lacuna declarada no diagnóstico que ainda não foi resolvida. Fase que depende de lacuna não resolvida deve ser marcada como BLOQUEADA, com a lacuna nomeada e o dado que a desbloqueia. Planejar em cima de lacuna crítica como se ela estivesse resolvida é o modo de falha mais grave deste prompt: o plano parece sólido e se apoia em premissa que ninguém verificou.
 4. Reversibilidade e Continuidade: Garanta que cada fase possua ponto de reversão independente de desfazer as anteriores e que cada consumidor saiba como continua operando.
 5. Critérios Objetivos: Defina critérios numéricos/observáveis para avanço de fase. A FASE 1 deve focar em observabilidade/comparação sem alterar o caminho produtivo principal.
@@ -153,7 +153,7 @@ inputs:
     descricao: Restrições e objetivos não negociáveis da migração.
 ```
 
-### Elo 3 — `devops/detalhamento-de-fase/prompt.md` · versão 1.0.0
+### Elo 3: `devops/detalhamento-de-fase/prompt.md` · versão 1.0.0
 
 | Parâmetro | Obrigatório | Descrição |
 |---|---|---|
@@ -169,7 +169,7 @@ EXECUTE AS SEGUINTES ETAPAS DE RACIOCÍNIO (não as imprima, use-as para estrutu
 2. Contrato de Integridade: Este prompt NÃO refaz o plano nem o diagnóstico que o originou. Escopo da fase, critério de avanço e ponto de reversão já foram decididos e são usados como dados. Você detalha a execução, não redesenha a estratégia. Se o plano herdado for inconsistente ou omisso nos detalhes necessários para o passo a passo, declare isso como lacuna e recuse preencher com suposições. Se a fase estiver marcada como BLOQUEADA no plano, diga isso na primeira seção e detalhe apenas os passos de desbloqueio.
 3. Conferência do Critério: Compare o critério de conclusão que você vai propor com o critério de avanço que o plano declarou para esta fase. Os dois precisam ser a mesma coisa. Se divergirem, declare a divergência explicitamente em vez de substituir silenciosamente o critério do plano pelo seu.
 4. Granularidade de Execução: Estruture pré-condições, passos sequenciais verificáveis, critérios de reversão com perda explícita e condições numéricas de aborto imediato. Cada passo declara se é reversível isoladamente ou apenas em conjunto com outros, porque isso define até onde é possível voltar sem desfazer a fase inteira.
-5. Honestidade da Reversão: Toda reversão perde algo — tempo, dado processado no intervalo, estado intermediário ou trabalho de configuração. Reversão descrita sem declarar o que se perde é reversão fantasiosa e não é aceitável nesta saída.
+5. Honestidade da Reversão: Toda reversão perde algo, tempo, dado processado no intervalo, estado intermediário ou trabalho de configuração. Reversão descrita sem declarar o que se perde é reversão fantasiosa e não é aceitável nesta saída.
 
 REGRAS ESTRITAS DE SAÍDA:
 - Responda em no máximo 70 linhas.
@@ -228,7 +228,7 @@ inputs:
 
 ## Execução
 
-**Modelo de criação da cadeia:** Gemini Pro, com raciocínio estendido — um único meta-prompt gerou os três elos.
+**Modelo de criação da cadeia:** Gemini Pro, com raciocínio estendido: um único meta-prompt gerou os três elos.
 **Modelo de execução:** Gemini Pro, com raciocínio estendido, nos três elos.
 
 > **Ressalva de reprodutibilidade.** O identificador acima é o nome do produto como exposto na interface em que a execução foi feita, e não um id versionado de API. A versão exata do snapshot e o orçamento de raciocínio não foram capturados no momento da execução, então este registro não é suficiente para reexecução byte a byte. Dos Checkpoints 08 em diante, em que a execução passa a ser por API, os identificadores são versionados (`openai:gpt-4o-mini`, `google:gemini-3.5-flash`).
@@ -238,7 +238,7 @@ Mesmo modelo nos três de propósito: se cada elo rodasse em um modelo diferente
 
 > As tabelas perderam a estrutura de colunas na transcrição da interface. Reconstruí a formatação; nenhum valor, classificação ou texto foi alterado. Mantive inclusive os erros de digitação do modelo, sinalizados adiante.
 
-### Rodada 1 — elo 1, diagnóstico
+### Rodada 1: elo 1, diagnóstico
 
 **CONTRATO POR CONSUMIDOR**
 
@@ -284,15 +284,15 @@ Mesmo modelo nos três de propósito: se cada elo rodasse em um modelo diferente
   reprocessamento de dias anteriores.
 ```
 
-**O que funcionou.** O achado central apareceu no lugar certo: os relatórios de billing dependem de "fechamento contábil consolidado da janela", e o risco de divergência contábil por leitura prematura veio **primeiro** na tabela, classificado como **silencioso**. Era exatamente isso que a regra de ordenar risco silencioso antes de risco ruidoso existia para produzir — dado errado que ninguém percebe é pior que alerta falso que todos veem.
+**O que funcionou.** O achado central apareceu no lugar certo: os relatórios de billing dependem de "fechamento contábil consolidado da janela", e o risco de divergência contábil por leitura prematura veio **primeiro** na tabela, classificado como **silencioso**. Era exatamente isso que a regra de ordenar risco silencioso antes de risco ruidoso existia para produzir, dado errado que ninguém percebe é pior que alerta falso que todos veem.
 
 As 14 etapas do Spark foram marcadas como INDETERMINADO com o critério honesto de que o insumo não as descreve individualmente, e a lacuna correspondente virou a primeira da lista. O enunciado genuinamente não descreve as etapas, então chutar uma classificação teria sido pior.
 
-**O erro que eu encontrei e decidi não corrigir.** A ingestão e a gravação no DW foram classificadas como EXIGE LOTE COMPLETO com critérios que descrevem a implementação atual, não uma restrição inerente: "depende de agendamento cron" e "particionamento por hora exige escrita atômica". Rodar em cron hoje é escolha de desenho; a ingestão é na verdade a parte mais incrementável do pipeline, e consumir continuamente do Relay é o requisito número um da migração. Na gravação o problema se repete com um agravante: o acoplamento real é a suposição de completude do consumidor, que já estava corretamente capturada na primeira tabela — então o mesmo acoplamento foi contado duas vezes, uma no lugar certo e uma como se fosse limitação do pipeline.
+**O erro que eu encontrei e decidi não corrigir.** A ingestão e a gravação no DW foram classificadas como EXIGE LOTE COMPLETO com critérios que descrevem a implementação atual, não uma restrição inerente: "depende de agendamento cron" e "particionamento por hora exige escrita atômica". Rodar em cron hoje é escolha de desenho; a ingestão é na verdade a parte mais incrementável do pipeline, e consumir continuamente do Relay é o requisito número um da migração. Na gravação o problema se repete com um agravante: o acoplamento real é a suposição de completude do consumidor, que já estava corretamente capturada na primeira tabela, então o mesmo acoplamento foi contado duas vezes, uma no lugar certo e uma como se fosse limitação do pipeline.
 
 Repassei o diagnóstico ao elo 2 **sem corrigir**, deliberadamente. A seção `DISCORDANCIAS DO DIAGNOSTICO` existe para esse caso, e agora ela tinha um erro real para pegar. Os três desfechos possíveis diziam coisas diferentes: declarar a discordância provaria que a cadeia se autocorrige com rastro; herdar em silêncio materializaria a cascata de erro; corrigir sem declarar seria o pior, porque daria a resposta certa e perderia a rastreabilidade, que é a única vantagem da cadeia sobre um prompt monolítico.
 
-### Rodada 2 — elo 2, plano faseado
+### Rodada 2: elo 2, plano faseado
 
 ```
 PREMISSAS HERDADAS DO DIAGNOSTICO
@@ -358,11 +358,11 @@ LACUNAS
 
 **O resultado do teste: a cadeia se autocorrigiu com rastro.** O elo 2 pegou o erro do elo 1 e declarou a discordância, chegando ao mesmo raciocínio que eu havia feito, sem que nada tivesse sido dito a ele. É o melhor dos três desfechos, e é evidência em vez de afirmação: num prompt monolítico esse erro de classificação ficaria dentro de uma saída única e o plano sairia contradizendo o requisito principal da migração sem deixar marca.
 
-O plano acertou também os outros dois pontos verificados. A fase 1 não toca produção — pipeline sombra, cron original intacto, reversão desligando o consumer, critério de paridade de 48 horas. E os nomes dos consumidores vieram literais do diagnóstico, preservando a rastreabilidade que a regra 2 exige. A solução de "visões horárias simuladas" na fase 2 é boa engenharia: mantém a garantia de completude dos consumidores enquanto a ingestão já é contínua, atacando exatamente o acoplamento que o diagnóstico identificou.
+O plano acertou também os outros dois pontos verificados. A fase 1 não toca produção: pipeline sombra, cron original intacto, reversão desligando o consumer, critério de paridade de 48 horas. E os nomes dos consumidores vieram literais do diagnóstico, preservando a rastreabilidade que a regra 2 exige. A solução de "visões horárias simuladas" na fase 2 é boa engenharia: mantém a garantia de completude dos consumidores enquanto a ingestão já é contínua, atacando exatamente o acoplamento que o diagnóstico identificou.
 
-**Duas falhas de contabilidade.** A regra do BLOQUEADA foi cumprida pela metade: as fases 2 e 3 declaram `Depende de lacuna` com o nome da lacuna, mas nenhuma recebeu o marcador, e as duas lacunas seguem abertas na seção final. Fica uma indefinição para quem vai executar — ou a lacuna impede a fase, ou não impede e falta dizer por quê. E a seção de premissas herdadas lista "classificação do Elo 1 de que ingestão e gravação exigem lote completo" como premissa, sendo que essa classificação é rejeitada na seção seguinte: premissa herdada deveria listar o que foi usado como base, não o que foi descartado.
+**Duas falhas de contabilidade.** A regra do BLOQUEADA foi cumprida pela metade: as fases 2 e 3 declaram `Depende de lacuna` com o nome da lacuna, mas nenhuma recebeu o marcador, e as duas lacunas seguem abertas na seção final. Fica uma indefinição para quem vai executar, ou a lacuna impede a fase, ou não impede e falta dizer por quê. E a seção de premissas herdadas lista "classificação do Elo 1 de que ingestão e gravação exigem lote completo" como premissa, sendo que essa classificação é rejeitada na seção seguinte: premissa herdada deveria listar o que foi usado como base, não o que foi descartado.
 
-### Rodada 3 — elo 3, detalhamento da Fase 1
+### Rodada 3: elo 3, detalhamento da Fase 1
 
 ```
 FASE DETALHADA
@@ -407,9 +407,9 @@ LACUNAS
 
 **A regra do cross-check funcionou limpa.** O critério de avanço veio copiado literalmente do plano e a divergência foi declarada como "Nenhuma". O elo 3 não substituiu silenciosamente o critério do plano pelo seu, que era o risco.
 
-**A reversão foi meia-vitória, e a metade que falhou é a interessante.** Eu havia previsto que a fase 1 esconde uma armadilha: desligar um pipeline sombra não afeta produção nenhuma, então a resposta fácil é "não se perde nada" — o que seria exatamente a reversão fantasiosa que a regra 5 proíbe. O output **não** caiu nisso: nomeou a perda do histórico acumulado. Mas tratou essa perda como irrelevante, com o parêntese "zero perda de dados produtivos", quando aquele histórico **é** a evidência que destrava a fase. O critério de avanço exige 48 horas contínuas de paridade, então reverter zera o relógio e a fase recomeça do zero. O custo real é dois dias de observação, não "apagar recursos de teste".
+**A reversão foi meia-vitória, e a metade que falhou é a interessante.** Eu havia previsto que a fase 1 esconde uma armadilha: desligar um pipeline sombra não afeta produção nenhuma, então a resposta fácil é "não se perde nada", o que seria exatamente a reversão fantasiosa que a regra 5 proíbe. O output **não** caiu nisso: nomeou a perda do histórico acumulado. Mas tratou essa perda como irrelevante, com o parêntese "zero perda de dados produtivos", quando aquele histórico **é** a evidência que destrava a fase. O critério de avanço exige 48 horas contínuas de paridade, então reverter zera o relógio e a fase recomeça do zero. O custo real é dois dias de observação, não "apagar recursos de teste".
 
-**Granularidade de passo insuficiente.** O passo 2 tem como critério de verificação "estabilidade do diff por 48 horas consecutivas", que é o próprio critério de conclusão da fase. Um passo cuja verificação leva 48 horas não é passo executável, é a fase inteira com outro nome — e sem checkpoint intermediário não existe como detectar cedo que o diff foi configurado errado, o que é justamente o erro mais provável nessa etapa.
+**Granularidade de passo insuficiente.** O passo 2 tem como critério de verificação "estabilidade do diff por 48 horas consecutivas", que é o próprio critério de conclusão da fase. Um passo cuja verificação leva 48 horas não é passo executável, é a fase inteira com outro nome, e sem checkpoint intermediário não existe como detectar cedo que o diff foi configurado errado, o que é justamente o erro mais provável nessa etapa.
 
 **Critérios de aborto: um de dois é numérico.** "Divergência persistente superior a 0,1%" é objetivo. "Qualquer interrupção ou impacto observado no job em cron produtivo" é observável mas não numérico, e deixa em aberto o que conta como impacto.
 
@@ -423,8 +423,8 @@ Também ficaram três erros de digitação do modelo, que mantive na transcriç�
 |---|---|
 | Elo 1 identificou o acoplamento silencioso do billing | Sim, e ordenado primeiro por ser silencioso |
 | Elo 1 tratou as 14 etapas honestamente | Sim, INDETERMINADO com lacuna correspondente |
-| Elo 1 confundiu prática atual com propriedade inerente | Sim — erro deliberadamente repassado |
-| Elo 2 pegou o erro e declarou discordância | **Sim** — mecanismo de integridade validado |
+| Elo 1 confundiu prática atual com propriedade inerente | Sim: erro deliberadamente repassado |
+| Elo 2 pegou o erro e declarou discordância | **Sim**: mecanismo de integridade validado |
 | Elo 2 usou nomes literais do diagnóstico | Sim |
 | Fase 1 sem tocar no caminho de produção | Sim |
 | Elo 2 marcou fase como BLOQUEADA quando depende de lacuna | Parcial: declarou a dependência, não aplicou o marcador |
@@ -439,13 +439,13 @@ Também ficaram três erros de digitação do modelo, que mantive na transcriç�
 
 **Técnica de criação: meta-prompting, com uma decisão de arquitetura no próprio meta-prompt.** Usei **um único meta-prompt** para gerar os três elos, em vez de três separados. O motivo é o encaixe: o contrato de saída do elo 1 tem que ser exatamente o contrato de entrada do elo 2, e gerando separadamente o elo 2 pode esperar uma forma que o elo 1 não produz. Gerando junto, com a tabela de contratos declarada no meta-prompt, os três nascem consistentes por construção. Nas duas passagens da execução não houve quebra de formato, o que é evidência a favor dessa escolha.
 
-**Framework: R-I-S-E nos três elos, com uma diferença importante.** Nos elos 2 e 3 o componente `Input` não é dado bruto, é **artefato produzido pelo elo anterior** — e isso muda o que o prompt precisa dizer sobre ele. Não basta descrever o parâmetro: é preciso declarar o que naquele artefato é autoridade estabelecida e não deve ser reaberto. Foi daí que saíram as três regras de integridade da cadeia. O `Steps` de cada elo é curto de propósito, porque a decomposição da tarefa já foi feita na cadeia: o que em um prompt monolítico seria um método de dezesseis etapas virou três métodos de cinco a seis.
+**Framework: R-I-S-E nos três elos, com uma diferença importante.** Nos elos 2 e 3 o componente `Input` não é dado bruto, é **artefato produzido pelo elo anterior**: e isso muda o que o prompt precisa dizer sobre ele. Não basta descrever o parâmetro: é preciso declarar o que naquele artefato é autoridade estabelecida e não deve ser reaberto. Foi daí que saíram as três regras de integridade da cadeia. O `Steps` de cada elo é curto de propósito, porque a decomposição da tarefa já foi feita na cadeia: o que em um prompt monolítico seria um método de dezesseis etapas virou três métodos de cinco a seis.
 
 **A divisão em três elos e não em dois ou cinco.** Dois elos deixariam o plano e o detalhamento no mesmo passo, e aí volta o problema da profundidade: detalhar todas as fases no mesmo output produz uma superficialidade por fase. Cinco elos fragmentariam demais e multiplicariam pontos de encaixe, que são os pontos frágeis. Três resolve porque cada elo tem uma pergunta própria e verificável: o que está acoplado, em que ordem mexer, e como executar um passo sem quebrar nada. O elo 3 recebendo **uma** fase por parâmetro é o que garante profundidade: ele é reusado uma vez por fase, em vez de tentar cobrir todas.
 
-**O teste que dá valor a este checkpoint.** Encontrei um erro conceitual real na saída do elo 1 — confundir "roda em lote hoje" com "exige lote completo por natureza" — e escolhi repassá-lo sem corrigir. Isso transformou uma afirmação de projeto em experimento: a seção de discordâncias funciona ou não funciona? Funcionou. O elo 2 identificou o erro, explicou por que a classificação estava errada, e ajustou o plano mantendo a ingestão contínua como meta — que é o requisito principal que o erro do elo 1 teria sabotado.
+**O teste que dá valor a este checkpoint.** Encontrei um erro conceitual real na saída do elo 1: confundir "roda em lote hoje" com "exige lote completo por natureza", e escolhi repassá-lo sem corrigir. Isso transformou uma afirmação de projeto em experimento: a seção de discordâncias funciona ou não funciona? Funcionou. O elo 2 identificou o erro, explicou por que a classificação estava errada, e ajustou o plano mantendo a ingestão contínua como meta, que é o requisito principal que o erro do elo 1 teria sabotado.
 
-Isso responde o argumento mais forte que o próprio modelo levantou contra a cadeia, o de propagação de erro: "se o Elo 1 classificar uma etapa de forma incorreta, o Elo 2 aceitará o erro como verdade absoluta". A resposta é uma inversão. A cadeia **não cria** o risco de propagação — num prompt monolítico o mesmo erro acontece dentro de uma saída única e ninguém vê. O que a cadeia faz é tornar o erro inspecionável: a classificação do elo 1 fica escrita em um artefato revisável antes de gastar o elo 2, e o próprio elo 2 tem um mecanismo formal para recusá-la. O custo real da divisão não é a propagação, é que o **ponto de revisão humana entre elos é opcional**: quem repassa a saída sem ler paga o preço de três execuções e não colhe o benefício da inspeção.
+Isso responde o argumento mais forte que o próprio modelo levantou contra a cadeia, o de propagação de erro: "se o Elo 1 classificar uma etapa de forma incorreta, o Elo 2 aceitará o erro como verdade absoluta". A resposta é uma inversão. A cadeia **não cria** o risco de propagação, num prompt monolítico o mesmo erro acontece dentro de uma saída única e ninguém vê. O que a cadeia faz é tornar o erro inspecionável: a classificação do elo 1 fica escrita em um artefato revisável antes de gastar o elo 2, e o próprio elo 2 tem um mecanismo formal para recusá-la. O custo real da divisão não é a propagação, é que o **ponto de revisão humana entre elos é opcional**: quem repassa a saída sem ler paga o preço de três execuções e não colhe o benefício da inspeção.
 
 Os outros dois custos que ele apontou são reais e eu aceito: três execuções gastam mais tokens que uma, e a orquestração é manual enquanto não houver automação. O teto de 70 linhas por elo existe justamente para limitar o primeiro.
 
@@ -460,13 +460,13 @@ Os outros dois custos que ele apontou são reais e eu aceito: três execuções 
 **Correções para a v1.0.1, não aplicadas para não invalidar as execuções registradas:**
 
 - **Elo 1:** separar propriedade inerente de escolha de implementação no critério de classificação. "Hoje roda em lote" nunca basta para classificar como EXIGE LOTE COMPLETO; o critério é se o resultado fica incorreto quando calculado sobre uma fatia parcial.
-- **Elo 2:** dependência de lacuna é binária — ou a fase vem marcada BLOQUEADA, ou explica por que aquela lacuna não bloqueia. E premissa herdada lista só o que foi usado como base, nunca o que foi rejeitado na seção de discordâncias.
-- **Elo 3:** ao declarar o que se perde na reversão, verificar explicitamente se a perda inclui progresso em direção ao critério de avanço — janela de observação, tempo de estabilidade acumulado, ciclos de comparação. E nenhum passo pode ter critério de verificação igual ao critério de conclusão da fase: se a verificação de um passo demora tanto quanto a fase, o passo precisa ser subdividido com checkpoints intermediários.
+- **Elo 2:** dependência de lacuna é binária, ou a fase vem marcada BLOQUEADA, ou explica por que aquela lacuna não bloqueia. E premissa herdada lista só o que foi usado como base, nunca o que foi rejeitado na seção de discordâncias.
+- **Elo 3:** ao declarar o que se perde na reversão, verificar explicitamente se a perda inclui progresso em direção ao critério de avanço: janela de observação, tempo de estabilidade acumulado, ciclos de comparação. E nenhum passo pode ter critério de verificação igual ao critério de conclusão da fase: se a verificação de um passo demora tanto quanto a fase, o passo precisa ser subdividido com checkpoints intermediários.
 
 **Sanitização: aqui o dado sensível é o grafo de dependências, não os valores.**
 
-Diferente do Checkpoint 03, onde o risco era o envelope de capacidade, e do 04, onde era o throughput absoluto, neste o que vale proteger é **quem depende de quem, com que garantia e em que horário**. O insumo revela que os relatórios de billing rodam de madrugada e dependem de partição horária fechada. Isso é um mapa de onde e quando corromper dado financeiro sem que ninguém perceba na hora — o próprio diagnóstico classificou esse risco como silencioso.
+Diferente do Checkpoint 03, onde o risco era o envelope de capacidade, e do 04, onde era o throughput absoluto, neste o que vale proteger é **quem depende de quem, com que garantia e em que horário**. O insumo revela que os relatórios de billing rodam de madrugada e dependem de partição horária fechada. Isso é um mapa de onde e quando corromper dado financeiro sem que ninguém perceba na hora: o próprio diagnóstico classificou esse risco como silencioso.
 
-A política: substituir nome de pessoa por papel, porque `Pepper` associa uma executiva nominalmente ao processo de faturamento e nada na análise depende disso — `relatórios de billing` basta e o diagnóstico fica idêntico. Substituir nome de sistema por rótulo funcional (`consumidor-de-agregados`, `indexador`, `faturamento`), porque o raciocínio da cadeia opera sobre a garantia implícita de cada consumidor, não sobre a identidade deles. Generalizar a janela horária do faturamento para "janela diária fora do horário comercial", que preserva a natureza do acoplamento e remove a precisão operacional.
+A política: substituir nome de pessoa por papel, porque `Pepper` associa uma executiva nominalmente ao processo de faturamento e nada na análise depende disso, `relatórios de billing` basta e o diagnóstico fica idêntico. Substituir nome de sistema por rótulo funcional (`consumidor-de-agregados`, `indexador`, `faturamento`), porque o raciocínio da cadeia opera sobre a garantia implícita de cada consumidor, não sobre a identidade deles. Generalizar a janela horária do faturamento para "janela diária fora do horário comercial", que preserva a natureza do acoplamento e remove a precisão operacional.
 
-O que **não** sanitizaria: a estrutura numérica — 14 etapas, ciclo de 60 minutos, particionamento por hora, os 40 minutos de processamento. Toda a classificação de incrementalidade e todo o desenho de fases dependem dessas quantidades, e elas não identificam a empresa nem o cliente.
+O que **não** sanitizaria: a estrutura numérica, 14 etapas, ciclo de 60 minutos, particionamento por hora, os 40 minutos de processamento. Toda a classificação de incrementalidade e todo o desenho de fases dependem dessas quantidades, e elas não identificam a empresa nem o cliente.
