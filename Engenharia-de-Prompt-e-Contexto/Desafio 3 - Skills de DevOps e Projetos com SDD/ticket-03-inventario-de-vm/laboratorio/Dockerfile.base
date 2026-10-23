@@ -1,0 +1,58 @@
+# Base dos hosts auditados do laboratório do Roster.
+#
+# POR QUE CONTAINER COM systemd, E NÃO UMA VM
+# -------------------------------------------
+# A ferramenta audita por SSH e não sabe o que há do outro lado. O que ela precisa do host
+# é: sshd escutando, systemd respondendo a `systemctl`, e um usuário sem privilégio para
+# entrar. Container privilegiado com systemd como PID 1 entrega os três.
+#
+# O que um container NÃO entrega, e está registrado em ADR-004:
+#   - kernel próprio. Ele compartilha o do host, então `kernel.versao_minima` do baseline
+#     é veredito do host, não deste container.
+#   - namespace de swap. `/proc/swaps` mostra o swap do host.
+# As duas regras são de nível de host e não de nível de container. Isso não é limitação da
+# ferramenta — é limitação do laboratório, e a ferramenta reporta o que encontra.
+FROM ubuntu:22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV container=docker
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        systemd systemd-sysv \
+        dbus \
+        openssh-server \
+        chrony \
+        iproute2 procps \
+        ca-certificates curl \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# `dbus` nao e opcional, e a primeira validacao descobriu isso na pratica.
+# Sem ele, `systemctl` e `timedatectl` funcionam para root pelo socket privado do systemd e
+# FALHAM para usuario comum com "Failed to connect to bus: No such file or directory".
+# A coleta entra com usuario sem privilegio de proposito, entao sem dbus as quatro regras de
+# servico e de NTP sairiam todas como `nao_verificado` — veredito correto da ferramenta, e
+# laboratorio que nao exercita o que deveria.
+RUN systemctl enable dbus
+
+# Enxuga o systemd para o que o laboratório precisa. Sem isso o boot do container tenta
+# subir unidade de hardware e polui o `systemctl list-units` com falha irrelevante.
+RUN find /etc/systemd/system /lib/systemd/system \
+        -path '*.wants/*' \
+        \( -name '*udev*' -o -name '*getty*' -o -name '*console*' \
+           -o -name 'systemd-logind*' -o -name 'systemd-tmpfiles*' \) \
+        -exec rm -f {} \; 2>/dev/null || true
+
+RUN mkdir -p /run/sshd /var/run/sshd && systemctl enable ssh chrony
+
+# node_exporter: binário único, sem dependência. É o que o baseline espera escutando na
+# 9100. Baixado na construção para o host não precisar de rede em tempo de auditoria.
+ARG NODE_EXPORTER_VERSAO=1.8.2
+RUN curl -fsSL -o /tmp/ne.tar.gz \
+      "https://github.com/prometheus/node_exporter/releases/download/v${NODE_EXPORTER_VERSAO}/node_exporter-${NODE_EXPORTER_VERSAO}.linux-amd64.tar.gz" \
+    && tar -xzf /tmp/ne.tar.gz -C /tmp \
+    && mv "/tmp/node_exporter-${NODE_EXPORTER_VERSAO}.linux-amd64/node_exporter" /usr/local/bin/ \
+    && rm -rf /tmp/ne.tar.gz "/tmp/node_exporter-${NODE_EXPORTER_VERSAO}.linux-amd64" \
+    && useradd --system --no-create-home --shell /usr/sbin/nologin node_exporter
+
+STOPSIGNAL SIGRTMIN+3
+CMD ["/sbin/init"]

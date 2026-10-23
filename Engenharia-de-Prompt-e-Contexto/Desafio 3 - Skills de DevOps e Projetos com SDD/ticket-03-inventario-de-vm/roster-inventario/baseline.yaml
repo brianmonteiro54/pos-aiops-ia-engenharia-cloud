@@ -1,0 +1,29 @@
+# baseline.yaml: padrão esperado de toda VM do parque
+versao: 1
+aplica_a: vms-do-parque
+esperado:
+  so:
+    distribuicao: ubuntu
+    versao_minima: "22.04"
+  kernel:
+    versao_minima: "6.5"
+  servicos:
+    ativos: [ssh, containerd, node_exporter, chrony]
+    proibidos: [telnet.socket, rpcbind.socket]
+  swap:
+    habilitado: false
+  portas_em_escuta:
+    publicas_permitidas: [22]
+    somente_rede_interna: [9100]
+  chaves_ssh:
+    emitidas_por: metacortex-platform
+  ssh:
+    login_de_root: false
+  ntp:
+    sincronizado: true
+severidade:
+  critico: [swap.habilitado, chaves_ssh.emitidas_por,
+            portas_em_escuta.publicas_permitidas, portas_em_escuta.somente_rede_interna]
+  alto: [servicos.ativos, servicos.proibidos, ssh.login_de_root,
+         so.distribuicao, so.versao_minima]
+  medio: [kernel.versao_minima, ntp.sincronizado]

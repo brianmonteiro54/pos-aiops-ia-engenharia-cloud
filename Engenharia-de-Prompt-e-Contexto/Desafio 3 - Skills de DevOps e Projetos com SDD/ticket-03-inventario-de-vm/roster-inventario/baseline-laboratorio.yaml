@@ -1,0 +1,51 @@
+# baseline-laboratorio.yaml
+#
+# ESTE NAO E O BASELINE DO PARQUE. Ele e o baseline do parque MENOS as duas regras que o
+# meio de teste nao pode responder, e existe por um motivo registrado em ADR-004.
+#
+# O laboratorio usa containers com systemd. Container COMPARTILHA o kernel e o namespace de
+# swap do host, entao duas regras do baseline do parque sao veredito do HOST e nao do
+# container auditado:
+#
+#   kernel.versao_minima: "6.5"   -> o kernel aqui e o do host (5.15 em WSL2)
+#   swap.habilitado: false        -> /proc/swaps mostra o swap do host (4 GiB ligados)
+#
+# As duas sao propriedades de nivel de host, nao de nivel de container. Nenhuma
+# configuracao do Dockerfile muda isso.
+#
+# POR QUE ISTO NAO E AFROUXAR O PADRAO PARA O TESTE PASSAR
+# --------------------------------------------------------
+# A validacao do critério CA-01 e feita em DUAS partes, e as duas estao na evidencia:
+#
+#   1. contra este arquivo, o host conforme sai com ZERO desvios e codigo 0.
+#      Isso prova a logica de julgamento.
+#   2. contra baseline.yaml do parque, o MESMO host sai com EXATAMENTE dois desvios —
+#      kernel e swap — e nada mais. Isso prova que os dois sao os previstos e nao um
+#      defeito escondido.
+#
+# A diferenca entre os dois arquivos e auditavel por `diff`. Quando houver VM de verdade,
+# este arquivo deixa de ser necessario.
+versao: 1-laboratorio
+aplica_a: hosts-de-laboratorio-em-container
+esperado:
+  so:
+    distribuicao: ubuntu
+    versao_minima: "22.04"
+  servicos:
+    ativos: [ssh, containerd, node_exporter, chrony]
+    proibidos: [telnet.socket, rpcbind.socket]
+  portas_em_escuta:
+    publicas_permitidas: [22]
+    somente_rede_interna: [9100]
+  chaves_ssh:
+    emitidas_por: metacortex-platform
+  ssh:
+    login_de_root: false
+  ntp:
+    sincronizado: true
+severidade:
+  critico: [chaves_ssh.emitidas_por,
+            portas_em_escuta.publicas_permitidas, portas_em_escuta.somente_rede_interna]
+  alto: [servicos.ativos, servicos.proibidos, ssh.login_de_root,
+         so.distribuicao, so.versao_minima]
+  medio: [ntp.sincronizado]

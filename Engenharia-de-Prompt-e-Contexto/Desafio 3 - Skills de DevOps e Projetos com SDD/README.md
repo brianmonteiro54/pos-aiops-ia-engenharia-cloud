@@ -26,7 +26,7 @@ projeto começou pelo código**.
 |---|---|---|
 | **01** — [Padrão de manifests](ticket-01-padrao-de-manifests/) | skill que aplica as 19 regras do padrão da casa, nos modos escrita e conferência | **concluído** |
 | **02** — [Triagem de cluster](ticket-02-triagem-no-cluster/) | skill de triagem sobre `mcp-server-kubernetes` em modo não destrutivo, matriz de roteamento e medição com/sem skill | **concluído** |
-| **03** — [Inventário e drift de VM](ticket-03-inventario-de-vm/) | ferramenta CLI que audita VM por SSH contra um baseline, com arco SDD completo | pendente |
+| **03** — [Inventário e drift de VM](ticket-03-inventario-de-vm/) | ferramenta CLI que audita VM por SSH contra um baseline, com arco SDD completo | **concluído** |
 | **04** — [Dashboard do cluster](ticket-04-dashboard-do-cluster/) | aplicação local de leitura do cluster pelo kubeconfig, com arco SDD e 5 ADRs | pendente |
 
 ## Onde as skills ficam, e por quê

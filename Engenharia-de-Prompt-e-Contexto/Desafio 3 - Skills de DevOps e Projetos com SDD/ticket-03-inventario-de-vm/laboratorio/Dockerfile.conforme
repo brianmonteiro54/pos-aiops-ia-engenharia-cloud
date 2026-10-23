@@ -1,0 +1,54 @@
+# Host do laboratório ajustado para CONFORMIDADE com o baseline do parque.
+#
+# Serve ao critério de pronto "um host conforme sai sem nenhum desvio".
+#
+# Duas regras do baseline este host não pode satisfazer, e o motivo é o laboratório e não
+# a configuração: `kernel.versao_minima` (6.5) e `swap.habilitado` (false) são propriedades
+# do kernel e do namespace do HOST, compartilhadas por qualquer container. Ver ADR-004.
+FROM roster-lab-base:1
+
+# --- servicos.ativos: ssh, containerd, node_exporter, chrony ---
+# containerd vem do pacote, nao do Docker, porque o que o baseline exige e a unidade ativa.
+RUN apt-get update && apt-get install -y --no-install-recommends containerd \
+    && apt-get clean && rm -rf /var/lib/apt/lists/* \
+    && systemctl enable containerd
+
+# node_exporter em unidade propria, escutando SO no endereco interno.
+# `portas_em_escuta.somente_rede_interna: [9100]` — bind em 0.0.0.0 e desvio critico, e e
+# justamente o que o host de desvios faz.
+RUN printf '%s\n' \
+    '[Unit]' \
+    'Description=Prometheus Node Exporter' \
+    'After=network.target' \
+    '' \
+    '[Service]' \
+    'User=node_exporter' \
+    'Group=node_exporter' \
+    'Type=simple' \
+    'ExecStart=/usr/local/bin/node_exporter --web.listen-address=127.0.0.1:9100' \
+    '' \
+    '[Install]' \
+    'WantedBy=multi-user.target' \
+    > /etc/systemd/system/node_exporter.service \
+    && systemctl enable node_exporter
+
+# --- ssh.login_de_root: false ---
+# Na configuracao efetiva, nao so no arquivo. `sshd -T` e quem responde o que vale.
+RUN printf '%s\n' \
+    'PermitRootLogin no' \
+    'PasswordAuthentication no' \
+    'PubkeyAuthentication yes' \
+    > /etc/ssh/sshd_config.d/00-metacortex.conf
+
+# --- chaves_ssh.emitidas_por: metacortex-platform ---
+# O usuario da coleta e sem privilegio, de proposito: o baseline preve que dado que exige
+# root volte como `nao_verificado`, e esse caminho precisa ser exercitado.
+RUN useradd -m -s /bin/bash auditor \
+    && mkdir -p /home/auditor/.ssh \
+    && chmod 700 /home/auditor/.ssh
+COPY chaves/auditor.pub /home/auditor/.ssh/authorized_keys
+RUN chmod 600 /home/auditor/.ssh/authorized_keys \
+    && chown -R auditor:auditor /home/auditor/.ssh
+
+# --- servicos.proibidos: telnet.socket, rpcbind.socket ---
+# Nenhum dos dois instalado. O host de desvios instala.
