@@ -1,0 +1,117 @@
+# ServiceAccount de leitura restrita: namespace nyx-dev (cliente nyx)
+#
+# Gerado contra o Padrão de Manifests da Metacortex, revisão 2026-07-29.
+# As decisões que não saem do YAML estão em DECISOES.md, ao lado deste arquivo.
+#
+# PROPÓSITO: exercitar o caminho de PERMISSÃO NEGADA em um tipo de recurso.
+# O tipo escolhido como negado é `secrets` (core). Negado também, de brinde:
+# qualquer verbo de escrita, qualquer recurso cluster-scoped (nodes, namespaces,
+# persistentvolumes) e `rbac.authorization.k8s.io`.
+#
+# COMO A NEGAÇÃO FUNCIONA: o RBAC do Kubernetes é SÓ-PERMITE. Não existe regra de
+# deny, não existe verbo negativo, não existe precedência. A negação é a AUSÊNCIA
+# da permissão: `secrets` não aparece em nenhuma `rule` abaixo, e é por isso que o
+# apiserver responde `Forbidden`. Qualquer outro ClusterRoleBinding que alcance
+# esta SA (ou os grupos `system:authenticated` / `system:serviceaccounts`) SOMA
+# permissão e pode fazer o teste passar quando deveria negar. O comando que
+# confere isso no cluster está no DECISOES.md; não foi executado aqui.
+#
+# PRÉ-REQUISITO: o Namespace nyx-dev é declarado em ../kube-news/nyx-dev.yaml e
+# não é redeclarado aqui, para não haver dois arquivos donos do mesmo objeto.
+---
+# 3.5: ServiceAccount dedicada. Aqui ela existe justamente para falar com a API,
+# então o RBAC mínimo abaixo é o propósito do objeto, não um excesso.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: nyx-leitor
+  namespace: nyx-dev
+  labels:
+    app.kubernetes.io/name: nyx-leitor
+    app.kubernetes.io/instance: nyx-dev
+    app.kubernetes.io/part-of: nyx
+    app.kubernetes.io/managed-by: platform
+  annotations:
+    metacortex.io/owner: time-nyx
+# 3.4: token não montado por default. O teste é por impersonação (--as), que não
+# usa token nenhum. Pod que precise do token pede explicitamente
+# `automountServiceAccountToken: true` no próprio pod, e aí a exceção fica visível
+# no manifesto do workload, não escondida no default da SA.
+automountServiceAccountToken: false
+---
+# Role (namespaced), não ClusterRole: o alcance para em nyx-dev. Isso é parte do
+# teste: `get nodes` e `get ns` também voltam negados, por serem cluster-scoped.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: nyx-leitura-restrita
+  namespace: nyx-dev
+  labels:
+    app.kubernetes.io/name: nyx-leitor
+    app.kubernetes.io/instance: nyx-dev
+    app.kubernetes.io/part-of: nyx
+    app.kubernetes.io/managed-by: platform
+  annotations:
+    metacortex.io/owner: time-nyx
+rules:
+  # Núcleo. `secrets` está deliberadamente FORA desta lista: é o tipo negado.
+  - apiGroups: [""]
+    resources:
+      - pods
+      - pods/log
+      - services
+      - endpoints
+      - configmaps
+      - persistentvolumeclaims
+      - events
+      - replicationcontrollers
+    verbs: ["get", "list", "watch"]
+
+  # `pods/exec`, `pods/attach` e `pods/portforward` ficam fora de propósito.
+  # Com exec, quem lê o pod lê o Secret já montado dentro dele por variável de
+  # ambiente ou volume, e o "negado em secrets" viraria encenação.
+
+  - apiGroups: ["apps"]
+    resources: [deployments, replicasets, statefulsets, daemonsets]
+    verbs: ["get", "list", "watch"]
+
+  - apiGroups: ["batch"]
+    resources: [jobs, cronjobs]
+    verbs: ["get", "list", "watch"]
+
+  - apiGroups: ["networking.k8s.io"]
+    resources: [ingresses, networkpolicies]
+    verbs: ["get", "list", "watch"]
+
+  - apiGroups: ["policy"]
+    resources: [poddisruptionbudgets]
+    verbs: ["get", "list", "watch"]
+
+  - apiGroups: ["autoscaling"]
+    resources: [horizontalpodautoscalers]
+    verbs: ["get", "list", "watch"]
+
+  - apiGroups: ["metrics.k8s.io"]
+    resources: [pods]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: nyx-leitura-restrita
+  namespace: nyx-dev
+  labels:
+    app.kubernetes.io/name: nyx-leitor
+    app.kubernetes.io/instance: nyx-dev
+    app.kubernetes.io/part-of: nyx
+    app.kubernetes.io/managed-by: platform
+  annotations:
+    metacortex.io/owner: time-nyx
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: nyx-leitura-restrita
+subjects:
+  - kind: ServiceAccount
+    name: nyx-leitor
+    namespace: nyx-dev

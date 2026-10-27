@@ -62,6 +62,12 @@ ticket.
 | "esse manifesto está no padrão da casa?" | manifests | antes de qualquer ação |
 | "cria um Deployment novo do zero pra mim" | manifests | antes de qualquer ação |
 | **"monta um ServiceAccount de leitura restrita pra eu testar permissão negada"** | **manifests** | antes de qualquer ação |
+
+O artefato que essa ativação produziu está versionado em
+`../../ticket-01-padrao-de-manifests/manifests/rbac-leitura-restrita/`, com `DECISOES.md`.
+É o que torna esta linha da tabela verificável em vez de só afirmada: a skill ativou em modo
+escrita, gerou os três objetos, e eles passam no script da casa com `rc=0` e no
+`--dry-run=server`. A negação de `secrets` foi conferida por impersonação contra o cluster.
 | "esse manifesto não sobe no cluster" | nenhuma, pediu a mensagem de erro | n/d |
 | "o que é um DaemonSet?" | nenhuma | n/d |
 | "provisiona uma VM nova no Construct" | nenhuma | n/d |

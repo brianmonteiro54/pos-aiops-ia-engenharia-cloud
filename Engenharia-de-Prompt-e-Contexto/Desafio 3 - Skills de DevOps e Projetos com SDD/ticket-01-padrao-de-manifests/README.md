@@ -10,7 +10,7 @@ que o Trivy já cobre.
 |---|---|
 | **A skill completa: corpo, script e arquivos de apoio** | `../../../.kiro/skills/padrao-de-manifests-metacortex/`: `SKILL.md`, `scripts/conferir_manifesto.py`, `references/padrao-completo.md`, `references/cobertura-do-trivy.md` |
 | **A origem da skill: de qual fluxo nasceu, como foi produzida e com qual ferramenta** | `curadoria.md` seção 0, e os dois fluxos em `fluxos/` |
-| **Saída real: os manifests gerados** | `manifests/fake-shop/` e `manifests/kube-news/`, com `DECISOES.md` em cada um |
+| **Saída real: os manifests gerados** | `manifests/fake-shop/` e `manifests/kube-news/`, com `DECISOES.md` em cada um, mais `manifests/rbac-leitura-restrita/` |
 | **Saída real: a conferência do manifesto barrado** | `evidencias/relatorios/01-manifesto-barrado.txt` (saída do script) + [`conferencia-do-manifesto-barrado.md`](conferencia-do-manifesto-barrado.md) (o passo 3, leitura do repositório do kube-news) |
 | **Curadoria: a linha entre script e instrução, regra por regra** | `curadoria.md` seção 1 |
 | **Curadoria, o que o Trivy já cobria** | `curadoria.md` seções 2 e 3, e `references/cobertura-do-trivy.md` |
@@ -92,6 +92,7 @@ S=../../../.kiro/skills/padrao-de-manifests-metacortex/scripts/conferir_manifest
 python3 "$S" manifests/nyx-api-barrado.yaml   # rc=1: 20 barram, 3 recomendadas
 python3 "$S" manifests/fake-shop/             # rc=1: 2 barram (desvios do Postgres)
 python3 "$S" manifests/kube-news/             # rc=0: nada barra
+python3 "$S" manifests/rbac-leitura-restrita  # rc=0: nada barra
 python3 "$S" validacao/teste-cego-01-vega-stg.yaml     # rc=1: 4 barram
 python3 "$S" validacao/teste-cego-02-atlas-prod.yaml   # rc=1: 4 barram
 ```
@@ -116,3 +117,41 @@ os valores: o experimento mede a forma, não um valor específico.
 
 O resultado está em `evidencias/relatorios/06-trivy-saida-crua.txt`, auditável sem rodar
 nada.
+
+## O terceiro manifesto gerado, e por que ele está aqui
+
+`manifests/rbac-leitura-restrita/` não nasceu de um pedido deste ticket. Ele é o **artefato
+de uma medição do Ticket 04**: ao testar se as skills disparam sozinhas, uma das frases foi
+"monta um ServiceAccount de leitura restrita pra eu testar permissão negada num tipo de
+recurso". A skill do padrão de manifests ativou sozinha, em modo escrita, e produziu estes
+dois arquivos.
+
+Ficou no repositório por dois motivos:
+
+- **é a evidência da medição.** O registro em
+  `../ticket-04-dashboard-do-cluster/docs/03-registro-das-skills.md` afirma que aquela frase
+  disparou a skill. O artefato é o que torna a afirmação verificável.
+- **é o único dos três manifestos gerados que não tem workload.** ServiceAccount, Role e
+  RoleBinding não têm container, então as quatro regras do passo 3 (2.2 probes, 2.6 período
+  de graça, 3.2 caminhos de escrita, 3.3 variáveis) **não têm sujeito**. O `DECISOES.md`
+  registra isso como ausência de sujeito e não como pendência, que é a distinção que o bloco
+  "NÃO CONFERIDO" do script não sabe fazer sozinho.
+
+O conteúdo que vale guardar: **o RBAC do Kubernetes é só-permite.** Não existe `deny`, verbo
+negativo nem precedência. A negação é a **ausência** do recurso na Role, e por isso `secrets`
+não aparece em nenhuma `rule`. E `pods/exec` ficou deliberadamente fora, porque com exec a
+ServiceAccount entra no container e lê o Secret já montado ali: o apiserver continuaria
+negando `get secrets` e o teste mediria a resposta da API em vez da confidencialidade.
+
+Verificado contra o cluster, por impersonação:
+
+```
+$ SA=system:serviceaccount:nyx-dev:nyx-leitor
+$ kubectl auth can-i get pods       -n nyx-dev --as=$SA   # yes
+$ kubectl auth can-i get services   -n nyx-dev --as=$SA   # yes
+$ kubectl auth can-i get secrets    -n nyx-dev --as=$SA   # no
+$ kubectl auth can-i get nodes                 --as=$SA   # no (cluster-scoped)
+```
+
+A negação é do desenho, não encenação. O `DECISOES.md` traz o comando que confere se algum
+outro binding soma permissão a essa ServiceAccount, que é o que invalidaria o teste.
