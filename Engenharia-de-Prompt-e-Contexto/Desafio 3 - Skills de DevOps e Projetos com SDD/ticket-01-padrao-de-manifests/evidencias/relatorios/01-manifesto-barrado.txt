@@ -1,5 +1,8 @@
 # Gerado por: python3 conferir_manifesto.py manifests/nyx-api-barrado.yaml
 # Trivy 0.52.2 | 2026-10-23T13:39:59Z
+# ATENCAO: esta e a saida do script, que julga 15 das 19 regras.
+# O passo 3 da skill (leitura do repositorio do kube-news, que decide a 2.2 e
+# corrige a direcao da 3.3) esta em ../../conferencia-do-manifesto-barrado.md
 
 Conferência contra o Padrão de Manifests da Metacortex (rev. 2026-07-29)
 2 objeto(s) em 1 arquivo(s): nyx-api-barrado.yaml

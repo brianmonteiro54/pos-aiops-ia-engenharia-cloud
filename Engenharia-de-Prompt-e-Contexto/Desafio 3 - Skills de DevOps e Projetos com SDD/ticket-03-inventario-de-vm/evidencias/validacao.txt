@@ -1,107 +1,60 @@
 # Validacao de roster-inventario contra os critérios de pronto
-# 2026-10-23T13:40:11Z
+# 2026-10-27T00:55:15Z
 
 ########## CA-01: host conforme sai sem nenhum desvio (baseline do laboratorio) ##########
-# Inventário de d62d2cb9607d (127.0.0.1)
-Coletado em 2026-10-23 13:40:12 UTC · baseline 1-laboratorio
+erro: host alcançável, mas nada escutando na porta de SSH
+       host 127.0.0.1:2201 como auditor
+erro: host alcançável, mas nada escutando na porta de SSH
+       host 127.0.0.1:2201 como auditor
 
-## Desvios
-
-Nenhum.
-
-## Não verificado
-
-| Regra | Motivo |
-|---|---|
-| ssh.login_de_root | exige privilegio que o usuario da coleta nao tem |
-
-## Conforme
-
-chaves_ssh.emitidas_por · ntp.sincronizado · portas_em_escuta.publicas_permitidas · portas_em_escuta.somente_rede_interna · servicos.ativos · servicos.proibidos · so.distribuicao · so.versao_minima
-
-
-codigo de saida: 0   (esperado 0)
+codigo de saida: 2   (esperado 0)
 
 ########## CA-01b: o MESMO host contra o baseline do parque (ADR-004) ##########
 Esperado: exatamente DOIS desvios, kernel e swap, e nada mais.
 Os dois sao de nivel de HOST e o container compartilha os dois.
 
-# Inventário de d62d2cb9607d (127.0.0.1)
-Coletado em 2026-10-23 13:40:13 UTC · baseline 1
+erro: host alcançável, mas nada escutando na porta de SSH
+       host 127.0.0.1:2201 como auditor
+erro: host alcançável, mas nada escutando na porta de SSH
+       host 127.0.0.1:2201 como auditor
 
-## Desvios
-
-| Severidade | Regra | Esperado | Encontrado |
-|---|---|---|---|
-| crítico | swap.habilitado | False | True (4G) |
-| médio | kernel.versao_minima | 6.5 | 5.15.167.4-microsoft-standard-WSL2 |
-
-## Não verificado
-
-| Regra | Motivo |
-|---|---|
-| ssh.login_de_root | exige privilegio que o usuario da coleta nao tem |
-
-## Conforme
-
-chaves_ssh.emitidas_por · ntp.sincronizado · portas_em_escuta.publicas_permitidas · portas_em_escuta.somente_rede_interna · servicos.ativos · servicos.proibidos · so.distribuicao · so.versao_minima
-
-
-codigo de saida: 1   (esperado 1, ha desvio, e e verdade)
+codigo de saida: 2   (esperado 1, ha desvio, e e verdade)
 
 ########## CA-02: host com desvios, cada um com a severidade do baseline ##########
-# Inventário de 56e868bc0012 (127.0.0.1)
-Coletado em 2026-10-23 13:40:14 UTC · baseline 1
+erro: host alcançável, mas nada escutando na porta de SSH
+       host 127.0.0.1:2202 como auditor
+erro: host alcançável, mas nada escutando na porta de SSH
+       host 127.0.0.1:2202 como auditor
 
-## Desvios
-
-| Severidade | Regra | Esperado | Encontrado |
-|---|---|---|---|
-| crítico | chaves_ssh.emitidas_por | metacortex-platform | 2 chave(s); fora do emissor: jdoe@laptop-pessoal |
-| crítico | portas_em_escuta.publicas_permitidas | [22] | publicas nao permitidas: [111, 9100] |
-| crítico | portas_em_escuta.somente_rede_interna | [9100] | 9100 em * |
-| crítico | swap.habilitado | False | True (4G) |
-| alto | servicos.ativos | ['ssh', 'containerd', 'node_exporter', 'chrony'] | ausentes: chrony, containerd |
-| alto | servicos.proibidos | ['telnet.socket', 'rpcbind.socket'] | ativos: rpcbind.socket |
-| médio | kernel.versao_minima | 6.5 | 5.15.167.4-microsoft-standard-WSL2 |
-
-## Não verificado
-
-| Regra | Motivo |
-|---|---|
-| ssh.login_de_root | exige privilegio que o usuario da coleta nao tem |
-
-## Conforme
-
-ntp.sincronizado · so.distribuicao · so.versao_minima
-
-
-codigo de saida: 1   (esperado 1)
+codigo de saida: 2   (esperado 1)
 
 ########## CA-02: a classificacao por severidade, do JSON ##########
-  medio    kernel.versao_minima
-  alto     servicos.ativos
-  alto     servicos.proibidos
-  critico  swap.habilitado
-  critico  portas_em_escuta.publicas_permitidas
-  critico  portas_em_escuta.somente_rede_interna
-  critico  chaves_ssh.emitidas_por
-  resumo por severidade: {'medio': 1, 'alto': 2, 'critico': 4}
+Traceback (most recent call last):
+  File "<stdin>", line 2, in <module>
+  File "/usr/lib/python3.10/json/__init__.py", line 293, in load
+    return loads(fp.read(),
+  File "/usr/lib/python3.10/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "/usr/lib/python3.10/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "/usr/lib/python3.10/json/decoder.py", line 355, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
 
 ########## CA-03: regra nao verificavel aparece separada de conforme ##########
 O usuario da coleta e sem privilegio, e `sshd -T` exige root.
 
-  regra     : ssh.login_de_root
-  esperado  : False
-  encontrado: None
-  veredito  : nao_verificado
-  motivo    : exige privilegio que o usuario da coleta nao tem
-
-  conforme       : 3
-  desvio         : 7
-  nao_verificado : 1
-  -> nao_verificado NAO esta somado em conforme
-  -> no inventario, ssh.login_de_root = None
+Traceback (most recent call last):
+  File "<stdin>", line 2, in <module>
+  File "/usr/lib/python3.10/json/__init__.py", line 293, in load
+    return loads(fp.read(),
+  File "/usr/lib/python3.10/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "/usr/lib/python3.10/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "/usr/lib/python3.10/json/decoder.py", line 355, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
 
 ########## CA-04: host inalcancavel: tres falhas, sem stack trace ##########
 
@@ -111,7 +64,7 @@ erro: host alcançável, mas nada escutando na porta de SSH
 codigo de saida: 2   (esperado 2)
 
 --- chave recusada ---
-erro: autenticação recusada pelo host: a chave não foi aceita
+erro: host alcançável, mas nada escutando na porta de SSH
        host 127.0.0.1:2201 como auditor
 codigo de saida: 2   (esperado 2)
 
@@ -126,12 +79,17 @@ erro: o arquivo de chave privada informado não existe
 codigo de saida: 2   (esperado 2)
 
 ########## CA-05: a segunda execucao devolve o mesmo resultado ##########
-  instante da 1a coleta: 2026-10-23T13:40:17Z
-  instante da 2a coleta: 2026-10-23T13:40:19Z
-  os instantes diferem : True
-
-  mesmo veredito em todas as 11 regras: True
-  resto do documento identico             : True
+Traceback (most recent call last):
+  File "<stdin>", line 2, in <module>
+  File "/usr/lib/python3.10/json/__init__.py", line 293, in load
+    return loads(fp.read(),
+  File "/usr/lib/python3.10/json/__init__.py", line 346, in loads
+    return _default_decoder.decode(s)
+  File "/usr/lib/python3.10/json/decoder.py", line 337, in decode
+    obj, end = self.raw_decode(s, idx=_w(s, 0).end())
+  File "/usr/lib/python3.10/json/decoder.py", line 355, in raw_decode
+    raise JSONDecodeError("Expecting value", s, err.value) from None
+json.decoder.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
 
 ########## RE-03: a chave privada nao aparece em saida nenhuma ##########
   conteudo da chave na saida : ausente

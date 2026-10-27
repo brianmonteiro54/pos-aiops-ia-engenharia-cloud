@@ -44,6 +44,20 @@ Não é escolha de organização, é requisito do Kiro: ele descobre skills apen
 dentro da pasta do Desafio 3 não carregaria: viraria markdown decorativo. Quem clonar este
 repositório e abri-lo no Kiro tem as skills ativas sem configurar nada.
 
+Se o repositório **não** for a raiz do workspace, instale no caminho global, que o Kiro
+mescla com o do projeto:
+
+```bash
+for s in padrao-de-manifests-metacortex triagem-de-cluster-metacortex; do
+  ln -sfn "$PWD/.kiro/skills/$s" ~/.kiro/skills/"$s"
+done
+```
+
+Symlink, para continuar havendo uma fonte da verdade. A descoberta acontece no **início da
+sessão**: depois de instalar, abra uma sessão nova, senão a skill fica ativável à mão e não
+dispara sozinha. Isso está medido em
+`ticket-04-dashboard-do-cluster/docs/03-registro-das-skills.md`.
+
 A pasta de cada ticket guarda a **curadoria** (o raciocínio sobre o que entrou, o que
 ficou fora e a medição que sustenta cada corte) mais os fluxos manuais que originaram a
 skill e as evidências das execuções.

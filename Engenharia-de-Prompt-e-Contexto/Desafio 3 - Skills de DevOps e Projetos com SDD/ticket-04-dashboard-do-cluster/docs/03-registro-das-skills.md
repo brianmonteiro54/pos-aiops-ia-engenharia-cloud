@@ -3,175 +3,246 @@
 O ticket pede: quais skills dispararam sozinhas, quais eu precisei chamar, quais apareceram
 onde não deviam, e o que eu tive que reexplicar.
 
-A resposta honesta começa por um fato que invalida metade da pergunta.
+## O bloqueio, e como ele foi removido
 
-## O fato que precisa vir primeiro: nenhuma skill foi carregada
+A primeira versão deste registro não tinha conteúdo, e o motivo era estrutural: **nenhuma
+skill estava carregada**. As duas viviam em `<repo>/.kiro/skills/`, e a raiz do workspace da
+sessão não era a raiz do repositório.
 
-Durante todo este ticket, **zero skills estavam ativas no runtime**. Não é
-interpretação; é verificável de dois lados.
+O Kiro varre dois caminhos e **mescla** os dois: `<raiz-do-workspace>/.kiro/skills/` e
+`~/.kiro/skills/`. A correção foi instalar as duas no caminho global, por symlink para o
+repositório, de modo que continue havendo uma fonte da verdade:
 
-**Do lado do runtime:** a sessão lista os itens disponíveis para ativação como
-`**Available Items:** None`.
+```
+~/.kiro/skills/padrao-de-manifests-metacortex  -> <repo>/.kiro/skills/...
+~/.kiro/skills/triagem-de-cluster-metacortex   -> <repo>/.kiro/skills/...
+```
 
-**Do lado do disco:** existem 14 arquivos `SKILL.md` no repositório.
+Isso vale para qualquer sessão, em qualquer workspace, sem depender de abrir o repositório
+como raiz.
 
-| Onde | Quantas | Quais |
+### Três coisas que a documentação não cobre, e que eu medi
+
+**1. Ativação explícita funciona na mesma sessão; descoberta automática, não.** A
+documentação diz que a descoberta acontece no início da sessão, e não diz o que acontece com
+skill criada à mão depois. Medido: a lista de itens disponíveis desta sessão continuou
+dizendo `None`, **e a ativação explícita por `disclose_context` funcionou**, devolvendo o
+corpo da skill e o diretório resolvido. Conclusão: a lista de descoberta é congelada no
+início da sessão; a ativação explícita lê o disco na hora.
+
+Consequência prática: numa sessão já aberta você consegue usar a skill, mas ela **não
+dispara sozinha**, porque o gatilho depende de `name` e `description` estarem no contexto
+desde o começo.
+
+**2. Sub-agente faz descoberta própria.** A documentação não diz se sub-agente herda skills.
+Medido com uma sonda que não fazia nada além de responder:
+
+> **ITENS_DISPONIVEIS:** `padrao-de-manifests-metacortex`, `triagem-de-cluster-metacortex`
+> **`disclose_context` disponível:** sim
+
+Isso é o que tornou o resto deste registro possível: **sub-agente é sessão limpa com as
+skills descobertas**, e serve de banco de teste de ativação.
+
+**3. Symlink funciona.** O Kiro resolveu o symlink e reportou o diretório final. Não estava
+documentado.
+
+## Quais dispararam sozinhas
+
+Treze execuções em sessão limpa, cada uma recebendo só a frase, sem nenhuma menção a skills.
+Dez são as frases da matriz de roteamento do Ticket 02; três foram escritas para este
+ticket.
+
+| Frase | Ativou | Momento |
 |---|---|---|
-| `<repo>/.kiro/skills/` | 2 | `padrao-de-manifests-metacortex`, `triagem-de-cluster-metacortex` |
-| `ticket-03-.../roster-inventario/.kiro/skills/` | 6 | as do OpenSpec, instaladas pelo `init` |
-| `ticket-04-.../cluster-retrato/.kiro/skills/` | 6 | idem |
+| "o pod do nyx-prod não sobe" | triagem | antes de qualquer ação |
+| "por que esse deployment está 0/3" | triagem | antes de qualquer ação |
+| "o service do nyx-stg não tem endpoint" | triagem | antes de qualquer ação |
+| "o Service do nyx não está entregando tráfego" | triagem | antes de qualquer ação |
+| "revisa esse deployment antes de eu subir" | manifests | antes de qualquer ação |
+| "esse manifesto está no padrão da casa?" | manifests | antes de qualquer ação |
+| "cria um Deployment novo do zero pra mim" | manifests | antes de qualquer ação |
+| **"monta um ServiceAccount de leitura restrita pra eu testar permissão negada"** | **manifests** | antes de qualquer ação |
+| "esse manifesto não sobe no cluster" | nenhuma, pediu a mensagem de erro | n/d |
+| "o que é um DaemonSet?" | nenhuma | n/d |
+| "provisiona uma VM nova no Construct" | nenhuma | n/d |
+| **"preciso escrever código Python que leia EndpointSlice e conte endpoints prontos"** | **nenhuma** | n/d |
+| **"quero um painel local que mostre o estado do cluster numa tela"** | **nenhuma** | n/d |
 
-O Kiro varre **duas** pastas: `<raiz-do-workspace>/.kiro/skills/` e `~/.kiro/skills/`. A
-raiz do workspace desta sessão é `/home/brian/apagar/aiops`, e nenhuma das duas existe lá:
+**Oito ativações automáticas, todas declaradas como antes de qualquer outra ação.** É o
+comportamento esperado: o Kiro trata a ativação como requisito bloqueante quando a
+`description` casa.
 
-```
-$ ls -d /home/brian/apagar/aiops/.kiro/skills/*
-ls: cannot access ...: No such file or directory
-$ ls -d ~/.kiro/skills/*
-ls: cannot access ...: No such file or directory
-```
+As três frases em negrito são do Ticket 04 e são as mais informativas, porque este ticket é
+**desenvolvimento**, não revisão nem triagem.
 
-As 2 skills que eu escrevi estão na raiz do **repositório**, que não é a raiz do
-**workspace**. As 12 do OpenSpec estão em subpastas, e subpasta não é varrida.
+## Quais eu precisei chamar
 
-### O que isso faz com as quatro perguntas do ticket
+**Uma: `triagem-de-cluster-metacortex`, na sessão principal.** E por um motivo específico: a
+descoberta desta sessão aconteceu antes de as skills existirem no caminho global, então a
+lista automática estava vazia. Ativei explicitamente para confirmar que o mecanismo
+respondia.
 
-| Pergunta | Resposta honesta |
-|---|---|
-| quais dispararam sozinhas | **nenhuma.** Não havia nada carregado para disparar |
-| quais eu precisei chamar | **nenhuma**, no sentido de ativar. Nenhuma estava disponível |
-| quais apareceram onde não deviam | **nenhuma.** Zero ativações, zero falsos positivos |
-| o que eu tive que reexplicar | **tudo o que as skills diriam**, porque elas não estavam lá |
+Nas treze sessões limpas eu **não** precisei chamar nada: ou disparou sozinha, ou
+corretamente não disparou.
 
-Um relatório que dissesse "a skill de triagem disparou sozinha quando li o cluster" seria
-mais bonito e seria falso. O que aconteceu é diferente, e é mais interessante.
+## Quais apareceram onde não deviam
 
-## O que aconteceu de verdade: as skills viraram memória, não ferramenta
+**Nenhuma.** E os dois casos de maior risco passaram, o que é o resultado que interessa.
 
-As duas skills que eu escrevi nos Tickets 01 e 02 **foram usadas** neste ticket. Só não
-como skills. Elas funcionaram como documentos que eu já havia escrito e cujo conteúdo eu
-carregava no contexto da conversa. Isso tem três consequências práticas.
+### O teste duro do anti-gatilho
 
-### 1. O conhecimento aplicado é rastreável, a ativação não é
+> "preciso escrever código Python que leia EndpointSlice e conte quantos endpoints estão
+> prontos por Service"
 
-Dá para apontar onde cada skill influenciou o Ticket 04:
+Essa frase é a pior armadilha possível para as duas skills. Ela contém `EndpointSlice`,
+`endpoints prontos` e `Service`: o vocabulário central do passo 5 da triagem, e a própria
+contagem `prontos/total` que o ADR-004 deste ticket introduziu na skill.
 
-| Skill | Onde entrou no Ticket 04 | Como entrou |
-|---|---|---|
-| `padrao-de-manifests` | regra 3.7 (tag de imagem) ao subir o workload: `registry.metacortex.io` não existe, e `subir-workload.sh` faz `kubectl set image` depois do apply | conhecimento meu, não ativação |
-| `padrao-de-manifests` | regra 2.2 (probes) virou o RF-03: a skill julga se a probe **existe no arquivo**; o dashboard mostra o efeito de ela **não existir** | o requisito nasceu da regra |
-| `triagem-de-cluster` | os três fatos que moldaram a normalização: `phase: Running` em CrashLoop, `readyReplicas` ausente, endpoint vazio | medições do Ticket 02, recarregadas |
-| `triagem-de-cluster` | os três chamados viraram os casos de teste do CA-03 e CA-04 | o cluster do Ticket 02 continuou no ar |
+**Não ativou nenhuma.** O motivo declarado pelo executor:
 
-Mas **nenhuma dessas entradas é uma ativação de skill.** São eu lembrando do que escrevi.
-Se outra pessoa abrisse este repositório como workspace, as 2 skills carregariam e o
-comportamento poderia ser diferente: melhor ou pior. Eu não medi isso, e não posso
-afirmar nada sobre ele.
+> o pedido é escrever código Python que consulta a API de EndpointSlice, e não revisar ou
+> gerar manifesto YAML nem diagnosticar algo quebrado no cluster agora
 
-### 2. A divergência mais útil deste ticket veio de uma skill não ter sido consultada
+É exatamente o critério que a matriz de roteamento identificou como a melhor linha das duas
+descriptions: **o limite é a fonte da verdade, e nenhuma das duas é "código que eu vou
+escrever"**. A cláusula geral roteou uma frase que não está em enumeração nenhuma.
 
-A skill do Ticket 01 julga **arquivo**. A do Ticket 02 lê **estado do cluster**. O
-Ticket 04 esbarrou na costura entre as duas:
+### A distinção que um dos executores fez e que vale registrar
 
-`subir-workload.sh` aplica manifests que satisfazem a regra 3.7 (tag fixa, sem `latest`) e
-em seguida roda `kubectl set image` para uma imagem pública, porque
-`registry.metacortex.io` não existe. Resultado: **a regra está satisfeita no artefato e
-insatisfeita no cluster.** A skill do T01 aprovaria o arquivo; a do T02 veria uma imagem
-que não é a declarada.
+A frase do painel também não ativou, e o executor acrescentou:
 
-Isso não é defeito de nenhuma das duas. É que "conformidade" significa coisas diferentes
-para quem lê arquivo e para quem lê cluster, e nenhuma das duas skills diz isso. **Está
-registrado aqui porque é o tipo de lacuna que só aparece quando as duas são usadas no mesmo
-trabalho**: e eu só percebi porque estava escrevendo as duas coisas, não porque alguma
-skill avisou.
+> li o `SKILL.md` da triagem como referência do repositório, o que não é ativação
 
-### 3. O OpenSpec foi conduzido pela CLI, não pelas skills que ele instalou
+**Ler o arquivo e ativar a skill são coisas diferentes.** Na primeira delas o conteúdo entra
+como documento do projeto, igual a qualquer outro; na segunda ele entra como instrução de
+método. Para um registro de disparos isso precisa estar separado, e foi o executor que
+separou.
 
-O `openspec init` instalou 6 skills e 6 prompts em
-`cluster-retrato/.kiro/skills/` e `.kiro/prompts/`. Nenhuma foi usada. Todo o ciclo foi
-feito pela linha de comando:
+## O que eu tive que reexplicar
 
-```
-openspec new change "dashboard-de-leitura-do-cluster"
-openspec validate dashboard-de-leitura-do-cluster --strict
-openspec status --change dashboard-de-leitura-do-cluster
-openspec archive dashboard-de-leitura-do-cluster
-```
+Quatro coisas que eu redescobri neste ticket e que nenhuma das duas skills cobre.
 
-Duas coisas que só a CLI me deu, e que a skill não teria dado tão rápido:
-
-- **`openspec templates`** imprime o caminho dos gabaritos. Ler o gabarito resolveu de uma
-  vez a dúvida de formato que no Ticket 03 eu errei: os cabeçalhos do `proposal.md` são
-  `## Why` e `## What Changes`, **em inglês**, mesmo com o projeto configurado em `pt-BR`.
-  No Ticket 03 eu os escrevi em português e o `validate` reclamou
-- **`openspec new`** sem subcomando devolve `error: unknown command`. O comando é
-  `new change <nome>`. Descobri com `--help`, não com a skill
-
-## O que eu tive que reexplicar a mim mesmo, e que deveria estar numa skill
-
-Esta é a parte aproveitável do registro. Três coisas que eu redescobri neste ticket e que
-nenhuma das duas skills cobre:
-
-**1. `--request-timeout` do `kubectl` não limita o comando.** Medido: sem teto, travou além
-de 70s contra endereço não roteável; com `--request-timeout=5s`, levou 25s. A skill de
-triagem recomenda comandos de leitura e não diz nada sobre teto de tempo, e qualquer
-ferramenta que chame `kubectl` de dentro de um handler HTTP precisa saber disso. **Candidato
-a entrar na skill de triagem.**
+**1. `--request-timeout` do `kubectl` não limita o comando.** Medido: contra endereço não
+roteável, sem teto o `kubectl` passou de 70 s; com `--request-timeout=5s` levou 25 s. Ele
+limita cada requisição, não o comando, porque a descoberta de grupos da API é repetida. A
+skill de triagem recomenda comandos de leitura e não diz nada sobre teto de tempo.
+**Candidato a entrar na skill**, e obrigatório para qualquer ferramenta que chame `kubectl`
+de dentro de um handler HTTP.
 
 **2. Os nove modos de falha de acesso devolvem `exit 1`, e três deles a mesma mensagem.**
-Token inválido, token expirado e certificado de cliente expirado são indistinguíveis.
-A skill de triagem assume cluster acessível em todos os seus caminhos. **Candidato a uma
-seção nova: "quando o `kubectl` não fala com o cluster".**
+Token inválido, token expirado e certificado de cliente expirado são indistinguíveis. A
+skill de triagem assume cluster acessível em todos os seus caminhos. **Candidato a uma seção
+nova: "quando o `kubectl` não fala com o cluster".**
 
-**3. A skill de triagem fazia a pergunta errada sobre endpoint, e eu errei duas vezes
-antes de chegar nisso.**
+**3. A skill de triagem assume um transporte que pode não existir.** Achado da execução
+real: **nenhuma das treze sessões tinha o servidor MCP de Kubernetes**. A skill prescreve
+chamadas no formato `kubectl_get {"resourceType":...}`, que é a interface do MCP. Os três
+executores de triagem caíram no `kubectl` do shell por conta própria e se restringiram aos
+verbos de leitura. Um deles registrou:
 
-Primeiro escrevi aqui que "a reference do Ticket 02 registrou a chave ausente e não a chave
-nula". **Falso.** Fui conferir antes de corrigir e `references/leitura-da-api.md` já tinha
-os dois modos, a comparação lado a lado e o idioma `len(x.get("endpoints") or [])`. A
-reference estava certa; minha memória dela, não. Fica registrado porque é o mesmo erro que
-o Ticket 01 cometeu três vezes: afirmar sobre um documento meu sem reler o documento.
+> não há servidor MCP de Kubernetes instalado nesta sessão, então fiz a triagem com
+> `kubectl` do shell, restrito aos verbos de leitura (`get`, `describe`, `logs`)
 
-A lacuna real é outra, e é no `SKILL.md`, não na reference. O Passo 5 dizia:
+Duas leituras, e as duas contam:
 
-> A pergunta é uma só: **o Service tem endpoint?**
+- **defeito de portabilidade.** A skill não diz o que fazer quando o transporte não existe.
+  O método sobreviveu pela competência do executor, não pelo texto.
+- **a melhor evidência da tese do Ticket 02.** Sem o servidor em modo não destrutivo, nada
+  impedia um `kubectl delete`. O que segurou foi a instrução escrita. "A garantia é da
+  skill, não da ferramenta" deixou de ser argumento e passou a ser observação.
 
-Sim-ou-não é a pergunta errada. Medido nos quatro estados do cluster: no `CrashLoopBackOff`
-e no `ImagePullBackOff` o Service **tem** endpoints: existem e não servem. `len()` devolve
-2 e 3, e quem pergunta "tem endpoint?" ouve "sim" e segue adiante.
+**4. A skill do Ticket 01 fazia a pergunta errada sobre endpoint**, e isso foi corrigido:
+o Passo 5 perguntava "o Service tem endpoint?" e passou a perguntar "quantos estão prontos",
+com a tabela de medição. Detalhe no ADR-004 deste ticket.
 
-A skill escapava disso por acidente: o Passo 5 só é alcançado quando os passos 3 e 4 não
-acusaram nada, ou seja, com pod pronto. Dentro do roteiro, a pergunta funciona. **Fora do
-roteiro, engana**: e foi exatamente o que me fez escrever `prontos/total` no dashboard em
-vez de um sim/não.
+## O defeito que a regra escrita achou no meu próprio código
 
-**Corrigido nos dois arquivos**, com a tabela de medição anexa: a pergunta passou a ser
-"quantos endpoints prontos", e a reference ganhou a seção
-"contar endpoints não é contar endpoints prontos".
+Esta é a parte mais útil do registro, e ela não estava na minha lista de perguntas.
 
-E uma correção ao PRD deste próprio ticket, que a medição produziu: eu havia escrito que
-"ausência de endpoint explica 'subiu mas não responde'". Errado nos chamados 1 e 2, onde o
-objeto `Endpoints` **tem** `subsets`, populado com `notReadyAddresses`. A pergunta certa é
-**quantos prontos**. Corrigido no PRD, no RF-02 e no CA-03.
+Pedi a um sub-agente o painel que este ticket entrega. Ele localizou o `cluster-retrato`,
+validou contra o cluster, e achou um defeito que eu não tinha visto:
 
-## Conclusão do registro
+```python
+# cluster_retrato.py, _tabela_pods, versão anterior
+causa = f"<span class=ruim>{E(p['causa'])}</span>" if p["causa"] else ""
+```
 
-O ticket pede observação de comportamento de skill em uso. **Eu não consigo entregar essa
-observação para este ticket**, porque o ambiente não carregou nenhuma skill, e eu prefiro
-dizer isso a inventar ativações.
+A coluna "estado" tem a guarda `if p["quebrado"]`. A coluna "causa" **não tinha**. Então
+qualquer pod com `lastState.terminated.reason` saía com a causa em vermelho, mesmo
+saudável e rodando.
 
-O que o ticket rendeu, e que vale mais que um relato fabricado:
+Medido no cluster de laboratório:
 
-- **uma medição de onde skill é carregada e onde não é**, verificada dos dois lados
-- **uma lacuna real entre as duas skills**: conformidade de arquivo contra conformidade de
-  cluster, que só aparece usando as duas no mesmo trabalho
-- **três itens concretos para a próxima revisão das skills**, todos com medição anexa
-- **uma correção aplicada à skill do Ticket 02**: o Passo 5 perguntava "o Service tem
-  endpoint?" e passou a perguntar "quantos prontos", com a tabela de medição
-- **um erro meu, pego e registrado**: afirmei que a reference de triagem estava incompleta
-  sem reler a reference. Ela não estava
+| | Antes | Depois |
+|---|---|---|
+| causa em vermelho em pod **saudável** | **16** | 0 |
+| causa em vermelho em pod **quebrado** | 2 | 2 |
+| terminação antiga marcada como histórico | 0 | 16 |
 
-Para observar ativação de verdade, o teste tem que ser: abrir
-`/home/brian/pos-aiops-ia-engenharia-cloud` **como raiz do workspace** e repetir uma tarefa
-de triagem. Não fiz isso neste ticket. Fica dito como o experimento que falta, não como
-resultado.
+Um reinício de nó deixou `reason: Unknown` em quase tudo, e o painel pintou o `kube-system`
+inteiro de vermelho. Num painel cujo propósito declarado é encurtar os primeiros minutos de
+um chamado, isso é o oposto do que ele promete.
+
+**E a regra violada é a que a própria skill de triagem escreve**, em `references/` e no
+corpo:
+
+> Container `ready=True` com `restartCount` alto é armadilha. [...] Se o `state` atual é
+> `running`, o `lastState` é história e provavelmente não é o seu chamado.
+
+Eu citei essa regra no TRD deste ticket, implementei a leitura de `lastState` por causa dela,
+e **não implementei a guarda que ela exige**. O conhecimento estava escrito, versionado, e
+foi ignorado pelo código que o cita.
+
+Conserto aplicado na camada de normalização, onde a distinção pertence: `causa` só recebe
+`lastState` quando o container **não** está rodando; quando está, vai para `historico` e a
+tela mostra em cinza com a marca `(histórico)`.
+
+### E o conserto introduziu um segundo defeito, que o teste pegou
+
+A primeira versão do conserto usava:
+
+```python
+rodando = bool((c.get("state") or {}).get("running"))
+```
+
+`running: {}` sem `startedAt` é um container **rodando**, e `bool({})` é `False`. O teste
+novo falhou na hora, apontando `<span class=ruim>Error</span>` onde devia haver histórico.
+
+É a **mesma classe de erro** que o ADR-004 deste ticket documenta sobre `endpoints: null`:
+confundir presença de chave com veracidade do valor. Eu escrevi um ADR inteiro sobre isso e
+repeti o erro três camadas adiante. A versão correta testa presença:
+
+```python
+rodando = "running" in (c.get("state") or {})
+```
+
+Validação depois dos dois consertos: **43 testes de unidade** (dois novos, para a distinção
+causa/histórico) e **66 verificações de ponta a ponta**, todas passando.
+
+## A lacuna entre as duas skills, que continua de pé
+
+A skill do Ticket 01 julga **arquivo**. A do Ticket 02 lê **estado do cluster**. O
+`subir-workload.sh` deste ticket aplica manifests que satisfazem a regra 3.7 (tag fixa,
+registry interno) e em seguida roda `kubectl set image` para uma imagem pública, porque
+`registry.metacortex.io` não existe.
+
+Resultado: **a regra está satisfeita no artefato e insatisfeita no cluster.** A skill do T01
+aprovaria o arquivo; a do T02 veria uma imagem que não é a declarada. E de fato viu: duas
+das triagens em sessão limpa reportaram, por conta própria, "a imagem aponta para registry
+público em vez de `registry.metacortex.io`" como achado lateral.
+
+Não é defeito de nenhuma das duas. É que "conformidade" significa coisas diferentes para
+quem lê arquivo e para quem lê cluster, e **nenhuma das duas descriptions diz isso**. É o
+tipo de lacuna que só aparece usando as duas no mesmo trabalho.
+
+## O que este registro não prova
+
+- **n = 1 por frase.** Treze acertos em treze tentativas únicas não é treze de treze
+  repetido. Ativação é decisão de modelo.
+- **a mensagem vem do agente pai**, não de uma pessoa digitando no chat. O mecanismo de
+  descoberta e o insumo (`name` + `description`) são idênticos, verificados pela sonda; o
+  enquadramento da mensagem não é.
+- **duas skills no conjunto.** Com vinte instaladas, a sobreposição de vocabulário que a
+  matriz de roteamento descreve pesa mais, e nada aqui mede isso.
+- **as frases são minhas**, escritas por quem conhece as duas descriptions. Viés estrutural
+  que nenhuma rodada corrige.

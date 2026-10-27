@@ -47,6 +47,10 @@ python3 cluster-retrato/cluster_retrato.py --help
 > `preparar-cenarios-de-falha.sh` gera kubeconfigs com token e chave privada de verdade
 > (descartáveis, de um cluster local) em `~/desafio03-lab/t04`, **fora do repositório**.
 > Nada disso entra no git.
+>
+> O token do contexto restrito do CA-07 vale **24 horas**. Passado esse prazo o CA-07 falha
+> com credencial rejeitada, que é o CA-06 acontecendo no lugar errado. Rode
+> `preparar-cenarios-de-falha.sh` de novo antes de validar.
 
 ## Entregue
 

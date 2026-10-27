@@ -1,0 +1,43 @@
+{
+  "overhead": {
+    "mcp_mediana_s": 2.14,
+    "kubectl_mediana_s": 0.15,
+    "spawn_npx_s": 1.99,
+    "repeticoes": 3
+  },
+  "skill_tokens": 5022,
+  "bracos": {
+    "chamado-1 COM skill": {
+      "chamadas": 10,
+      "tokens_resposta": 8202,
+      "tokens_entrada": 13224,
+      "bytes": 35762,
+      "segundos_replay": 23.7,
+      "respostas_vazias": 3
+    },
+    "chamado-1 SEM skill": {
+      "chamadas": 15,
+      "tokens_resposta": 5409,
+      "tokens_entrada": 5409,
+      "bytes": 17035,
+      "segundos_replay": 40.5,
+      "respostas_vazias": 4
+    },
+    "chamado-3 COM skill": {
+      "chamadas": 10,
+      "tokens_resposta": 4591,
+      "tokens_entrada": 9613,
+      "bytes": 18925,
+      "segundos_replay": 32.9,
+      "respostas_vazias": 2
+    },
+    "chamado-3 SEM skill": {
+      "chamadas": 13,
+      "tokens_resposta": 3482,
+      "tokens_entrada": 3482,
+      "bytes": 15705,
+      "segundos_replay": 27.4,
+      "respostas_vazias": 3
+    }
+  }
+}

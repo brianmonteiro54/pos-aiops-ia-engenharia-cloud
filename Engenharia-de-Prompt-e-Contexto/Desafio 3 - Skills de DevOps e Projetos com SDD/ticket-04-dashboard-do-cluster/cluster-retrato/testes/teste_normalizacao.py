@@ -15,9 +15,10 @@ import unittest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from cluster_retrato import (  # noqa: E402
-    PREFIXOS_PERMITIDOS, VerboProibido, _kubectl, _permitido, auditar_fonte,
-    classificar, contar_por_namespace, limpar_ruido, normalizar_deployment,
-    normalizar_endpoints, normalizar_pod, normalizar_servico, usuario_negado,
+    PREFIXOS_PERMITIDOS, VerboProibido, _kubectl, _permitido, _tabela_pods,
+    auditar_fonte, classificar, contar_por_namespace, limpar_ruido,
+    normalizar_deployment, normalizar_endpoints, normalizar_pod,
+    normalizar_servico, usuario_negado,
 )
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
@@ -147,8 +148,44 @@ class TestePod(unittest.TestCase):
         self.assertEqual(fora["fase"], "Running")
         self.assertEqual(fora["estado"], "CrashLoopBackOff")
         self.assertEqual(fora["causa"], "OOMKilled")
+        self.assertEqual(fora["historico"], "")
         self.assertTrue(fora["quebrado"])
         self.assertEqual(fora["reinicios"], 38)
+
+    def test_terminacao_antiga_em_container_rodando_e_historico(self):
+        """A regra que a skill do Ticket 02 escreve e que eu havia ignorado aqui.
+
+        `state: running` significa que `lastState` é historia, nao a causa de um
+        chamado aberto. Medido no laboratorio: reinicio de no deixou
+        `reason: Unknown` em 16 pods saudaveis, e a tela pintava os 16 de vermelho.
+        """
+        pod = {"metadata": {"namespace": "kube-system", "name": "coredns-x"},
+               "spec": {"containers": [{"name": "coredns",
+                                        "readinessProbe": {"httpGet": {}}}]},
+               "status": {"phase": "Running", "containerStatuses": [
+                   {"name": "coredns", "ready": True, "restartCount": 1,
+                    "state": {"running": {"startedAt": "2026-10-26T11:23:44Z"}},
+                    "lastState": {"terminated": {"reason": "Unknown",
+                                                 "exitCode": 255}}}]}}
+        fora = normalizar_pod(pod)
+        self.assertEqual(fora["causa"], "", "causa deve ficar vazia: nao e o chamado")
+        self.assertEqual(fora["historico"], "Unknown")
+        self.assertFalse(fora["quebrado"])
+        self.assertEqual(fora["prontidao"], "pronto")
+
+    def test_historico_nao_vira_vermelho_na_tela(self):
+        """Fecha o circuito: a tela nao pode pintar historico como causa."""
+        pod = {"metadata": {"namespace": "nyx-stg", "name": "nyx-api-y"},
+               "spec": {"containers": [{"name": "api"}]},
+               "status": {"phase": "Running", "containerStatuses": [
+                   {"name": "api", "ready": True, "restartCount": 6,
+                    "state": {"running": {}},
+                    "lastState": {"terminated": {"reason": "Error",
+                                                 "exitCode": 1}}}]}}
+        html = _tabela_pods([normalizar_pod(pod)])
+        self.assertIn("(histórico)", html)
+        self.assertNotIn("<span class=ruim>Error</span>", html)
+        self.assertIn("voltou a rodar", html)
 
     def test_imagepullbackoff(self):
         pod = {"metadata": {"namespace": "orion-stg", "name": "orion-web-x"},

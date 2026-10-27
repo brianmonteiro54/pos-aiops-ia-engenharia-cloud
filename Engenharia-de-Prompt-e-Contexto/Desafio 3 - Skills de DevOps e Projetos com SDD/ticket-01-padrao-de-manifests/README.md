@@ -11,7 +11,7 @@ que o Trivy já cobre.
 | **A skill completa: corpo, script e arquivos de apoio** | `../../../.kiro/skills/padrao-de-manifests-metacortex/`: `SKILL.md`, `scripts/conferir_manifesto.py`, `references/padrao-completo.md`, `references/cobertura-do-trivy.md` |
 | **A origem da skill: de qual fluxo nasceu, como foi produzida e com qual ferramenta** | `curadoria.md` seção 0, e os dois fluxos em `fluxos/` |
 | **Saída real: os manifests gerados** | `manifests/fake-shop/` e `manifests/kube-news/`, com `DECISOES.md` em cada um |
-| **Saída real: a conferência do manifesto barrado** | `evidencias/relatorios/01-manifesto-barrado.txt` |
+| **Saída real: a conferência do manifesto barrado** | `evidencias/relatorios/01-manifesto-barrado.txt` (saída do script) + [`conferencia-do-manifesto-barrado.md`](conferencia-do-manifesto-barrado.md) (o passo 3, leitura do repositório do kube-news) |
 | **Curadoria: a linha entre script e instrução, regra por regra** | `curadoria.md` seção 1 |
 | **Curadoria, o que o Trivy já cobria** | `curadoria.md` seções 2 e 3, e `references/cobertura-do-trivy.md` |
 | **Curadoria: corpo da skill x arquivo consultado sob demanda** | `curadoria.md` seção 4 |

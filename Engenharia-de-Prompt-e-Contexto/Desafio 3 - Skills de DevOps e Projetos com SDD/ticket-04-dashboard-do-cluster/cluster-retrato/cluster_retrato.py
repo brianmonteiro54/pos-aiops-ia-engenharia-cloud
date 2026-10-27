@@ -315,19 +315,33 @@ def normalizar_pod(pod: dict) -> dict:
     status = pod.get("status") or {}
     cs = status.get("containerStatuses") or []
 
-    estado = causa = ""
+    estado = causa = historico = ""
     # 1. por que está esperando: CrashLoopBackOff, ImagePullBackOff, ...
     for c in cs:
         espera = (c.get("state") or {}).get("waiting") or {}
         if espera.get("reason"):
             estado = espera["reason"]
             break
-    # 2. por que morreu na última vez: OOMKilled, Error, ... esta é a CAUSA
+    # 2. por que morreu na última vez: OOMKilled, Error, ...
+    #
+    # ATENÇÃO: isto só é a CAUSA do chamado se o container NÃO está rodando agora.
+    # A skill de triagem do Ticket 02 tem a regra escrita: `state: running` significa
+    # que `lastState` é história. A primeira versão desta função ignorava a regra que o
+    # próprio projeto cita, e pintava de vermelho a causa de qualquer pod com
+    # `lastState`. Medido no cluster de laboratório: 16 células vermelhas em pods
+    # saudáveis contra 2 legítimas. Reinício de nó deixa `reason: Unknown` em tudo.
     for c in cs:
         morte = (c.get("lastState") or {}).get("terminated") or {}
-        if morte.get("reason"):
-            causa = morte["reason"]
-            break
+        if not morte.get("reason"):
+            continue
+        # PRESENÇA da chave, não veracidade: `running: {}` sem `startedAt` continua
+        # sendo "está rodando", e `bool({})` é False. Mesma armadilha do
+        # `endpoints: null` que o ADR-004 documenta, agora do lado de dentro.
+        rodando = "running" in (c.get("state") or {})
+        if rodando:
+            historico = historico or morte["reason"]
+        else:
+            causa = causa or morte["reason"]
     # 3. nem agendou: a condição carrega a explicação
     if not estado:
         for cond in status.get("conditions") or []:
@@ -358,6 +372,7 @@ def normalizar_pod(pod: dict) -> dict:
         "fase": fase,
         "estado": estado,
         "causa": causa,
+        "historico": historico,
         "reinicios": sum(c.get("restartCount") or 0 for c in cs),
         "prontos": prontos,
         "total": total,
@@ -661,7 +676,7 @@ def _tabela_pods(pods: list[dict]) -> str:
     if not pods:
         return "<p class=vazio>nenhum pod no recorte atual</p>"
     linhas = []
-    sem_probe = False
+    sem_probe = tem_historico = False
     for p in sorted(pods, key=lambda x: (not x["quebrado"], x["namespace"], x["nome"])):
         if p["prontidao"] == "pronto_sem_probe":
             sem_probe = True
@@ -673,7 +688,15 @@ def _tabela_pods(pods: list[dict]) -> str:
             pronto = f"<span class=ruim>{p['prontos']}/{p['total']}</span>"
         estado_txt = (f"<span class=ruim>{E(p['estado'])}</span>"
                       if p["quebrado"] else E(p["estado"]))
-        causa = f"<span class=ruim>{E(p['causa'])}</span>" if p["causa"] else ""
+        # Causa do chamado em vermelho; terminação antiga de container que voltou a
+        # rodar em cinza, marcada como histórico. São coisas diferentes.
+        if p["causa"]:
+            causa = f"<span class=ruim>{E(p['causa'])}</span>"
+        elif p.get("historico"):
+            causa = (f"<span class=mu>{E(p['historico'])} (histórico)</span>")
+            tem_historico = True
+        else:
+            causa = ""
         rein = (f"<span class=morno>{p['reinicios']}</span>"
                 if p["reinicios"] else "0")
         linhas.append(
@@ -684,9 +707,14 @@ def _tabela_pods(pods: list[dict]) -> str:
             "container subiu e que <em>nenhuma readinessProbe está declarada</em>: "
             "o Kubernetes não está verificando se a aplicação responde. "
             "É prontidão presumida, não verificada.</div>") if sem_probe else ""
+    nota_hist = ("<div class=nota><strong>(histórico)</strong> é terminação anterior de um "
+                 "container que <em>voltou a rodar</em>. Não é a causa de um chamado "
+                 "aberto agora: reinício de nó deixa esse campo preenchido em tudo. "
+                 "Vermelho só quando o container não está rodando.</div>"
+                 ) if tem_historico else ""
     return ("<table><tr><th>namespace</th><th>pod</th><th>prontos</th><th>estado</th>"
             "<th>causa</th><th>reinícios</th></tr>" + "".join(linhas) + "</table>"
-            + nota)
+            + nota + nota_hist)
 
 
 def _tabela_deployments(deps: list[dict]) -> str:

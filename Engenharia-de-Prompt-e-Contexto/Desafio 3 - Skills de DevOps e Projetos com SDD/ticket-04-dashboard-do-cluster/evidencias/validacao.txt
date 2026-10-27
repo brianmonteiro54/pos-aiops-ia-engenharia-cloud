@@ -1,11 +1,11 @@
 Validação do Ticket 04: cluster-retrato
-data: 2026-10-23T10:39:43-03:00
+data: 2026-10-26T21:51:00-03:00
 kubectl: v1.33.13
 python: Python 3.10.12
 
 === CA-08: nenhum caminho do código executa verbo de escrita
   [ok]     varredura do fonte: CA-08 ok: nenhum verbo de escrita no fonte, subprocesso confinado a _kubectl
-  [ok]     testes de unidade: Ran 41 tests OK
+  [ok]     testes de unidade: Ran 43 tests OK
 
 === CA-01: os seis itens do RF-02 contra o cluster real
   [ok]     seção Namespaces presente

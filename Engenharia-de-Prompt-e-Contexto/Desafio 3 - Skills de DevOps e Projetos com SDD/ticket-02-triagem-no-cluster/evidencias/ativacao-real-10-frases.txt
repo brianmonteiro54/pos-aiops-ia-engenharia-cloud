@@ -1,0 +1,94 @@
+Ativacao real das duas skills: as 10 frases da matriz de roteamento
+data: 2026-10-26
+Kiro IDE, modelo Claude Opus 5
+
+COMO FOI FEITO
+--------------
+As skills foram instaladas no caminho global, que o Kiro mescla com o do workspace:
+  ~/.kiro/skills/padrao-de-manifests-metacortex -> <repo>/.kiro/skills/...
+  ~/.kiro/skills/triagem-de-cluster-metacortex  -> <repo>/.kiro/skills/...
+(symlinks: uma fonte da verdade, no repositorio)
+
+Cada frase foi para um sub-agente em sessao limpa. O sub-agente recebeu SO A FRASE,
+sem nenhuma mencao a skills, mais um pedido de instrumentacao no final.
+
+SONDA PREVIA (para saber se sub-agente serve como sessao limpa)
+---------------------------------------------------------------
+Pergunta: "liste os itens disponiveis para ativacao; voce tem disclose_context?"
+Resposta: ITENS_DISPONIVEIS = padrao-de-manifests-metacortex,
+                              triagem-de-cluster-metacortex
+          disclose_context = sim
+=> sub-agente faz descoberta propria. Serve.
+
+RESULTADO
+---------
+ #  frase                                          fase 1 previa    ATIVOU DE FATO     momento
+ 1  "o pod do nyx-prod nao sobe"                   triagem          triagem            antes de qualquer acao
+ 2  "por que esse deployment esta 0/3"             triagem          triagem            antes de qualquer acao
+ 3  "o service do nyx-stg nao tem endpoint"        triagem          triagem            antes de qualquer acao
+ 4  "revisa esse deployment antes de eu subir"     manifests        manifests          antes de qualquer acao
+ 5  "esse manifesto esta no padrao da casa?"       manifests        manifests          antes de qualquer acao
+ 6  "cria um Deployment novo do zero pra mim"      manifests        manifests          antes de qualquer acao
+ 7  "esse manifesto nao sobe no cluster"           AMBAS (baixa)    NENHUMA            nao ativou, pediu a mensagem de erro
+ 8  "o Service do nyx nao esta entregando trafego" triagem          triagem            antes de qualquer acao
+ 9  "o que e um DaemonSet?"                        NENHUMA          NENHUMA            nao ativou
+10  "provisiona uma VM nova no Construct"          NENHUMA          NENHUMA            nao ativou
+
+10 de 10 com o comportamento desejado.
+As duas skills apareceram em ITENS_DISPONIVEIS nas 10 execucoes.
+
+MOTIVO DECLARADO POR CADA EXECUTOR
+----------------------------------
+ 1  "o pod nao sobe" e falha acontecendo agora no cluster, o gatilho literal da skill
+    de triagem, e nao revisao de manifesto.
+ 2  "deployment esta 0/3" e sintoma de algo quebrado agora no cluster.
+ 3  a mensagem relata um objeto ja no cluster falhando agora, que e estado de execucao
+    e nao revisao de YAML.
+ 4  o pedido e revisar um manifesto antes do apply, que e o modo conferencia dessa
+    skill, e nao um problema de estado do cluster.
+ 5  a pergunta "esse manifesto esta no padrao da casa?" e conferencia de YAML contra o
+    padrao, nao estado de cluster.
+ 6  "cria um Deployment novo do zero" e escrita de manifesto, o modo escrita dessa
+    skill, e nao estado de cluster quebrado.
+ 7  sem a mensagem de erro nao se distingue YAML recusado de falha de cluster, e a
+    regra manda pedir a mensagem antes de rotear.
+ 8  "Service nao esta entregando trafego" e sintoma de estado do cluster agora.
+ 9  a mensagem pedia explicacao de conceito de Kubernetes, caso que as duas skills
+    excluem explicitamente do proprio escopo.
+10  o pedido e provisionar/criar uma VM, acao de infraestrutura fora do escopo das duas
+    skills, que so leem YAML/codigo ou estado de cluster.
+
+CONTROLE
+--------
+As frases 9 e 10 sao o controle do metodo. O pedido de instrumentacao menciona
+"itens disponiveis para ativacao", o que poderia induzir a ativar. As duas nao
+ativaram, com motivo coerente. O pedido nao induziu.
+
+O QUE AS TRES TRIAGENS ACERTARAM (contra o cluster real)
+--------------------------------------------------------
+frase 1  nyx-prod   limits.memory 24Mi, OOMKilled, exitCode 137
+frase 2  orion-stg  tag fabricioveronez/fake-shop:v1.14.2 nao existe no registry
+frase 3  nyx-stg    service.spec.selector app=nyx-api x pod labels app=nyxapi
+frase 8  nyx-prod + nyx-stg: achou os dois casos, com as duas causas distintas
+
+DEFEITO NOVO, ACHADO PELA EXECUCAO REAL
+---------------------------------------
+Nenhuma das sessoes tinha o servidor MCP de Kubernetes. A skill de triagem prescreve
+chamadas no formato do MCP (kubectl_get {"resourceType":...}). Os executores cairam no
+kubectl do shell por conta propria e se restringiram aos verbos de leitura.
+
+Registro literal de um deles:
+  "nao ha servidor MCP de Kubernetes instalado nesta sessao, entao fiz a triagem com
+   kubectl do shell, restrito aos verbos de leitura (get, describe, logs)"
+
+Duas conclusoes:
+  - defeito de portabilidade: a skill assume um transporte que pode nao existir e nao
+    diz o que fazer quando nao existe
+  - confirmacao da tese do ticket: sem o servidor em modo nao destrutivo, nada impedia
+    um kubectl delete. O que segurou foi a instrucao escrita na skill
+
+COMO REPRODUZIR
+---------------
+1. ln -sfn <repo>/.kiro/skills/<nome> ~/.kiro/skills/<nome>   (as duas)
+2. abrir sessao nova (a descoberta acontece no inicio da sessao)
+3. mandar a frase, sozinha, e pedir o bloco de instrumentacao no final

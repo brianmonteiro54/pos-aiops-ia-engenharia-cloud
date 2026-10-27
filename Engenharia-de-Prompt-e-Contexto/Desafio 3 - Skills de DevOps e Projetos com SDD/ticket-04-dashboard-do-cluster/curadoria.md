@@ -20,7 +20,7 @@ escritas**, porque a medição discordou:
 | 004 | `EndpointSlice` primário, `Endpoints` como alternativa | **sim**, a pergunta mudou |
 | 005 | o mínimo do RF-02 + os três cenários de falha | não |
 
-## As cinco coisas que a medição desmentiu
+## As seis coisas que a medição desmentiu
 
 Esta é a parte que vale guardar. Em todos os cinco casos eu tinha escrito uma coisa e o
 cluster disse outra.
@@ -56,6 +56,22 @@ falhou acusando o literal `"run"`: dentro do próprio auditor, no conjunto de no
 método de `subprocess` que ele procura. Verdadeiro positivo da regra aplicado ao vocabulário
 de quem a aplica. Isentei o auditor e declarei a isenção, em vez de encurtar a lista de
 verbos.
+
+**6. A tela pintava de vermelho 16 pods saudáveis, violando a regra que o próprio projeto
+cita.** Achado depois, quando as skills passaram a carregar de verdade e um sub-agente foi
+olhar o painel. A coluna "estado" tinha a guarda `if quebrado`; a coluna "causa" não tinha.
+Qualquer pod com `lastState.terminated.reason` saía com a causa em vermelho, e um reinício
+de nó havia deixado `reason: Unknown` em quase tudo. Medido: **16 células vermelhas em pods
+saudáveis contra 2 legítimas.**
+
+A regra violada é a que a skill de triagem do Ticket 02 escreve e que o TRD deste ticket
+**cita textualmente**: `state: running` significa que `lastState` é história. O conhecimento
+estava escrito, versionado e citado, e o código que o cita o ignorou.
+
+E o conserto introduziu um segundo defeito: `bool({})` tratando `running: {}` como "não
+rodando". É a **mesma classe de erro** do `endpoints: null` sobre a qual eu escrevi o
+ADR-004 inteiro, confundir presença de chave com veracidade do valor. O teste novo pegou na
+hora. Detalhe em `docs/03-registro-das-skills.md`.
 
 ## O erro de método que repeti
 

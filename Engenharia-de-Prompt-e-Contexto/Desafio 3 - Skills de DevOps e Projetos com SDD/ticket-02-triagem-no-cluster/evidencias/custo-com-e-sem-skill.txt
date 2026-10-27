@@ -1,0 +1,97 @@
+Custo em tokens e tempo: com e sem skill
+data: 2026-10-26T21:30:00-0300
+tokenizador: tiktoken o200k_base (proxy; nao e o tokenizador da Anthropic)
+transporte: mcp-server-kubernetes em modo nao destrutivo, via ferramentas/mcp.py
+
+== Custo fixo da skill, por ativacao ==
+  SKILL.md: 18396 bytes, 5022 tokens
+  (as references/ estao fora do caminho de execucao e nao entram)
+
+== Overhead do transporte ==
+  mesma consulta via MCP:     2.14s (mediana de 3)
+  mesma consulta via kubectl: 0.15s
+  spawn do npx por chamada:   1.99s
+
+== chamado-1 COM skill ==
+   #  ferramenta            tokens    bytes      s  alvo
+   1  kubectl_get              586     1604    2.3  all
+   2  kubectl_get             1849     8616    2.3  nyx-api-79c5f4d8d7-777ht
+   3  kubectl_get             1087     5378    2.3  nyx-api
+   4  kubectl_get                7       18    2.2  limitranges lista
+   5  kubectl_get                7       18    2.9  resourcequotas lista
+   6  kubectl_get             1583     7372    2.6  nyx-postgres-5877b89bf8-qtlkw
+   7  kubectl_get             1854     8617    2.3  nyx-api-79c5f4d8d7-zrwbb
+   8  kubectl_describe         835     2744    2.0  nyx-api-79c5f4d8d7-777ht
+   9  kubectl_logs              29       55    2.3  nyx-api-79c5f4d8d7-777ht
+  10  kubectl_get              365     1340    2.6  nyx-api
+  TOTAL                       8202    35762   23.7
+  chamadas: 10   respostas vazias: 3
+  tempo sem o spawn do npx: 3.8s
+  + custo fixo da skill: 5022 tokens  => entrada total 13224 tokens
+
+== chamado-1 SEM skill ==
+   #  ferramenta            tokens    bytes      s  alvo
+   1  kubectl_get              220      571    3.9  pods lista
+   2  kubectl_describe         797     2618    4.1  nyx-api-79c5f4d8d7-zrwbb
+   3  kubectl_describe         835     2744    2.8  nyx-api-79c5f4d8d7-777ht
+   4  kubectl_get                7       18    3.6  limitranges lista
+   5  kubectl_get                7       18    3.6  resourcequotas lista
+   6  kubectl_get              125      358    2.9  deployments lista
+   7  kubectl_get              125      358    2.3  deployments lista
+   8  kubectl_describe         396     1349    2.2  nyx-api
+   9  kubectl_describe         313     1164    2.7  nyx-postgres
+  10  kubectl_logs              29       55    2.4  nyx-api-79c5f4d8d7-777ht
+  11  kubectl_logs              29       55    2.2  nyx-api-79c5f4d8d7-777ht
+  12  kubectl_get              488     1336    1.9  events lista
+  13  kubectl_get              122      353    2.0  endpoints lista
+  14  kubectl_describe          93      275    1.8  nyx-api
+  15  kubectl_describe        1823     5763    2.0  k3d-metacortex-agent-0
+  TOTAL                       5409    17035   40.5
+  chamadas: 15   respostas vazias: 4
+  tempo sem o spawn do npx: 10.7s
+
+== chamado-3 COM skill ==
+   #  ferramenta            tokens    bytes      s  alvo
+   1  kubectl_get              595     1583    7.3  all
+   2  kubectl_get              136      402    4.9  nyx-api
+   3  kubectl_get              134      371    3.1  endpointslices lista
+   4  kubectl_get              310     1047    2.5  nyx-api-wszq8
+   5  kubectl_get              335     1191    2.6  nyx-api
+   6  kubectl_get             1794     8378    2.3  nyx-api-5cd5cdbf9d-h98pj
+   7  kubectl_get                7       18    3.1  pods lista
+   8  kubectl_get              149      370    2.5  pods lista
+   9  kubectl_get                7       18    2.5  ingress lista
+  10  kubectl_get             1124     5547    2.2  nyx-api
+  TOTAL                       4591    18925   32.9
+  chamadas: 10   respostas vazias: 2
+  tempo sem o spawn do npx: 13.0s
+  + custo fixo da skill: 5022 tokens  => entrada total 9613 tokens
+
+== chamado-3 SEM skill ==
+   #  ferramenta            tokens    bytes      s  alvo
+   1  kubectl_get              218      550    2.9  pods lista
+   2  kubectl_get              126      353    2.2  services lista
+   3  kubectl_get              124      351    2.1  endpoints lista
+   4  kubectl_describe         126      560    2.2  nyx-api
+   5  kubectl_describe          58      176    2.1  nyx-api
+   6  kubectl_describe         716     2354    2.0  nyx-api-5cd5cdbf9d-h98pj
+   7  kubectl_describe         394     1334    1.9  nyx-api
+   8  kubectl_get                7       18    2.2  ingress lista
+   9  kubectl_get                7       18    2.1  ingresses lista
+  10  list_api_resources      1463     9264    2.0
+  11  kubectl_get                7       18    1.9  ingressroutes lista
+  12  kubectl_get              134      371    1.9  endpointslices lista
+  13  kubectl_describe         102      338    1.8  nyx-api-wszq8
+  TOTAL                       3482    15705   27.4
+  chamadas: 13   respostas vazias: 3
+  tempo sem o spawn do npx: 1.5s
+
+== Comparacao ==
+  braco                  chamadas  tok resposta  tok entrada
+  chamado-1 COM skill          10          8202        13224
+  chamado-1 SEM skill          15          5409         5409
+  chamado-3 COM skill          10          4591         9613
+  chamado-3 SEM skill          13          3482         3482
+
+  chamado-1: entrada com skill / sem skill = 2.44x
+  chamado-3: entrada com skill / sem skill = 2.76x
